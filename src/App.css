@@ -1,0 +1,73 @@
+.app-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+}
+
+.layout-content {
+  padding: 24px;
+  flex: 1;
+  overflow: auto;
+}
+
+.site-layout-background {
+  background: #fff;
+  padding: 24px;
+  min-height: 280px;
+}
+
+.login-container {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100vh;
+  background-color: #f0f2f5;
+}
+
+.login-form {
+  width: 300px;
+  padding: 24px;
+  background: white;
+  border-radius: 4px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.login-title {
+  text-align: center;
+  margin-bottom: 24px;
+}
+
+.customer-search-container {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.checkout-container {
+  display: flex;
+  height: 100%;
+}
+
+.checkout-left {
+  flex: 2;
+  padding: 20px;
+  border-right: 1px solid #f0f0f0;
+  overflow-y: auto;
+}
+
+.checkout-right {
+  flex: 1;
+  padding: 20px;
+  background-color: #fafafa;
+  overflow-y: auto;
+}
+
+.invoice-section {
+  margin-top: 24px;
+  padding: 16px;
+  background: white;
+  border-radius: 4px;
+  border: 1px solid #f0f0f0;
+} 

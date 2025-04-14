@@ -1,0 +1,70 @@
+curl --location 'https://public.kiotapi.com/invoices' \
+--header 'Retailer: gaolamthuy' \
+--header 'Authorization: Bearer {kiotviet_token}' \
+--header 'Content-Type: application/json' \
+--header 'Cookie: ss-id=fYmUvBEqOxCahnYMqYlA; ss-pid=bdZrORBk7FlRnA0jaZSs' \
+--data '{
+    "branchId": 15132,
+    "isApplyVoucher": false,
+    "purchaseDate": "2025-04-14T14:06:27.6900000", 
+    "customerId": 898547, 
+    "discount": 0,
+    
+    "note": "note", 
+    "method": "Cash",
+    "accountId": null,
+    "usingCod": false,
+    "soldById": 28310,
+    "orderId": null,
+    "invoiceDetails": [
+        {
+            "productId": 3065552, 
+            
+            
+            "quantity": 1,
+            "price": 16500
+            
+            
+            
+            
+        }
+    ],
+    "deliveryDetail": null,
+    "Payments": [ 
+        {
+            "Method": "Cash",
+            "MethodStr": "Cash",
+            "Amount": 16500,
+            "Id": -1,
+            "AccountId": null,
+            "VoucherId": null,
+            "VoucherCampaignId": null
+        }
+    ],
+    "customer": {
+        "id": 898547
+        
+        
+        
+        
+        
+        
+        
+        
+    }
+}'
+
+
+// get kiotviet_token http request sample
+curl --location 'https://supabase.gaolamthuy.vn/rest/v1/system?select=title%2Cvalue' \
+--header 'apikey: SUPABASE_SERVICE_KEY' \
+--header 'Authorization: Bearer SUPABASE_SERVICE_KEY'
+// api response sample
+[
+    {
+        "title": "kiotviet",
+        "value": "abc"
+    }
+]
+
+
