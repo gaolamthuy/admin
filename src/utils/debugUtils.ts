@@ -7,7 +7,7 @@ export const runDiagnostics = async (): Promise<string[]> => {
   try {
     // Check if we can connect to Supabase at all
     logs.push('Testing Supabase connection...');
-    const { data: healthCheck, error: healthError } = await supabase.from('kiotviet_products').select('count', { count: 'exact', head: true });
+    const { data: healthCheck, error: healthError } = await supabase.from('kv_products').select('count', { count: 'exact', head: true });
     
     if (healthError) {
       logs.push(`❌ Error connecting to Supabase: ${healthError.message}`);
@@ -17,10 +17,11 @@ export const runDiagnostics = async (): Promise<string[]> => {
       
       // Check if required tables exist
       const tables = [
-        'kiotviet_products',
-        'kiotviet_customers',
-        'kiotviet_branches',
-        'kiotviet_staff',
+        'kv_products',
+        'kv_customers',
+        'kv_invoices',
+        'kv_invoice_details',
+        'kv_product_inventories',
         'system'
       ];
       

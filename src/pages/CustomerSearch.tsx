@@ -36,7 +36,7 @@ const CustomerSearch: React.FC = () => {
     setLoading(true);
     try {
       const { data, error } = await supabase
-        .from('kiotviet_customers')
+        .from('kv_customers')
         .select('*')
         .limit(100);
 
@@ -57,7 +57,7 @@ const CustomerSearch: React.FC = () => {
   const handleSearch = async () => {
     setLoading(true);
     try {
-      let query = supabase.from('kiotviet_customers').select('*');
+      let query = supabase.from('kv_customers').select('*');
 
       if (searchText) {
         query = query.or(

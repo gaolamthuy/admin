@@ -11,7 +11,7 @@ interface ProductItem {
 }
 
 interface Customer {
-  id: number;
+  id: number | null;
 }
 
 interface Payment {
@@ -26,7 +26,7 @@ interface Payment {
 
 interface CreateInvoiceParams {
   branchId: number;
-  customerId: number;
+  customerId: number | null;
   soldById: number;
   invoiceDetails: ProductItem[];
   payments: Payment[];
@@ -79,10 +79,10 @@ export const kiotVietService = {
         invoiceDetails,
         deliveryDetail: null,
         Payments: payments,
-        customer: {
-          id: customerId
-        }
+        customer: customerId ? { id: customerId } : null
       };
+
+      console.log('Sending to KiotViet:', JSON.stringify(invoiceData, null, 2));
 
       const response = await axios.post(
         `${KIOTVIET_BASE_URL}/invoices`,
@@ -96,7 +96,7 @@ export const kiotVietService = {
         }
       );
 
-      await this.saveInvoiceToSupabase(response.data);
+      await this.saveInvoiceToSupabase(response.data, customerId);
 
       return response.data;
     } catch (error) {
@@ -105,11 +105,11 @@ export const kiotVietService = {
     }
   },
 
-  async saveInvoiceToSupabase(invoiceData: any): Promise<void> {
+  async saveInvoiceToSupabase(invoiceData: any, customerId: number | null): Promise<void> {
     try {
       // 1. Save the invoice
       const { data: invoice, error: invoiceError } = await supabase
-        .from('kiotviet_invoices')
+        .from('kv_invoices')
         .insert({
           kiotviet_id: invoiceData.id,
           uuid: invoiceData.uuid,
@@ -119,9 +119,9 @@ export const kiotVietService = {
           branch_name: invoiceData.branchName,
           sold_by_id: invoiceData.soldById,
           sold_by_name: invoiceData.soldByName,
-          kiotviet_customer_id: invoiceData.customerId,
-          customer_code: invoiceData.customerCode,
-          customer_name: invoiceData.customerName,
+          kiotviet_customer_id: customerId,
+          customer_code: invoiceData.customerCode || 'KHACHLE',
+          customer_name: invoiceData.customerName || 'Khách lẻ',
           order_code: invoiceData.orderCode,
           total: invoiceData.total,
           total_payment: invoiceData.totalPayment,
@@ -156,7 +156,7 @@ export const kiotVietService = {
         }));
 
         const { error: detailsError } = await supabase
-          .from('kiotviet_invoice_details')
+          .from('kv_invoice_details')
           .insert(invoiceDetailsToInsert);
 
         if (detailsError) {
@@ -164,7 +164,8 @@ export const kiotVietService = {
         }
       }
 
-      // 3. Save invoice payments
+      // 3. Save invoice payments - This section is commented out since kv_invoice_payments table is dropped
+      /*
       if (invoiceData.payments && invoiceData.payments.length > 0) {
         const paymentsToInsert = invoiceData.payments.map((payment: any) => ({
           invoice_id: invoice.id,
@@ -178,12 +179,19 @@ export const kiotVietService = {
         }));
 
         const { error: paymentsError } = await supabase
-          .from('kiotviet_invoice_payments')
+          .from('kv_invoice_payments')
           .insert(paymentsToInsert);
 
         if (paymentsError) {
           throw paymentsError;
         }
+      }
+      */
+      
+      // Payment info is now stored in a log format instead
+      if (invoiceData.payments && invoiceData.payments.length > 0) {
+        console.log('Payment data received but not saved to database (table was dropped):',
+          JSON.stringify(invoiceData.payments, null, 2));
       }
     } catch (error) {
       console.error('Error saving invoice to Supabase:', error);

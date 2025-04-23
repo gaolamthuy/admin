@@ -49,7 +49,8 @@ interface Product {
   code: string;
   name: string;
   unit: string;
-  sell_price: number;
+  base_price: number;
+  sell_price?: number;
   category_name: string;
 }
 
@@ -67,6 +68,15 @@ interface StaffInfo {
   id: number;
   name: string;
 }
+
+// Static data for branches and staff
+const STATIC_BRANCHES: BranchInfo[] = [
+  { id: 15132, name: 'Chi nhánh chính' }
+];
+
+const STATIC_STAFF: StaffInfo[] = [
+  { id: 28310, name: 'Hoàng Lâm' }
+];
 
 const Checkout: React.FC = () => {
   const location = useLocation();
@@ -97,9 +107,12 @@ const Checkout: React.FC = () => {
 
   const fetchProducts = async () => {
     try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('kiotviet_products')
-        .select('*')
+        .select('id, kiotviet_id, code, name, unit, base_price, category_name')
+        .eq('is_active', true)
+        .order('name')
         .limit(100);
 
       if (error) {
@@ -107,57 +120,44 @@ const Checkout: React.FC = () => {
       }
 
       if (data) {
-        setProducts(data);
+        // Map data to match the Product interface
+        const mappedProducts: Product[] = data.map((product: any) => ({
+          ...product,
+          sell_price: product.base_price // Map base_price to sell_price for backward compatibility
+        }));
+        setProducts(mappedProducts);
       }
     } catch (error) {
       console.error('Error fetching products:', error);
-      message.error('Failed to fetch products');
+      message.error('Failed to fetch products. Check connection to Supabase.');
+    } finally {
+      setLoading(false);
     }
   };
 
   const fetchBranches = async () => {
     try {
-      const { data, error } = await supabase
-        .from('kiotviet_branches')
-        .select('*');
-
-      if (error) {
-        throw error;
-      }
-
-      if (data) {
-        setBranches(data);
-        // Set default branch if available
-        if (data.length > 0) {
-          setSelectedBranch(data[0].id);
-        }
+      // Use static data instead of fetching from database
+      setBranches(STATIC_BRANCHES);
+      // Set default branch
+      if (STATIC_BRANCHES.length > 0) {
+        setSelectedBranch(STATIC_BRANCHES[0].id);
       }
     } catch (error) {
-      console.error('Error fetching branches:', error);
-      message.error('Failed to fetch branches');
+      console.error('Using static branch data:', error);
     }
   };
 
   const fetchStaff = async () => {
     try {
-      const { data, error } = await supabase
-        .from('kiotviet_staff')
-        .select('*');
-
-      if (error) {
-        throw error;
-      }
-
-      if (data) {
-        setStaffMembers(data);
-        // Set default staff if available
-        if (data.length > 0) {
-          setSelectedStaff(data[0].id);
-        }
+      // Use static data instead of fetching from database
+      setStaffMembers(STATIC_STAFF);
+      // Set default staff
+      if (STATIC_STAFF.length > 0) {
+        setSelectedStaff(STATIC_STAFF[0].id);
       }
     } catch (error) {
-      console.error('Error fetching staff:', error);
-      message.error('Failed to fetch staff');
+      console.error('Using static staff data:', error);
     }
   };
 
@@ -168,15 +168,21 @@ const Checkout: React.FC = () => {
     try {
       const { data, error } = await supabase
         .from('kiotviet_products')
-        .select('*')
+        .select('id, kiotviet_id, code, name, unit, base_price, category_name')
         .or(`name.ilike.%${searchText}%,code.ilike.%${searchText}%`)
+        .eq('is_active', true)
         .limit(20);
 
       if (error) {
         throw error;
       }
 
-      setProducts(data || []);
+      // Map data to match the Product interface
+      const mappedProducts: Product[] = (data || []).map((product: any) => ({
+        ...product,
+        sell_price: product.base_price // Map base_price to sell_price for backward compatibility
+      }));
+      setProducts(mappedProducts);
     } catch (error) {
       console.error('Error searching products:', error);
       message.error('Failed to search products');
@@ -186,7 +192,7 @@ const Checkout: React.FC = () => {
   };
 
   const addToCart = (product: Product) => {
-    setCart((prevCart) => {
+    setCart((prevCart: CartItem[]) => {
       // Check if product already exists in cart
       const existingItemIndex = prevCart.findIndex(item => item.id === product.id);
       
@@ -197,7 +203,7 @@ const Checkout: React.FC = () => {
         updatedCart[existingItemIndex] = {
           ...existingItem,
           quantity: existingItem.quantity + 1,
-          total: (existingItem.quantity + 1) * existingItem.sell_price,
+          total: (existingItem.quantity + 1) * (existingItem.sell_price || existingItem.base_price),
         };
         return updatedCart;
       } else {
@@ -205,25 +211,25 @@ const Checkout: React.FC = () => {
         return [...prevCart, {
           ...product,
           quantity: 1,
-          total: product.sell_price,
+          total: (product.sell_price || product.base_price),
         }];
       }
     });
   };
 
   const removeFromCart = (productId: number) => {
-    setCart(prevCart => prevCart.filter(item => item.id !== productId));
+    setCart((prevCart: CartItem[]) => prevCart.filter((item: CartItem) => item.id !== productId));
   };
 
   const updateQuantity = (productId: number, quantity: number) => {
     if (quantity <= 0) return;
     
-    setCart(prevCart => prevCart.map(item => {
+    setCart((prevCart: CartItem[]) => prevCart.map((item: CartItem) => {
       if (item.id === productId) {
         return {
           ...item,
           quantity,
-          total: quantity * item.sell_price,
+          total: quantity * (item.sell_price || item.base_price),
         };
       }
       return item;
@@ -231,7 +237,7 @@ const Checkout: React.FC = () => {
   };
 
   const calculateTotal = () => {
-    return cart.reduce((sum, item) => sum + item.total, 0);
+    return cart.reduce((sum: number, item: CartItem) => sum + item.total, 0);
   };
 
   const handleCheckout = async () => {
@@ -258,10 +264,10 @@ const Checkout: React.FC = () => {
     setLoading(true);
     try {
       // 1. Prepare data for KiotViet
-      const invoiceDetails = cart.map(item => ({
+      const invoiceDetails = cart.map((item: CartItem) => ({
         productId: item.kiotviet_id,
         quantity: item.quantity,
-        price: item.sell_price,
+        price: item.sell_price || item.base_price,
       }));
 
       const totalAmount = calculateTotal();
@@ -482,7 +488,7 @@ const Checkout: React.FC = () => {
         <InputNumber
           min={1}
           value={record.quantity}
-          onChange={(value) => updateQuantity(record.id, value as number)}
+          onChange={(value: number | null) => updateQuantity(record.id, value as number)}
         />
       ),
     },
@@ -543,7 +549,7 @@ const Checkout: React.FC = () => {
                     <Input
                       placeholder="Search products by name or code"
                       value={searchText}
-                      onChange={(e) => setSearchText(e.target.value)}
+                      onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSearchText(e.target.value)}
                       style={{ width: 300 }}
                       onPressEnter={handleSearch}
                     />
@@ -610,7 +616,7 @@ const Checkout: React.FC = () => {
                         value={selectedBranch}
                         onChange={setSelectedBranch}
                       >
-                        {branches.map(branch => (
+                        {branches.map((branch: BranchInfo) => (
                           <Option key={branch.id} value={branch.id}>{branch.name}</Option>
                         ))}
                       </Select>
@@ -622,7 +628,7 @@ const Checkout: React.FC = () => {
                         value={selectedStaff}
                         onChange={setSelectedStaff}
                       >
-                        {staffMembers.map(staff => (
+                        {staffMembers.map((staff: StaffInfo) => (
                           <Option key={staff.id} value={staff.id}>{staff.name}</Option>
                         ))}
                       </Select>

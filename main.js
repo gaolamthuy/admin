@@ -2,17 +2,22 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const isDev = require('electron-is-dev');
 
+// Suppress DBUS errors on WSL - this is commonly causing SIGTRAP crashes
+if (process.platform === 'linux') {
+  process.env.DBUS_SYSTEM_BUS_ADDRESS = 'unix:path=/dev/null';
+}
+
 let mainWindow;
 
 function createWindow() {
-  // Create the browser window
+  // Create the browser window with updated settings
   mainWindow = new BrowserWindow({
     width: 1200,
     height: 800,
     webPreferences: {
       nodeIntegration: false,
       contextIsolation: true,
-      enableRemoteModule: false,
+      sandbox: false, // Disable sandbox to ensure compatibility
       preload: path.join(__dirname, 'preload.js')
     },
   });
@@ -26,7 +31,7 @@ function createWindow() {
 
   // Open DevTools in development mode
   if (isDev) {
-    mainWindow.webContents.openDevTools();
+    mainWindow.webContents.openDevTools({ mode: 'detach' });
   }
 
   // Set up event handler for window closed
@@ -63,7 +68,7 @@ ipcMain.on('print-invoice', (event, data) => {
       webPreferences: {
         nodeIntegration: false,
         contextIsolation: true,
-        enableRemoteModule: false,
+        sandbox: false, // Disable sandbox to ensure compatibility
       },
     });
 

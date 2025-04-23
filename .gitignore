@@ -29,7 +29,11 @@ yarn-error.log*
 *.swp
 *.swo 
 
-create-tables.sql
-database description.txt
-kiotviet http request.txt
-pos ui sketch.jpg
+*.txt
+*.jpg
+
+*.log
+*.log.*
+*.log.*.*
+*.log.*.*.*
+*.log.*.*.*.*
