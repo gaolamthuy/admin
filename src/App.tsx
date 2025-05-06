@@ -1,17 +1,17 @@
-import React, { useState } from 'react';
-import { ConfigProvider } from 'antd';
-import './App.css';
+import React, { useState } from "react";
+import { ConfigProvider } from "antd";
+import "./App.css";
 
 // Pages
-import Login from './pages/Login';
-import MainPOS from './pages/MainPOS';
+import Login from "./pages/Login";
+import MainPOS from "./pages/MainPOS";
 
 const App: React.FC = () => {
   const [isAuthenticated, setIsAuthenticated] = useState<boolean>(false);
 
   const handleLogin = (password: string): boolean => {
     // Simple authentication for now
-    if (password === 'admin123') {
+    if (password === "admin123") {
       setIsAuthenticated(true);
       return true;
     }
@@ -26,7 +26,7 @@ const App: React.FC = () => {
     <ConfigProvider
       theme={{
         token: {
-          colorPrimary: '#1890ff',
+          colorPrimary: "#1890ff",
         },
       }}
     >
@@ -37,4 +37,4 @@ const App: React.FC = () => {
   );
 };
 
-export default App; 
+export default App;

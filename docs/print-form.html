@@ -1,0 +1,207 @@
+<div id="kv-cke-temp">
+  <style type="text/css">
+    .printBox {
+      font-family: Arial, sans-serif;
+      font-size: 12px;
+    }
+    table {
+      page-break-inside: auto;
+      border-collapse: collapse;
+    }
+    table td,
+    table th,
+    div,
+    span {
+      font-size: 12px;
+      word-wrap: break-word;
+      word-break: break-word;
+    }
+    tr {
+      page-break-inside: avoid;
+      page-break-after: auto;
+    }
+    img {
+      max-width: 100%;
+      height: auto;
+    }
+  </style>
+  <div class="printBox">
+    <!-- Receipt Header Section -->
+    <table style="width: 100%">
+      <tbody>
+        <tr>
+          <td style="text-align: left; width: 85%">
+            <!-- Store Information -->
+            <div>Gạo Lâm Thúy</div>
+
+            <div>23 Ng. Đình Chiểu, P.4, Q.PN</div>
+
+            <div>0903.048.200 (Cửa hàng, Giao hàng)</div>
+
+            <div>028.3845.3626 (Cửa hàng, Giao hàng)</div>
+
+            <div>0901.467.300 (Báo giá, Đặt hàng, Kho)</div>
+
+            <div>Facebook | gaolamthuy.vn</div>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <!-- Receipt Title and Date -->
+
+    <table style="width: 100%">
+      <tbody>
+        <tr>
+          <td style="text-align: center">
+            <div>PHIẾU BÁN HÀNG</div>
+
+            <div>{Date_Time_purchased}</div>
+            <!-- dd/mm/yyyyy - HH:mm:ss -->
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <!-- Customer Information -->
+
+    <table style="margin: 10px 0 15px; width: 100%">
+      <tbody>
+        <tr>
+          <td>
+            <div><strong>KH:</strong> {Khach_Hang}</div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div>SĐT: {So_Dien_Thoai}</div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <div>
+              Địa chỉ: {Dia_Chi_Khach_Hang} - {Phuong_Xa_Khach_Hang} -
+              {Khu_Vuc_Khach_Hang_QH_TP}
+            </div>
+          </td>
+        </tr>
+        <tr>
+          <td>
+            <!-- <div>Dư nợ trước: {Du_No_Truoc_Tao_Hoa_Don}</div> -->
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <!-- Product Details -->
+
+    <table cellpadding="3" style="width: 98%">
+      <thead>
+        <tr>
+          <th
+            style="
+              border-bottom: 1px solid black;
+              border-top: 1px solid black;
+              width: 35%;
+            "
+          >
+            Tên - Mô tả hàng
+          </th>
+          <th
+            style="
+              border-bottom: 1px solid black;
+              border-top: 1px solid black;
+              text-align: right;
+              width: 30%;
+            "
+          >
+            Đơn giá
+          </th>
+          <th
+            style="
+              border-bottom: 1px solid black;
+              border-top: 1px solid black;
+              text-align: right;
+            "
+          >
+            Thành tiền
+          </th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td colspan="3">{Ten_Hang_Hoa} - ({Ghi_Chu_Hang_Hoa})</td>
+        </tr>
+        <tr>
+          <td style="border-bottom: 1px dashed black">
+            {So_Luong} {Don_Vi_Tinh}
+          </td>
+          <td style="border-bottom: 1px dashed black; text-align: right">
+            {Don_Gia_Chiet_Khau}
+          </td>
+          <td style="border-bottom: 1px dashed black; text-align: right">
+            {Thanh_Tien}
+          </td>
+        </tr>
+      </tbody>
+    </table>
+    <!-- Total Summary -->
+
+    <hr />
+    <div><strong>Tổng:</strong> {Tong_So_Luong} sản phẩm.</div>
+
+    <div>
+      <strong>Ghi chú:</strong> <u><strong>{Ghi_Chu}</strong></u>
+    </div>
+
+    <hr />
+    <!-- Payment Details -->
+    <table
+      align="right"
+      cellspacing="0"
+      style="border-collapse: collapse; width: 100%"
+    >
+      <tfoot>
+        <tr>
+          <td style="text-align: right; width: 65%">Tổng tiền hàng:</td>
+          <td style="text-align: right">{Tong_Tien_Hang}</td>
+        </tr>
+        <tr>
+          <td style="text-align: right">{Ten_Loai_Thu_Khac}:</td>
+          <td style="text-align: right">{Muc_Thu_Khac}</td>
+        </tr>
+        <!-- i want a horizontal line to split this -->
+        <tr>
+          <td colspan="2">
+            <hr />
+          </td>
+        </tr>
+        <tr>
+          <td style="text-align: right">Tổng đơn:</td>
+          <td style="text-align: right">{Tong_Cong}</td>
+        </tr>
+        <tr>
+          <td style="text-align: right">Giảm giá HĐ:</td>
+          <td style="text-align: right">-{Chiet_Khau_Hoa_Don}</td>
+        </tr>
+        <tr>
+          <td style="text-align: right">Đã thanh toán:</td>
+          <td style="text-align: right">-{Tong_Thanh_Toan}</td>
+        </tr>
+        <tr>
+          <td style="text-align: right"><strong>KH cần TT:</strong></td>
+          <td style="text-align: right">
+            <strong>{Tong_Can_Thanh_Toan}</strong>
+          </td>
+        </tr>
+      </tfoot>
+    </table>
+    <!-- QR Code for Payment -->
+
+    <hr />
+    <!-- <div style="text-align: center">{Ma_QR}</div> -->
+
+    <div style="text-align: center">
+      Vietcombank<br />
+      1012 842 851<br />
+      Ho Pham Lam
+    </div>
+  </div>
+</div>

@@ -12,6 +12,7 @@ export interface Customer {
   modified_date?: string;
   created_date?: string;
   type?: number;
+  glt_customer_group_name: string;
   groups?: string;
   debt?: number;
   comments?: string;
@@ -25,6 +26,7 @@ export interface Product {
   category_name: string;
   unit: string;
   base_price: number;
+  cost?: number;
   full_name: string;
   order_template?: string;
   is_active?: boolean;
@@ -58,4 +60,15 @@ export interface InvoiceDetail {
   quantity: number;
   price: number;
   sub_total: number;
-} 
+}
+
+// Pricebook entries override product prices per customer group
+export interface PricebookEntry {
+  id: number;
+  customer_group_title: string | null;
+  product_id: number; // references Product.kiotviet_id
+  adjustment_type: string; // e.g. 'fixed', 'percentage'
+  adjustment_value: number;
+  created_at?: string;
+  updated_at?: string;
+}

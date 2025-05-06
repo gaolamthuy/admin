@@ -1,123 +1,138 @@
 -- CUSTOMER TABLE
-DROP TABLE IF EXISTS public.kv_customers CASCADE;
-CREATE TABLE public.kv_customers (
-  id BIGSERIAL PRIMARY KEY,
-  kiotviet_id BIGINT NOT NULL UNIQUE,
-  code TEXT,
-  name TEXT,
-  retailer_id BIGINT,
-  branch_id BIGINT,
-  location_name TEXT,
-  ward_name TEXT,
-  modified_date TIMESTAMP,
-  created_date TIMESTAMP,
-  type INTEGER,
-  groups TEXT,
-  debt NUMERIC(12,4),
-  contact_number TEXT,
-  comments TEXT,
-  address TEXT,
-  synced_at TIMESTAMP
-);
-CREATE INDEX IF NOT EXISTS idx_kv_customers_kiotviet_id ON public.kv_customers (kiotviet_id);
+create table public.kv_customers (
+  id bigserial not null,
+  kiotviet_id bigint not null,
+  code text null,
+  name text null,
+  retailer_id bigint null,
+  branch_id bigint null,
+  location_name text null,
+  ward_name text null,
+  modified_date timestamp without time zone null,
+  created_date timestamp without time zone null,
+  type integer null,
+  groups text null,
+  debt numeric(12, 4) null,
+  contact_number text null,
+  comments text null,
+  address text null,
+  synced_at timestamp without time zone null,
+  constraint kv_customers_pkey primary key (id),
+  constraint kv_customers_kiotviet_id_key unique (kiotviet_id)
+) TABLESPACE pg_default;
+
+create index IF not exists idx_kv_customers_kiotviet_id on public.kv_customers using btree (kiotviet_id) TABLESPACE pg_default;
+
 
 -- PRODUCT TABLE
-DROP TABLE IF EXISTS public.kv_products CASCADE;
-CREATE TABLE public.kv_products (
-  id BIGSERIAL PRIMARY KEY,
-  kiotviet_id BIGINT NOT NULL UNIQUE,
-  retailer_id BIGINT,
-  code VARCHAR(255),
-  bar_code VARCHAR(255),
-  name VARCHAR(255),
-  full_name VARCHAR(255),
-  category_id BIGINT,
-  category_name VARCHAR(255),
-  allows_sale BOOLEAN,
-  type INTEGER,
-  has_variants BOOLEAN,
-  base_price NUMERIC(20,6),
-  weight NUMERIC(20,6),
-  unit VARCHAR(255),
-  master_product_id BIGINT,
-  master_unit_id BIGINT,
-  conversion_value INTEGER,
-  description TEXT,
-  modified_date TIMESTAMP,
-  created_date TIMESTAMP,
-  is_active BOOLEAN,
-  order_template VARCHAR(255),
-  is_lot_serial_control BOOLEAN,
-  is_batch_expire_control BOOLEAN,
-  trade_mark_name VARCHAR(255),
-  trade_mark_id BIGINT,
-  images TEXT[],
-  synced_at TIMESTAMP
-);
-CREATE INDEX IF NOT EXISTS idx_kv_products_kiotviet_id ON public.kv_products (kiotviet_id);
+create table public.kv_products (
+  id bigserial not null,
+  kiotviet_id bigint not null,
+  retailer_id bigint null,
+  code character varying(255) null,
+  bar_code character varying(255) null,
+  name character varying(255) null,
+  full_name character varying(255) null,
+  category_id bigint null,
+  category_name character varying(255) null,
+  allows_sale boolean null,
+  type integer null,
+  has_variants boolean null,
+  base_price numeric(20, 6) null,
+  weight numeric(20, 6) null,
+  unit character varying(255) null,
+  master_product_id bigint null,
+  master_unit_id bigint null,
+  conversion_value integer null,
+  description text null,
+  modified_date timestamp without time zone null,
+  created_date timestamp without time zone null,
+  is_active boolean null,
+  order_template character varying(255) null,
+  is_lot_serial_control boolean null,
+  is_batch_expire_control boolean null,
+  trade_mark_name character varying(255) null,
+  trade_mark_id bigint null,
+  images text[] null,
+  synced_at timestamp without time zone null,
+  constraint kv_products_pkey primary key (id),
+  constraint kv_products_kiotviet_id_key unique (kiotviet_id)
+) TABLESPACE pg_default;
+
+create index IF not exists idx_kv_products_kiotviet_id on public.kv_products using btree (kiotviet_id) TABLESPACE pg_default;
+
+-- PRODUCT INVENTORY TABLE
+create table public.kv_product_inventories (
+  id bigserial not null,
+  product_id bigint not null,
+  branch_id bigint null,
+  branch_name text null,
+  on_hand numeric(20, 6) null,
+  on_sales numeric(20, 6) null,
+  reserved numeric(20, 6) null,
+  minimum_inventory numeric(20, 6) null,
+  last_sync timestamp without time zone null,
+  synced_at timestamp without time zone null,
+  constraint kv_product_inventories_pkey primary key (id),
+  constraint kv_product_inventories_product_id_fkey foreign KEY (product_id) references kv_products (id) on delete CASCADE
+) TABLESPACE pg_default;
+
+create index IF not exists idx_kv_product_inventories_product_id on public.kv_product_inventories using btree (product_id) TABLESPACE pg_default;
+
+create index IF not exists idx_kv_product_inventories_branch_id on public.kv_product_inventories using btree (branch_id) TABLESPACE pg_default;
+
 
 -- INVOICE TABLE
-DROP TABLE IF EXISTS public.kv_invoices CASCADE;
-CREATE TABLE public.kv_invoices (
-  id BIGSERIAL PRIMARY KEY,
-  kiotviet_id BIGINT NOT NULL UNIQUE,
-  uuid TEXT,
-  code TEXT,
-  purchase_date TIMESTAMP,
-  branch_id BIGINT,
-  branch_name TEXT,
-  sold_by_id BIGINT,
-  sold_by_name TEXT,
-  kiotviet_customer_id BIGINT,
-  customer_id BIGINT REFERENCES kv_customers(id),
-  customer_code TEXT,
-  customer_name TEXT,
-  order_code TEXT,
-  total NUMERIC(12,4),
-  total_payment NUMERIC(12,4),
-  status INTEGER,
-  status_value TEXT,
-  using_cod BOOLEAN,
-  created_date TIMESTAMP,
-  synced_at TIMESTAMP
-);
-CREATE INDEX IF NOT EXISTS idx_kv_invoices_purchase_date ON public.kv_invoices (purchase_date);
-CREATE INDEX IF NOT EXISTS idx_kv_invoices_kiotviet_id ON public.kv_invoices (kiotviet_id);
+create table public.kv_invoices (
+  id bigserial not null,
+  kiotviet_id bigint not null,
+  uuid text null,
+  code text null,
+  purchase_date timestamp without time zone null,
+  branch_id bigint null,
+  branch_name text null,
+  sold_by_id bigint null,
+  sold_by_name text null,
+  kiotviet_customer_id bigint null,
+  customer_code text null,
+  customer_name text null,
+  order_code text null,
+  total numeric(12, 4) null,
+  total_payment numeric(12, 4) null,
+  status integer null,
+  status_value text null,
+  using_cod boolean null,
+  created_date timestamp without time zone null,
+  synced_at timestamp without time zone null,
+  constraint kv_invoices_pkey primary key (id),
+  constraint kv_invoices_kiotviet_id_key unique (kiotviet_id),
+  constraint kv_invoices_kiotviet_customer_id_fkey foreign KEY (kiotviet_customer_id) references kv_customers (kiotviet_id)
+) TABLESPACE pg_default;
+
+create index IF not exists idx_kv_invoices_purchase_date on public.kv_invoices using btree (purchase_date) TABLESPACE pg_default;
+
+create index IF not exists idx_kv_invoices_kiotviet_id on public.kv_invoices using btree (kiotviet_id) TABLESPACE pg_default;
 
 -- INVOICE DETAILS
-DROP TABLE IF EXISTS public.kv_invoice_details CASCADE;
-CREATE TABLE public.kv_invoice_details (
-  id BIGSERIAL PRIMARY KEY,
-  invoice_id BIGINT NOT NULL REFERENCES kv_invoices(id) ON DELETE CASCADE,
-  kiotviet_product_id BIGINT,
-  product_id BIGINT REFERENCES kv_products(id),
-  product_code TEXT,
-  product_name TEXT,
-  category_id BIGINT,
-  category_name TEXT,
-  quantity NUMERIC(12,4),
-  price NUMERIC(12,4),
-  discount NUMERIC(12,4),
-  sub_total NUMERIC(12,4),
-  note TEXT,
-  serial_numbers TEXT,
-  return_quantity NUMERIC(12,4),
-  synced_at TIMESTAMP
-);
-CREATE INDEX IF NOT EXISTS idx_kv_invoice_details_invoice_id ON public.kv_invoice_details (invoice_id);
+create table public.kv_invoice_details (
+  id bigserial not null,
+  invoice_id bigint not null,
+  kiotviet_product_id bigint null,
+  product_code text null,
+  product_name text null,
+  category_id bigint null,
+  category_name text null,
+  quantity numeric(12, 4) null,
+  price numeric(12, 4) null,
+  discount numeric(12, 4) null,
+  sub_total numeric(12, 4) null,
+  note text null,
+  serial_numbers text null,
+  return_quantity numeric(12, 4) null,
+  synced_at timestamp without time zone null,
+  constraint kv_invoice_details_pkey primary key (id),
+  constraint kv_invoice_details_invoice_id_fkey foreign KEY (invoice_id) references kv_invoices (id) on delete CASCADE,
+  constraint kv_invoice_details_kiotviet_product_id_fkey foreign KEY (kiotviet_product_id) references kv_products (kiotviet_id) on delete set null
+) TABLESPACE pg_default;
 
-DROP TABLE IF EXISTS public.kv_product_inventories CASCADE;
-CREATE TABLE public.kv_product_inventories (
-  id BIGSERIAL PRIMARY KEY,
-  product_id BIGINT NOT NULL REFERENCES kv_products(id) ON DELETE CASCADE,
-  branch_id BIGINT,
-  branch_name TEXT,
-  on_hand NUMERIC(20, 6),         -- Tồn kho thực tế
-  on_sales NUMERIC(20, 6),        -- Tồn kho có thể bán
-  reserved NUMERIC(20, 6),        -- Hàng đã giữ cho đơn hàng
-  minimum_inventory NUMERIC(20, 6), -- Ngưỡng tối thiểu
-  last_sync TIMESTAMP,            -- Thời điểm đồng bộ inventory
-  synced_at TIMESTAMP             -- Giống các bảng khác, lần đồng bộ toàn bảng
-);
-CREATE INDEX IF NOT EXISTS idx_kv_product_inventories_product_id ON public.kv_product_inventories (product_id);
-CREATE INDEX IF NOT EXISTS idx_kv_product_inventories_branch_id ON public.kv_product_inventories (branch_id);
+create index IF not exists idx_kv_invoice_details_invoice_id on public.kv_invoice_details using btree (invoice_id) TABLESPACE pg_default;

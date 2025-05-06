@@ -2,24 +2,22 @@
   "name": "gaolamthuy-pos",
   "version": "1.0.0",
   "description": "POS app for Gao Lam Thuy",
-  "main": "main.js",
+  "author": {
+    "name": "Gao Lam Thuy",
+    "email": "support@gaolamthuy.vn",
+    "url": "https://gaolamthuy.vn"
+  },
   "scripts": {
-    "start": "electron .",
-    "start:wsl": "./start.sh",
-    "debug": "node debug.js",
-    "dev": "concurrently \"npm run dev:react\" \"npm run dev:electron\"",
-    "dev:react": "cross-env BROWSER=none react-scripts start",
-    "dev:electron": "wait-on http://localhost:3000 && electron .",
-    "build": "react-scripts build && electron-builder",
+    "start": "react-scripts start",
+    "build": "react-scripts build",
     "test": "react-scripts test",
-    "eject": "react-scripts eject",
-    "setup": "node setup.js"
+    "eject": "react-scripts eject"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.49.4",
     "antd": "^5.15.4",
     "axios": "^1.6.8",
-    "electron-is-dev": "^3.0.1",
+    "qrcode": "^1.5.4",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
     "react-router-dom": "^6.22.3",
@@ -33,11 +31,7 @@
     "@types/react": "^18.3.20",
     "@types/react-dom": "^18.3.6",
     "@types/react-router-dom": "^5.3.3",
-    "concurrently": "^8.2.2",
-    "cross-env": "^7.0.3",
-    "electron": "^35.2.0",
-    "electron-builder": "^24.13.3",
-    "wait-on": "^7.2.0"
+    "fs-extra": "^11.3.0"
   },
   "eslintConfig": {
     "extends": [
@@ -56,17 +50,5 @@
       "last 1 firefox version",
       "last 1 safari version"
     ]
-  },
-  "build": {
-    "appId": "com.gaolamthuy.pos",
-    "productName": "Gao Lam Thuy POS",
-    "files": [
-      "build/**/*",
-      "node_modules/**/*",
-      "main.js"
-    ],
-    "directories": {
-      "buildResources": "assets"
-    }
   }
 }

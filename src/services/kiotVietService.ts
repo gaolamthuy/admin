@@ -1,17 +1,15 @@
-import axios from 'axios';
-import { supabase } from './supabaseClient';
+import axios from "axios";
+import { supabase } from "./supabaseClient";
+import { Customer } from "../types";
 
-const KIOTVIET_BASE_URL = process.env.REACT_APP_KIOTVIET_BASE_URL || 'https://public.kiotapi.com';
-const RETAILER = 'gaolamthuy';
+const KIOTVIET_BASE_URL =
+  process.env.REACT_APP_KIOTVIET_BASE_URL || "https://public.kiotapi.com";
+const RETAILER = "gaolamthuy";
 
 interface ProductItem {
   productId: number;
   quantity: number;
   price: number;
-}
-
-interface Customer {
-  id: number | null;
 }
 
 interface Payment {
@@ -37,9 +35,9 @@ export const kiotVietService = {
   async getToken(): Promise<string> {
     try {
       const { data, error } = await supabase
-        .from('system')
-        .select('title, value')
-        .eq('title', 'kiotviet')
+        .from("system")
+        .select("title, value")
+        .eq("title", "kiotviet")
         .single();
 
       if (error) {
@@ -48,7 +46,7 @@ export const kiotVietService = {
 
       return data.value;
     } catch (error) {
-      console.error('Error getting token:', error);
+      console.error("Error getting token:", error);
       throw error;
     }
   },
@@ -70,8 +68,8 @@ export const kiotVietService = {
         purchaseDate: new Date().toISOString(),
         customerId,
         discount: 0,
-        note: '',
-        method: 'Cash',
+        note: "",
+        method: "Cash",
         accountId: null,
         usingCod: false,
         soldById,
@@ -79,20 +77,20 @@ export const kiotVietService = {
         invoiceDetails,
         deliveryDetail: null,
         Payments: payments,
-        customer: customerId ? { id: customerId } : null
+        customer: customerId ? { id: customerId } : null,
       };
 
-      console.log('Sending to KiotViet:', JSON.stringify(invoiceData, null, 2));
+      console.log("Sending to KiotViet:", JSON.stringify(invoiceData, null, 2));
 
       const response = await axios.post(
         `${KIOTVIET_BASE_URL}/invoices`,
         invoiceData,
         {
           headers: {
-            'Retailer': RETAILER,
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
+            Retailer: RETAILER,
+            Authorization: `Bearer ${token}`,
+            "Content-Type": "application/json",
+          },
         }
       );
 
@@ -100,16 +98,19 @@ export const kiotVietService = {
 
       return response.data;
     } catch (error) {
-      console.error('Error creating invoice:', error);
+      console.error("Error creating invoice:", error);
       throw error;
     }
   },
 
-  async saveInvoiceToSupabase(invoiceData: any, customerId: number | null): Promise<void> {
+  async saveInvoiceToSupabase(
+    invoiceData: any,
+    customerId: number | null
+  ): Promise<void> {
     try {
       // 1. Save the invoice
       const { data: invoice, error: invoiceError } = await supabase
-        .from('kv_invoices')
+        .from("kv_invoices")
         .insert({
           kiotviet_id: invoiceData.id,
           uuid: invoiceData.uuid,
@@ -120,17 +121,17 @@ export const kiotVietService = {
           sold_by_id: invoiceData.soldById,
           sold_by_name: invoiceData.soldByName,
           kiotviet_customer_id: customerId,
-          customer_code: invoiceData.customerCode || 'KHACHLE',
-          customer_name: invoiceData.customerName || 'Khách lẻ',
+          customer_code: invoiceData.customerCode || "KHACHLE",
+          customer_name: invoiceData.customerName || "Khách lẻ",
           order_code: invoiceData.orderCode,
           total: invoiceData.total,
           total_payment: invoiceData.totalPayment,
           status: invoiceData.status,
           status_value: invoiceData.statusValue,
           using_cod: invoiceData.usingCod,
-          created_date: new Date().toISOString()
+          created_date: new Date().toISOString(),
         })
-        .select('id')
+        .select("id")
         .single();
 
       if (invoiceError) {
@@ -139,24 +140,26 @@ export const kiotVietService = {
 
       // 2. Save invoice details
       if (invoiceData.invoiceDetails && invoiceData.invoiceDetails.length > 0) {
-        const invoiceDetailsToInsert = invoiceData.invoiceDetails.map((detail: any) => ({
-          invoice_id: invoice.id,
-          kiotviet_product_id: detail.productId,
-          product_code: detail.productCode,
-          product_name: detail.productName,
-          category_id: detail.categoryId,
-          category_name: detail.categoryName,
-          quantity: detail.quantity,
-          price: detail.price,
-          discount: detail.discount || 0,
-          sub_total: detail.subTotal,
-          note: detail.note || '',
-          serial_numbers: detail.serialNumbers || '',
-          return_quantity: detail.returnQuantity || 0
-        }));
+        const invoiceDetailsToInsert = invoiceData.invoiceDetails.map(
+          (detail: any) => ({
+            invoice_id: invoice.id,
+            kiotviet_product_id: detail.productId,
+            product_code: detail.productCode,
+            product_name: detail.productName,
+            category_id: detail.categoryId,
+            category_name: detail.categoryName,
+            quantity: detail.quantity,
+            price: detail.price,
+            discount: detail.discount || 0,
+            sub_total: detail.subTotal,
+            note: detail.note || "",
+            serial_numbers: detail.serialNumbers || "",
+            return_quantity: detail.returnQuantity || 0,
+          })
+        );
 
         const { error: detailsError } = await supabase
-          .from('kv_invoice_details')
+          .from("kv_invoice_details")
           .insert(invoiceDetailsToInsert);
 
         if (detailsError) {
@@ -187,15 +190,17 @@ export const kiotVietService = {
         }
       }
       */
-      
+
       // Payment info is now stored in a log format instead
       if (invoiceData.payments && invoiceData.payments.length > 0) {
-        console.log('Payment data received but not saved to database (table was dropped):',
-          JSON.stringify(invoiceData.payments, null, 2));
+        console.log(
+          "Payment data received but not saved to database (table was dropped):",
+          JSON.stringify(invoiceData.payments, null, 2)
+        );
       }
     } catch (error) {
-      console.error('Error saving invoice to Supabase:', error);
+      console.error("Error saving invoice to Supabase:", error);
       throw error;
     }
-  }
-}; 
+  },
+};
