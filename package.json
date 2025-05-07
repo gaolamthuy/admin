@@ -1,7 +1,7 @@
 {
   "name": "gaolamthuy-pos",
   "version": "1.0.0",
-  "description": "POS app for Gao Lam Thuy",
+  "description": "POS webapp for gaolamthuy (React, Ant Design, Axios, Supabase).",
   "author": {
     "name": "Gao Lam Thuy",
     "email": "support@gaolamthuy.vn",
