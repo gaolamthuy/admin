@@ -3,8 +3,8 @@ import { supabase } from "./supabaseClient";
 import { Customer } from "../types";
 
 const KIOTVIET_BASE_URL =
-  process.env.REACT_APP_KIOTVIET_BASE_URL || "https://public.kiotapi.com";
-const RETAILER = "gaolamthuy";
+  process.env.REACT_APP_KIOTVIET_BASE_URL;
+const RETAILER = "";
 
 interface ProductItem {
   productId: number;

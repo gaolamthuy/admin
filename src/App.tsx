@@ -11,7 +11,7 @@ const App: React.FC = () => {
 
   const handleLogin = (password: string): boolean => {
     // Simple authentication for now
-    if (password === "admin123") {
+    if (password === process.env.REACT_APP_LOGIN_PASSWORD) {
       setIsAuthenticated(true);
       return true;
     }
