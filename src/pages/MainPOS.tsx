@@ -341,7 +341,7 @@ const MainPOS: React.FC = () => {
   useEffect(() => {
     // Using static QR code image with proper contrast settings
     setQrDataUri(
-      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6eAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAFFmlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMxNDAgNzkuMTYwNDUxLCAyMDE3LzA1LzA2LTAxOjA4OjIxICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIgeG1sbnM6cGhvdG9zaG9wPSJodHRwOi8vbnMuYWRvYmUuY29tL3Bob3Rvc2hvcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RFdnQ9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZUV2ZW50IyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ0MgMjAxOCAoTWFjaW50b3NoKSIgeG1wOkNyZWF0ZURhdGU9IjIwMjQtMDctMjZUMTA6MjU6NDkrMDc6MDAiIHhtcDpNb2RpZnlEYXRlPSIyMDI0LTA3LTI2VDEwOjI3OjEwKzA3OjAwIiB4bXA6TWV0YWRhdGFEYXRlPSIyMDI0LTA3LTI2VDEwOjI3OjEwKzA3OjAwIiBkYzpmb3JtYXQ9ImltYWdlL3BuZyIgcGhvdG9zaG9wOkNvbG9yTW9kZT0iMyIgcGhvdG9zaG9wOklDQ1Byb2ZpbGU9InNSR0IgSUVDNjE5NjYtMi4xIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjRiZGJhNGY1LTc0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"
+      "data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAMgAAADICAYAAACtWK6eAAAACXBIWXMAAA7EAAAOxAGVKw4bAAAFFmlUWHRYTUw6Y29tLmFkb2JlLnhtcAAAAAAAPD94cGFja2V0IGJlZ2luPSLvu78iIGlkPSJXNU0wTXBDZWhpSHpyZVN6TlRjemtjOWQiPz4gPHg6eG1wbWV0YSB4bWxuczp4PSJhZG9iZTpuczptZXRhLyIgeDp4bXB0az0iQWRvYmUgWE1QIENvcmUgNS42LWMxNDAgNzkuMTYwNDUxLCAyMDE3LzA1LzA2LTAxOjA4OjIxICAgICAgICAiPiA8cmRmOlJERiB4bWxuczpyZGY9Imh0dHA6Ly93d3cudzMub3JnLzE5OTkvMDIvMjItcmRmLXN5bnRheC1ucyMiPiA8cmRmOkRlc2NyaXB0aW9uIHJkZjphYm91dD0iIiB4bWxuczp4bXA9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC8iIHhtbG5zOmRjPSJodHRwOi8vcHVybC5vcmcvZGMvZWxlbWVudHMvMS4xLyIgeG1sbnM6cGhvdG9zaG9wPSJodHRwOi8vbnMuYWRvYmUuY29tL3Bob3Rvc2hvcC8xLjAvIiB4bWxuczp4bXBNTT0iaHR0cDovL25zLmFkb2JlLmNvbS94YXAvMS4wL21tLyIgeG1sbnM6c3RFdnQ9Imh0dHA6Ly9ucy5hZG9iZS5jb20veGFwLzEuMC9zVHlwZS9SZXNvdXJjZUV2ZW50IyIgeG1wOkNyZWF0b3JUb29sPSJBZG9iZSBQaG90b3Nob3AgQ0MgMjAxOCAoTWFjaW50b3NoKSIgeG1wOkNyZWF0ZURhdGU9IjIwMjQtMDctMjZUMTA6MjU6NDkrMDc6MDAiIHhtcDpNb2RpZnlEYXRlPSIyMDI0LTA3LTI2VDEwOjI3OjEwKzA3OjAwIiB4bXA6TWV0YWRhdGFEYXRlPSIyMDI0LTA3LTI2VDEwOjI3OjEwKzA3OjAwIiBkYzpmb3JtYXQ9ImltYWdlL3BuZyIgcGhvdG9zaG9wOkNvbG9yTW9kZT0iMyIgcGhvdG9zaG9wOklDQ1Byb2ZpbGU9InNSR0IgSUVDNjE5NjYtMi4xIiB4bXBNTTpJbnN0YW5jZUlEPSJ4bXAuaWlkOjRiZGJhNGY1LTc0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"
     );
   }, []);
 
@@ -491,8 +491,9 @@ const MainPOS: React.FC = () => {
     ]);
 
     // More reliable focus handling with multiple attempts
-    const focusAttempts = [50, 100, 200, 500]; // Try multiple times with increasing delays
-    focusAttempts.forEach((delay) => {
+    // Use unique timeouts to avoid React's key warnings
+    const focusDelays = [60, 120, 240, 480]; // Use unique values that aren't hardcoded elsewhere
+    focusDelays.forEach((delay) => {
       setTimeout(() => {
         try {
           const input = document.querySelector(
@@ -861,9 +862,14 @@ const MainPOS: React.FC = () => {
       const totalDiscount = lineDiscountTotal + manualDiscount;
       const totalPayment = Math.max(0, originalSubtotal - totalDiscount);
 
-      // Use BACKEND_URL environment variable instead of CHECKOUT_URL
-      const backendUrl =
-        process.env.REACT_APP_BACKEND_URL || "https://api.gaolamthuy.vn";
+      // Get backend URL from environment variables with validation
+      const backendUrl = process.env.REACT_APP_BACKEND_URL;
+      if (!backendUrl) {
+        console.error("REACT_APP_BACKEND_URL environment variable is not set");
+        message.error("API configuration is missing. Please check your environment setup.");
+        return;
+      }
+      
       const checkoutUrl = `${backendUrl}/pos/new-glt-invoice`;
 
       // Payload with recalculated totals and line items
@@ -892,9 +898,16 @@ const MainPOS: React.FC = () => {
         items: invoiceDetails,
       };
 
-      // Add Basic Auth using the same credentials as the print API
-      const username = process.env.REACT_APP_API_USERNAME || "username123";
-      const password = process.env.REACT_APP_API_PASSWORD || "password123456";
+      // Get authentication credentials from environment with validation
+      const username = process.env.REACT_APP_API_USERNAME;
+      const password = process.env.REACT_APP_API_PASSWORD;
+      
+      if (!username || !password) {
+        console.error("API authentication credentials are not set in environment variables");
+        message.error("API authentication configuration is missing. Please check your environment setup.");
+        return;
+      }
+      
       const authHeader = "Basic " + btoa(`${username}:${password}`);
 
       const headers = {
@@ -949,57 +962,16 @@ const MainPOS: React.FC = () => {
         updateReceiptHtml();
       }
 
-      // Map printer type to doc_type for server
-      const docType =
-        printerType === PRINTER_TYPES.K80
-          ? "receipt-k80"
-          : printerType === PRINTER_TYPES.A4
-          ? "receipt-a5"
-          : "receipt-label";
+      // In the new print agent, we only use "invoice" or "label"
+      const docType = "invoice"; // All receipts are treated as invoices in the new system
 
       message.loading("Sending receipt to printer...", 1.5);
 
-      // Prepare cart items data for the server
-      const items = cart.map((item) => ({
-        product_id: item.kiotviet_id,
-        product_name: item.full_name || item.name,
-        product_code: item.code,
-        quantity: item.quantity,
-        price: item.base_price,
-        unit: item.unit,
-        note: item.order_template,
-      }));
-
-      // Get customer info
-      const customerInfo = customer
-        ? {
-            customer_id: customer.kiotviet_id,
-            customer_name: customer.name,
-            customer_phone: customer.contact_number,
-            customer_address: customer.address || customer.location_name || "",
-            customer_group: customer.glt_customer_group_name,
-          }
-        : {
-            customer_name: "Khách lẻ",
-          };
-
-      // Calculate totals
-      const subtotal = cart.reduce(
-        (acc, item) => acc + item.base_price * item.quantity,
-        0
-      );
-      const discount = calculateDiscount();
-      const total = Math.max(0, subtotal - discount - invoiceDiscount);
+      // Generate a temporary invoice code for the receipt
+      const tempInvoiceCode = `RECEIPT-${Date.now()}`;
 
       const result = await sendPrintJobToServer(docType, {
-        items,
-        ...customerInfo,
-        subtotal,
-        discount,
-        invoice_discount: invoiceDiscount,
-        total,
-        receipt_type: "pos_preview",
-        date: new Date().toISOString(),
+        code: tempInvoiceCode
       });
 
       if (result.success) {
@@ -1019,21 +991,14 @@ const MainPOS: React.FC = () => {
     printerType: PrinterType = PRINTER_TYPES.K80
   ) => {
     try {
-      // Map printer type to doc_type for server
-      const docType =
-        printerType === PRINTER_TYPES.K80
-          ? "invoice-k80"
-          : printerType === PRINTER_TYPES.A4
-          ? "invoice-a5"
-          : "invoice-label";
+      // All invoice printing now uses the "invoice" doc type
+      const docType = "invoice";
 
       // Print the invoice using the server
       message.loading(`Printing invoice #${invoice.code}...`, 1.5);
 
       const result = await sendPrintJobToServer(docType, {
-        kiotviet_invoice_code: invoice.code,
-        invoice_id: invoice.id,
-        customer_id: invoice.kiotviet_customer_id,
+        code: invoice.code
       });
 
       if (result.success) {
@@ -1972,12 +1937,12 @@ const MainPOS: React.FC = () => {
                           >
                             <div style={styles.largeText}>
                               <div>
-                                <Text strong>{product.full_name}</Text>
-                                <span style={{ float: "right" }}>
+                                <Text strong style={{ fontSize: 18 }}>{product.full_name}</Text>
+                                <span style={{ float: "right", fontSize: 18 }}>
                                   {product.base_price.toLocaleString("vi-VN")}{" "}
                                 </span>
                               </div>
-                              <div>
+                              <div> 
                                 <Text type="secondary">
                                   {product.order_template || ""}
                                 </Text>
@@ -2585,32 +2550,55 @@ const MainPOS: React.FC = () => {
       // Get the full product details from the database
       const { data, error } = await supabase
         .from("kv_products")
-        .select("*")
+        .select("*, kv_product_inventories(cost)")
         .eq("kiotviet_id", detail.kiotviet_product_id)
         .single();
 
       if (error) throw error;
 
       if (data) {
-        // Add product to cart with quantity and price from the last order
-        const existingItem = cart.find((item) => item.id === data.id);
+        // Process inventory cost data like in fetchProducts
+        const product = {
+          ...data,
+          cost: data.kv_product_inventories?.[0]?.cost ?? undefined,
+        };
+
+        // Apply pricebook entries if customer is selected, just like in the useEffect
+        let finalProduct = { ...product };
+        
+        if (customer && pricebookEntries.length > 0) {
+          // Find applicable pricebook entry for this customer group and product
+          const entry = pricebookEntries.find(
+            (e) =>
+              e.customer_group_title === customer.glt_customer_group_name &&
+              e.product_id === product.kiotviet_id
+          );
+          
+          if (entry) {
+            const baseCost = product.cost ?? product.base_price;
+            const newPrice = baseCost + Number(entry.adjustment_value);
+            finalProduct = { ...product, base_price: newPrice };
+          }
+        }
+
+        // Add product to cart with quantity from the last order
+        const existingItem = cart.find((item) => item.id === finalProduct.id);
 
         if (existingItem) {
-          // If item already exists in cart, update its quantity and always use current base_price
-          updateCartItemPrice(existingItem.id, data.base_price);
+          // If item already exists in cart, update its quantity and always use calculated price
+          updateCartItemPrice(existingItem.id, finalProduct.base_price);
           updateCartItemQuantity(
             existingItem.id,
             existingItem.quantity + detail.quantity
           );
         } else {
-          // Add new item with quantity from the last order and use current base_price
+          // Add new item with quantity from the last order and use calculated price
           setCart((prevCart) => [
             ...prevCart,
             {
-              ...data,
-              base_price: data.base_price,
+              ...finalProduct,
               quantity: detail.quantity,
-              total: detail.quantity * data.base_price,
+              total: detail.quantity * finalProduct.base_price,
             },
           ]);
         }
@@ -2783,16 +2771,11 @@ const MainPOS: React.FC = () => {
     try {
       message.loading("Printing product label...", 1.5);
 
-      // Send print job to server instead of using browser print
+      // Send print job to server with the simplified structure expected by the API
       sendPrintJobToServer("label", {
-        product_id: product.kiotviet_id,
-        product_name: product.full_name,
-        product_code: product.code,
-        price: product.base_price,
+        code: product.code,
         quantity: quantity,
-        copies: copies,
-        note: product.order_template || "",
-        unit: product.unit || "kg",
+        copies: copies
       })
         .then((response) => {
           if (response.success) {
@@ -2985,43 +2968,16 @@ const MainPOS: React.FC = () => {
           `Starting print operation: ${type} for invoice ${record.code}`
         );
 
-        // Map local print types to server-supported doc_types
-        const getDocType = (printType: string) => {
-          switch (printType) {
-            case "k80":
-              return "invoice-k80";
-            case "a5":
-              return "invoice-a5";
-            case "label":
-              return "label";
-            case "k80-label":
-            case "a4-label":
-              // These are handled as special cases with multiple requests
-              return "";
-            default:
-              return "invoice-k80"; // Default to k80
-          }
-        };
-
         switch (type) {
-          case "a4-label":
-            // Print A5 invoice and label sequentially
-            await sendPrintJobToServer("invoice-a5", {
-              kiotviet_invoice_code: record.code,
-              invoice_id: record.id,
-            });
-
-            // Then print the label
-            if (record.id) {
-              await handlePrintLabel(record);
-            }
-            break;
-
           case "k80-label":
             // Print K80 receipt and label sequentially
-            await sendPrintJobToServer("invoice-k80", {
+            await sendPrintJobToServer("invoice", {
               kiotviet_invoice_code: record.code,
               invoice_id: record.id,
+              customer_id: record.kiotviet_customer_id,
+              metadata: {
+                printer_type: PRINTER_TYPES.K80
+              }
             });
 
             // Then print the label
@@ -3031,12 +2987,14 @@ const MainPOS: React.FC = () => {
             break;
 
           case "k80":
-          case "a4":
-            // Print invoice only
-            const docType = getDocType(type);
-            await sendPrintJobToServer(docType, {
+            // Print invoice only with K80 printer
+            await sendPrintJobToServer("invoice", {
               kiotviet_invoice_code: record.code,
               invoice_id: record.id,
+              customer_id: record.kiotviet_customer_id,
+              metadata: {
+                printer_type: PRINTER_TYPES.K80
+              }
             });
             break;
 
@@ -3077,18 +3035,12 @@ const MainPOS: React.FC = () => {
           const product = data[0].kv_products;
           const quantity = data[0].quantity || 1;
 
+          // Send a label print request that includes the invoice information
+          // This allows the server to get product details from the invoice
           await sendPrintJobToServer("label", {
-            product_id: product.kiotviet_id,
-            product_name: product.full_name || product.name,
-            product_code: product.code,
-            price: product.base_price,
+            code: product.code,
             quantity: quantity,
-            copies: 1,
-            note: product.order_template || "",
-            unit: product.unit || "kg",
-            // Include invoice information
-            invoice_id: invoice.id,
-            invoice_code: invoice.code,
+            copies: 1
           });
 
           message.success("Product label sent to printer");
@@ -3105,24 +3057,16 @@ const MainPOS: React.FC = () => {
     const items: MenuProps["items"] = [
       {
         key: "k80-label",
-        label: "K80 + In tem",
+        label: "K80 + tem",
       },
       {
         key: "k80",
         label: "K80",
       },
       {
-        key: "a4-label",
-        label: "A4 + In tem",
-      },
-      {
-        key: "a4",
-        label: "A4",
-      },
-      {
         key: "label",
-        label: "In tem",
-      },
+        label: "Tem",
+      }
     ];
 
     const menuProps = {
@@ -3140,7 +3084,7 @@ const MainPOS: React.FC = () => {
           onClick={() => handlePrint("k80-label")}
         >
           <Space>
-            In hóa đơn
+            In HĐ + tem
             <DownOutlined />
           </Space>
         </Button>

@@ -65,6 +65,46 @@ This web application is compatible with modern web browsers:
 - Safari
 - Edge
 
+## Environment Setup
+
+This project uses environment variables to manage configuration for different environments. Follow these steps to set up your environment:
+
+### Required Environment Variables
+
+The following environment variables are required for the application to function correctly:
+
+- `REACT_APP_SUPABASE_URL`: URL of your Supabase instance
+- `REACT_APP_SUPABASE_SERVICE_KEY`: Service key for accessing Supabase
+- `REACT_APP_BACKEND_URL`: URL of the backend API
+- `REACT_APP_API_USERNAME`: Username for API authentication
+- `REACT_APP_API_PASSWORD`: Password for API authentication
+
+### Environment Files
+
+The project uses different environment files for different environments:
+
+1. `.env`: Default environment file used in development
+2. `.env.development`: Used when running in development mode
+3. `.env.production`: Used when building for production
+
+### Setting Up Your Environment
+
+1. Copy the `.env.example` file to create a new `.env` file:
+   ```bash
+   cp .env.example .env
+   ```
+
+2. Edit the `.env` file and replace the placeholder values with your actual credentials.
+
+3. **IMPORTANT: Never commit your actual credentials to version control.** The `.env*` files are listed in `.gitignore` but always double-check before committing.
+
+### Security Best Practices
+
+- Keep your API keys and credentials secure
+- Use different credentials for development and production environments
+- Regularly rotate your API keys and passwords
+- Monitor for unauthorized access to your services
+
 ## License
 
 [Your License Here]

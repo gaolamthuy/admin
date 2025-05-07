@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { ConfigProvider } from "antd";
+import { ConfigProvider, App as AntdApp } from "antd";
 import "./App.css";
 
 // Pages
@@ -30,9 +30,11 @@ const App: React.FC = () => {
         },
       }}
     >
+      <AntdApp>
       <div className="app-container">
         <MainPOS />
       </div>
+      </AntdApp>
     </ConfigProvider>
   );
 };

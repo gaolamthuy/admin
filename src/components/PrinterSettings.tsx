@@ -12,6 +12,7 @@ import {
   Space,
   Divider,
   Alert,
+  Tooltip,
 } from "antd";
 import {
   PrinterOutlined,
@@ -29,9 +30,21 @@ import {
 
 const { Title, Text } = Typography;
 
-// Environment display component
+// Environment information component with proper validation UI
 const EnvInfo = () => {
-  // Display current environment variables relevant for printing
+  // Check if all required environment variables are set
+  const isBackendUrlSet = !!process.env.REACT_APP_BACKEND_URL;
+  const isApiUsernameSet = !!process.env.REACT_APP_API_USERNAME;
+  const isApiPasswordSet = !!process.env.REACT_APP_API_PASSWORD;
+  const isSupabaseUrlSet = !!process.env.REACT_APP_SUPABASE_URL;
+  const isSupabaseKeySet = !!process.env.REACT_APP_SUPABASE_SERVICE_KEY;
+  const isPrintAgentUrlSet = !!process.env.REACT_APP_PRINT_AGENT_URL;
+  const isPrintAgentPortSet = !!process.env.REACT_APP_PRINT_AGENT_PORT;
+  
+  const allEnvVarsSet = isBackendUrlSet && isApiUsernameSet && isApiPasswordSet && 
+                        isSupabaseUrlSet && isSupabaseKeySet && 
+                        isPrintAgentUrlSet && isPrintAgentPortSet;
+  
   return (
     <Card title="Environment Configuration" style={{ marginBottom: "20px" }}>
       <Row gutter={[16, 16]}>
@@ -39,27 +52,39 @@ const EnvInfo = () => {
           <Space direction="vertical" style={{ width: "100%" }}>
             <div>
               <Text strong>BACKEND_URL:</Text>{" "}
-              {process.env.REACT_APP_BACKEND_URL || "(not set)"}
+              {isBackendUrlSet ? process.env.REACT_APP_BACKEND_URL : <Text type="danger">(not set)</Text>}
             </div>
             <div>
               <Text strong>API_USERNAME:</Text>{" "}
-              {process.env.REACT_APP_API_USERNAME ? "****" : "(not set)"}
+              {isApiUsernameSet ? "****" : <Text type="danger">(not set)</Text>}
             </div>
             <div>
               <Text strong>API_PASSWORD:</Text>{" "}
-              {process.env.REACT_APP_API_PASSWORD ? "****" : "(not set)"}
+              {isApiPasswordSet ? "****" : <Text type="danger">(not set)</Text>}
             </div>
             <div>
-              <Text strong>Print API URL:</Text>{" "}
-              {`${process.env.REACT_APP_BACKEND_URL || "(not set)"}/print/jobs`}
+              <Text strong>SUPABASE_URL:</Text>{" "}
+              {isSupabaseUrlSet ? process.env.REACT_APP_SUPABASE_URL : <Text type="danger">(not set)</Text>}
+            </div>
+            <div>
+              <Text strong>SUPABASE_SERVICE_KEY:</Text>{" "}
+              {isSupabaseKeySet ? "****" : <Text type="danger">(not set)</Text>}
+            </div>
+            <div>
+              <Text strong>PRINT_AGENT_URL:</Text>{" "}
+              {isPrintAgentUrlSet ? process.env.REACT_APP_PRINT_AGENT_URL : <Text type="danger">(not set)</Text>}
+            </div>
+            <div>
+              <Text strong>PRINT_AGENT_PORT:</Text>{" "}
+              {isPrintAgentPortSet ? process.env.REACT_APP_PRINT_AGENT_PORT : <Text type="danger">(not set)</Text>}
             </div>
             <Alert
-              type="warning"
-              message="Environment Setup Required"
+              type={allEnvVarsSet ? "success" : "warning"}
+              message={allEnvVarsSet ? "Environment Setup Complete" : "Environment Setup Required"}
               description={
-                !process.env.REACT_APP_BACKEND_URL
-                  ? "REACT_APP_BACKEND_URL is not set. Please set this environment variable in your .env file."
-                  : "Environment variables detected."
+                allEnvVarsSet
+                  ? "All required environment variables are set."
+                  : "One or more required environment variables are missing. Please check your .env file configuration."
               }
               showIcon
             />
@@ -103,7 +128,6 @@ const TEST_PRINTS = {
 
 const PrinterSettings: React.FC = () => {
   const [loading, setLoading] = useState(true);
-  const [testingServer, setTestingServer] = useState(false);
   const [printerConfig, setPrinterConfig] = useState<PrinterConfig>({
     printInvoiceK80: "",
     printInvoiceA4: "",
@@ -185,29 +209,6 @@ const PrinterSettings: React.FC = () => {
     }
   };
 
-  const handleTestServerPrint = async () => {
-    try {
-      setTestingServer(true);
-      message.loading("Testing server print connection...", 1);
-
-      const response = await sendPrintJobToServer("test-connection", {
-        message: "Test connection from POS web client",
-        timestamp: new Date().toISOString(),
-      });
-
-      if (response.success) {
-        message.success("Server print test successful!");
-      } else {
-        throw new Error(response.error || "Unknown server error");
-      }
-    } catch (error) {
-      console.error("Error testing server print:", error);
-      message.error("Failed to connect to print server");
-    } finally {
-      setTestingServer(false);
-    }
-  };
-
   return (
     <Card>
       <Title level={4}>
@@ -218,103 +219,124 @@ const PrinterSettings: React.FC = () => {
       <EnvInfo />
 
       <Alert
-        message="Server-Based Printing"
-        description="This application uses a centralized print server to handle all printing tasks. The printer names you configure here are just for reference - the actual printing is handled by the server."
+        message="Print Agent Configuration"
+        description="This application uses a local print agent to handle all printing tasks. Make sure the print agent is running on the specified URL and port in your environment configuration."
         type="info"
         showIcon
         icon={<CloudOutlined />}
         style={{ marginBottom: "20px" }}
       />
 
-      <Button
-        type="primary"
-        icon={<CloudOutlined />}
-        onClick={handleTestServerPrint}
-        loading={testingServer}
-        style={{ marginBottom: "20px" }}
-      >
-        Test Print Server Connection
-      </Button>
-
       {loading ? (
         <div style={{ textAlign: "center", padding: "20px" }}>
-          <Spin size="large" />
+          <Spin />
+          <p>Loading printer settings...</p>
         </div>
       ) : (
         <Form layout="vertical">
           <Row gutter={[16, 16]}>
-            <Col span={8}>
+            <Col span={12}>
               <Form.Item
-                label="K80 Printer (Receipt)"
-                help="Used for thermal receipt printing"
+                label={
+                  <Space>
+                    <span>K80 Thermal Printer</span>
+                    <Tooltip title="Used for receipts">
+                      <InfoCircleOutlined />
+                    </Tooltip>
+                  </Space>
+                }
               >
-                <Space direction="vertical" style={{ width: "100%" }}>
+                <Input.Group compact>
                   <Input
+                    style={{ width: "calc(100% - 100px)" }}
                     value={printerConfig.printInvoiceK80}
                     onChange={(e) =>
                       handlePrinterChange("printInvoiceK80", e.target.value)
                     }
-                    placeholder="Enter K80 printer name"
+                    placeholder="Enter printer name"
                   />
                   <Button
                     type="primary"
                     onClick={() => handleTestPrint("k80")}
-                    disabled={!printerConfig.printInvoiceK80}
+                    style={{ width: "100px" }}
                   >
                     Test Print
                   </Button>
-                </Space>
+                </Input.Group>
               </Form.Item>
             </Col>
-            <Col span={8}>
+            <Col span={12}>
               <Form.Item
-                label="A4 Printer (Invoice)"
-                help="Used for full-page invoice printing"
+                label={
+                  <Space>
+                    <span>A4 Printer</span>
+                    <Tooltip title="Used for full-page invoices">
+                      <InfoCircleOutlined />
+                    </Tooltip>
+                  </Space>
+                }
               >
-                <Space direction="vertical" style={{ width: "100%" }}>
+                <Input.Group compact>
                   <Input
+                    style={{ width: "calc(100% - 100px)" }}
                     value={printerConfig.printInvoiceA4}
                     onChange={(e) =>
                       handlePrinterChange("printInvoiceA4", e.target.value)
                     }
-                    placeholder="Enter A4 printer name"
+                    placeholder="Enter printer name"
                   />
                   <Button
                     type="primary"
                     onClick={() => handleTestPrint("a4")}
-                    disabled={!printerConfig.printInvoiceA4}
+                    style={{ width: "100px" }}
                   >
                     Test Print
                   </Button>
-                </Space>
+                </Input.Group>
               </Form.Item>
             </Col>
-            <Col span={8}>
+          </Row>
+          <Row gutter={[16, 16]}>
+            <Col span={12}>
               <Form.Item
-                label="Label Printer"
-                help="Used for product label printing"
+                label={
+                  <Space>
+                    <span>Label Printer</span>
+                    <Tooltip title="Used for product labels">
+                      <InfoCircleOutlined />
+                    </Tooltip>
+                  </Space>
+                }
               >
-                <Space direction="vertical" style={{ width: "100%" }}>
+                <Input.Group compact>
                   <Input
+                    style={{ width: "calc(100% - 100px)" }}
                     value={printerConfig.printLabel}
                     onChange={(e) =>
                       handlePrinterChange("printLabel", e.target.value)
                     }
-                    placeholder="Enter label printer name"
+                    placeholder="Enter printer name"
                   />
                   <Button
                     type="primary"
                     onClick={() => handleTestPrint("label")}
-                    disabled={!printerConfig.printLabel}
+                    style={{ width: "100px" }}
                   >
                     Test Print
                   </Button>
-                </Space>
+                </Input.Group>
               </Form.Item>
             </Col>
           </Row>
         </Form>
       )}
+
+      <Divider />
+      <Space>
+        <Button type="primary" onClick={() => loadPrinterConfig()}>
+          Refresh Settings
+        </Button>
+      </Space>
     </Card>
   );
 };

@@ -1,21 +1,14 @@
 import { createClient, SupabaseClient } from "@supabase/supabase-js";
 
-// Get environment variables with fallbacks for development
-const supabaseUrl =
-  process.env.REACT_APP_SUPABASE_URL || "https://supabase.gaolamthuy.vn";
-const supabaseServiceKey =
-  process.env.REACT_APP_SUPABASE_SERVICE_KEY ||
-  "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogImFub24iLAogICJpc3MiOiAic3VwYWJhc2UiLAogICJpYXQiOiAxNzQzMzU0MDAwLAogICJleHAiOiAxOTAxMTIwNDAwCn0.ecjnK9CA0eQPLPcRPRIo5iuyVrU4fkMTs8th5_swpwE";
+// Get environment variables with proper validation
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL;
+const supabaseServiceKey = process.env.REACT_APP_SUPABASE_SERVICE_KEY;
 
-// Log if we're using fallbacks
-if (
-  !process.env.REACT_APP_SUPABASE_URL ||
-  !process.env.REACT_APP_SUPABASE_SERVICE_KEY
-) {
-  console.warn(
-    "Using fallback Supabase credentials. This should only happen in development."
-  );
-  console.warn("Please make sure your .env file is properly configured.");
+// Validate environment variables
+if (!supabaseUrl || !supabaseServiceKey) {
+  console.error("ERROR: Missing required Supabase environment variables");
+  console.error("Please set REACT_APP_SUPABASE_URL and REACT_APP_SUPABASE_SERVICE_KEY in your .env file");
+  throw new Error("Supabase configuration missing. Check console for details.");
 }
 
 // Create client with error handling

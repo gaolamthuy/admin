@@ -1,19 +1,140 @@
-const fs = require("fs");
-const path = require("path");
-const { execSync } = require("child_process");
+/**
+ * Environment Variable Setup Utility for Gao Lam Thuy POS
+ * 
+ * This script helps to set up environment variables for development or production.
+ * It checks if the required environment variables are set and helps create
+ * a development environment file if needed.
+ */
 
-// Ensure the .env file exists
-const envPath = path.join(__dirname, ".env");
-if (!fs.existsSync(envPath)) {
-  const envContent = `REACT_APP_SUPABASE_URL=https://supabase.gaolamthuy.vn
-REACT_APP_SUPABASE_SERVICE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.ewogICJyb2xlIjogInNlcnZpY2Vfcm9sZSIsCiAgImlzcyI6ICJzdXBhYmFzZSIsCiAgImlhdCI6IDE3NDMzNTQwMDAsCiAgImV4cCI6IDE5MDExMjA0MDAKfQ.Ovdk9UIxb4FNfRDD8a_gCoXINuNs2gE64LhlJ-KXVe8
-REACT_APP_KIOTVIET_BASE_URL=https://public.kiotapi.com
-`;
-  fs.writeFileSync(envPath, envContent);
-  console.log("Created .env file");
-} else {
-  console.log(".env file already exists");
+const fs = require('fs');
+const path = require('path');
+const { execSync } = require("child_process");
+const readline = require('readline');
+
+// Define the required environment variables
+const REQUIRED_ENV_VARS = [
+  'REACT_APP_SUPABASE_URL',
+  'REACT_APP_SUPABASE_SERVICE_KEY',
+  'REACT_APP_BACKEND_URL',
+  'REACT_APP_API_USERNAME',
+  'REACT_APP_API_PASSWORD',
+  'REACT_APP_PRINT_AGENT_ID'
+];
+
+// Create a readline interface for user input
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout
+});
+
+// Function to check if .env file exists
+function checkEnvFile() {
+  const envPath = path.join(__dirname, '.env');
+  
+  try {
+    fs.accessSync(envPath, fs.constants.F_OK);
+    console.log('✅ .env file exists');
+    return true;
+  } catch (err) {
+    console.log('❌ .env file not found');
+    return false;
+  }
 }
+
+// Function to check if .env.example exists
+function checkEnvExampleFile() {
+  const envExamplePath = path.join(__dirname, '.env.example');
+  
+  try {
+    fs.accessSync(envExamplePath, fs.constants.F_OK);
+    console.log('✅ .env.example file exists');
+    return true;
+  } catch (err) {
+    console.log('❌ .env.example file not found');
+    return false;
+  }
+}
+
+// Function to create .env file from .env.example
+function createEnvFromExample() {
+  const envExamplePath = path.join(__dirname, '.env.example');
+  const envPath = path.join(__dirname, '.env');
+  
+  try {
+    fs.copyFileSync(envExamplePath, envPath);
+    console.log('✅ Created .env file from .env.example');
+    return true;
+  } catch (err) {
+    console.error('❌ Failed to create .env file:', err.message);
+    return false;
+  }
+}
+
+// Function to check if all required env vars are in the file
+function checkEnvVars() {
+  const envPath = path.join(__dirname, '.env');
+  const envContent = fs.readFileSync(envPath, 'utf8');
+  
+  const missingVars = [];
+  
+  REQUIRED_ENV_VARS.forEach(varName => {
+    const regex = new RegExp(`^${varName}=.+`, 'm');
+    if (!regex.test(envContent)) {
+      missingVars.push(varName);
+    } else {
+      // Check if it's just a placeholder
+      const placeholderRegex = new RegExp(`^${varName}=.*placeholder.*|^${varName}=your_|^${varName}=replace_with_`, 'im');
+      if (placeholderRegex.test(envContent)) {
+        missingVars.push(varName);
+      }
+    }
+  });
+  
+  if (missingVars.length === 0) {
+    console.log('✅ All required environment variables are set');
+    return true;
+  } else {
+    console.log('❌ The following required environment variables are missing or using placeholder values:');
+    missingVars.forEach(varName => {
+      console.log(`   - ${varName}`);
+    });
+    return false;
+  }
+}
+
+// Interactive setup function
+function setupEnvironment() {
+  console.log('🚀 Welcome to the Gao Lam Thuy POS Environment Setup! 🚀\n');
+  
+  const hasEnvFile = checkEnvFile();
+  const hasEnvExampleFile = checkEnvExampleFile();
+  
+  if (!hasEnvFile && hasEnvExampleFile) {
+    console.log('\nCreating .env file from .env.example...');
+    createEnvFromExample();
+    console.log('\n⚠️ Please edit the .env file with your actual credentials.');
+    console.log('  The current values are just placeholders and will not work.\n');
+  } else if (!hasEnvFile && !hasEnvExampleFile) {
+    console.error('\n❌ Error: Both .env and .env.example files are missing.');
+    console.log('  Please check the project documentation for setup instructions.\n');
+    process.exit(1);
+  }
+  
+  if (hasEnvFile) {
+    const allVarsSet = checkEnvVars();
+    if (!allVarsSet) {
+      console.log('\n⚠️ Please update your .env file with the missing environment variables.');
+      console.log('  The application will not function correctly without them.\n');
+} else {
+      console.log('\n🎉 Everything is set up correctly! You can now run the application.\n');
+    }
+  }
+  
+  rl.close();
+}
+
+// Run the setup
+setupEnvironment();
 
 // Create Preload script for Electron
 const preloadPath = path.join(__dirname, "preload.js");

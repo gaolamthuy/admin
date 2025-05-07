@@ -111,146 +111,78 @@ export const printDocument = async (
   }
 };
 
-// Helper function to create a proper environment variable file
-export const createEnvFile = () => {
-  console.log("Creating .env file in the root directory");
-  const envContent = `
-REACT_APP_BACKEND_URL=https://api.gaolamthuy.vn
-REACT_APP_API_USERNAME=username123
-REACT_APP_API_PASSWORD=password123456
-  `.trim();
-
-  console.log("Suggested .env content:", envContent);
-  return {
-    success: true,
-    message: "Create a .env file in the root directory with the above content",
-    envContent,
-  };
-};
-
-// Helper function to validate and prepare print job payload
-export const preparePrintJobPayload = (
-  docType: string,
-  data: any
-): { payload: any; error?: string } => {
-  // Using a more flexible type for the payload
-  const payload: Record<string, any> = { doc_type: docType };
-
-  switch (docType) {
-    case "invoice-k80":
-    case "invoice-a5":
-      // For invoice document types, we need exactly one of these fields
-      if (!data.kiotviet_invoice_id && !data.kiotviet_invoice_code) {
-        return {
-          payload: null,
-          error:
-            "Missing required invoice identifier. Either kiotviet_invoice_id or kiotviet_invoice_code must be provided.",
-        };
-      }
-
-      // Only include one identifier to comply with API requirements
-      if (data.kiotviet_invoice_code) {
-        payload["kiotviet_invoice_code"] = data.kiotviet_invoice_code;
-      } else if (data.kiotviet_invoice_id) {
-        payload["kiotviet_invoice_id"] = data.kiotviet_invoice_id;
-      }
-      break;
-
-    case "label":
-      // For label printing
-      // Add any specific requirements for label printing here
-      if (!data.item_id && !data.item_code && !data.item_details) {
-        return {
-          payload: null,
-          error: "Missing required item information for label printing",
-        };
-      }
-
-      // Add all provided item data
-      if (data.item_id) payload["item_id"] = data.item_id;
-      if (data.item_code) payload["item_code"] = data.item_code;
-      if (data.item_details) payload["item_details"] = data.item_details;
-      break;
-
-    case "test-connection":
-      // For test connections, include all data
-      Object.assign(payload, data);
-      break;
-
-    default:
-      console.warn(`Unknown document type: ${docType}`);
-      // For unknown types, just pass all data through
-      Object.assign(payload, data);
-  }
-
-  return { payload };
-};
-
-// New function to send print jobs to the server
-export const sendPrintJobToServer = async (
-  docType: string,
-  data: any
+/**
+ * Sends a print job to the local print agent
+ */
+export const sendPrintJobToAgent = async (
+  docType: "invoice" | "label",
+  docRef: Record<string, any>
 ): Promise<PrintResponse> => {
   try {
-    // Improved environment variable handling
-    // Try to access from both process.env and window._env_ (if you're using runtime env variables)
-    const backendUrl = process.env.REACT_APP_BACKEND_URL;
-
-    console.log("Backend URL used:", backendUrl); // Enhanced debugging log
-
-    const printApiUrl = `${backendUrl}/print/jobs`;
-    console.log("Print API URL:", printApiUrl);
-
-    // Validate and prepare the payload
-    const { payload, error } = preparePrintJobPayload(docType, data);
-
-    // Return early if there was a validation error
-    if (error) {
-      console.error("Payload validation error:", error);
+    // Get the print agent URL and port from environment variables
+    const agentUrl = process.env.REACT_APP_PRINT_AGENT_URL || "localhost";
+    const agentPort = process.env.REACT_APP_PRINT_AGENT_PORT || "3002";
+    
+    if (!agentUrl || !agentPort) {
+      console.error("Print agent URL or port not configured in environment variables");
       return {
         success: false,
-        error,
+        error: "Print agent not configured. Please check your environment setup."
       };
     }
 
-    // Get the auth credentials from env or use defaults
-    const username =
-      process.env.REACT_APP_API_USERNAME ||
-      (window as any)._env_?.REACT_APP_API_USERNAME ||
-      "username123";
+    const printUrl = `http://${agentUrl}:${agentPort}/print`;
+    
+    // Format the payload according to the expected format for each document type
+    const formattedDocRef = { ...docRef };
+    
+    if (docType === "invoice") {
+      // For invoice, we need a simple format with just the code
+      formattedDocRef.code = docRef.kiotviet_invoice_code || docRef.code;
+      
+      // Remove unnecessary fields that the print agent doesn't expect
+      delete formattedDocRef.kiotviet_invoice_code;
+      delete formattedDocRef.invoice_id;
+      delete formattedDocRef.customer_id;
+      delete formattedDocRef.metadata;
+    } 
+    else if (docType === "label") {
+      // For label, extract the needed properties
+      formattedDocRef.code = docRef.item_code || docRef.code;
+      formattedDocRef.quantity = docRef.item_details?.quantity || docRef.quantity || 1;
+      formattedDocRef.copies = docRef.item_details?.copies || docRef.copies || 1;
+      
+      // Remove unnecessary fields
+      delete formattedDocRef.item_id;
+      delete formattedDocRef.item_code;
+      delete formattedDocRef.item_details;
+      delete formattedDocRef.kiotviet_invoice_code;
+      delete formattedDocRef.invoice_id;
+    }
 
-    const password =
-      process.env.REACT_APP_API_PASSWORD ||
-      (window as any)._env_?.REACT_APP_API_PASSWORD ||
-      "password123456";
-
-    // Create the Authorization header with Basic auth
-    const authHeader = "Basic " + btoa(`${username}:${password}`);
-
-    console.log("Sending print job to server:", {
-      url: printApiUrl,
-      docType,
-      payloadPreview: { ...payload, _preview: true },
+    console.log(`Sending print job to agent at ${printUrl}`, {
+      doc_type: docType,
+      doc_ref: formattedDocRef
     });
 
-    // Send the request
-    const response = await fetch(printApiUrl, {
+    // Send the request to the print agent
+    const response = await fetch(printUrl, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json",
-        Authorization: authHeader,
+        "Content-Type": "application/json"
       },
-      body: JSON.stringify(payload),
+      body: JSON.stringify({
+        doc_type: docType,
+        doc_ref: formattedDocRef
+      })
     });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error(`Print server error (${response.status}): ${errorText}`);
+      console.error(`Print agent error (${response.status}): ${errorText}`);
       return {
         success: false,
-        error: `Server responded with ${response.status}: ${
-          errorText || "Unknown error"
-        }`,
+        error: `Print agent responded with ${response.status}: ${errorText || "Unknown error"}`
       };
     }
 
@@ -259,10 +191,13 @@ export const sendPrintJobToServer = async (
 
     return { success: true, result };
   } catch (error) {
-    console.error("Error sending print job to server:", error);
+    console.error("Error sending print job to agent:", error);
     return {
       success: false,
-      error: error instanceof Error ? error.message : String(error),
+      error: error instanceof Error ? error.message : String(error)
     };
   }
 };
+
+// For backward compatibility
+export const sendPrintJobToServer = sendPrintJobToAgent;
