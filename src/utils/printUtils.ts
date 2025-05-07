@@ -1,114 +1,114 @@
 import { PrinterConfig, PrintResponse, PrinterInfo } from "../types/electron";
 
-// Web-compatible printer utilities
-
-export const getAvailablePrinters = async (): Promise<PrinterInfo[]> => {
-  // In web environment, we cannot retrieve system printers
-  // Return empty array to indicate no system printers are available
-  console.log("System printers cannot be accessed in web environment");
-  return [];
+/**
+ * Checks if Electron is available in the current environment
+ */
+const isElectronAvailable = () => {
+  return typeof window !== "undefined" && !!window.electron;
 };
 
+/**
+ * Gets the current printer configuration
+ * @returns A promise that resolves to the printer configuration
+ */
 export const getPrinterConfig = async (): Promise<PrinterConfig> => {
-  // Try to get from localStorage if previously saved
   try {
-    const savedConfig = localStorage.getItem("printerConfig");
-    if (savedConfig) {
-      return JSON.parse(savedConfig);
+    if (!isElectronAvailable() || !window.electron?.printer) {
+      return {
+        printInvoiceK80: "", // K80 thermal printer
+        printInvoiceA4: "", // A4 regular printer
+        printLabel: "", // Label printer
+      };
     }
-  } catch (e) {
-    console.error("Error reading printer config from localStorage:", e);
-  }
 
-  // Return default empty config
-  return {
-    printInvoiceK80: "", // K80 thermal printer
-    printInvoiceA4: "", // A4 regular printer
-    printLabel: "", // Label printer
-  };
-};
-
-export const updatePrinterConfig = async (
-  type: keyof PrinterConfig,
-  printerName: string
-): Promise<PrintResponse> => {
-  try {
-    // Get current config
-    const currentConfig = await getPrinterConfig();
-
-    // Update the specified printer
-    const newConfig = {
-      ...currentConfig,
-      [type]: printerName,
-    };
-
-    // Save to localStorage
-    localStorage.setItem("printerConfig", JSON.stringify(newConfig));
-
-    return { success: true };
+    return await window.electron.printer.getPrinterConfig();
   } catch (error) {
-    console.error("Error updating printer config:", error);
-    return { success: false, error: String(error) };
+    console.error("Error getting printer config:", error);
+    return {
+      printInvoiceK80: "", // K80 thermal printer
+      printInvoiceA4: "", // A4 regular printer
+      printLabel: "", // Label printer
+    };
   }
 };
 
 /**
- * Prints document using the browser's print dialog
- * @param type - The printer type (printInvoice, printInvoiceExtra, printLabel)
- * @param html - The HTML content to print
+ * Updates the printer configuration
+ * @param type - Type of print job (printInvoice, printInvoiceExtra, printLabel)
+ * @param printerName - Name of the printer to use
  * @returns A promise that resolves to a success or error response
  */
-export const printDocument = async (
+export const updatePrinterConfig = async (
   type: keyof PrinterConfig,
-  html: string
+  printerName: string
 ): Promise<PrintResponse> => {
-  try {
-    // Create a new window for printing
-    const printWindow = window.open("", "_blank");
+  if (!isElectronAvailable() || !window.electron?.printer) {
+    return {
+      success: false,
+      error: "Printer configuration is only available in the desktop app",
+    };
+  }
+  return await window.electron.printer.updatePrinterConfig(type, printerName);
+};
 
-    if (!printWindow) {
-      return {
-        success: false,
-        error: "Popup blocked. Please allow popups for this website.",
-      };
+/**
+ * Gets available printers on the system
+ * @returns A promise that resolves to a list of available printers
+ */
+export const getAvailablePrinters = async (): Promise<PrinterInfo[]> => {
+  try {
+    if (!isElectronAvailable() || !window.electron?.printer) {
+      return [];
     }
 
-    // Write the HTML content to the new window
-    printWindow.document.write(`
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <title>Print Document</title>
-          <style>
-            body { margin: 0; padding: 0; }
-            @media print {
-              body { margin: 0; padding: 0; }
-              @page { margin: 0; }
-            }
-          </style>
-        </head>
-        <body>
-          ${html}
-          <script>
-            // Automatically print when content is loaded
-            window.onload = function() {
-              setTimeout(function() {
-                window.print();
-                setTimeout(function() {
-                  window.close();
-                }, 500);
-              }, 500);
-            };
-          </script>
-        </body>
-      </html>
-    `);
+    const result = await window.electron.printer.getAvailablePrinters();
+    if (result.success) {
+      return result.printers;
+    }
 
-    return { success: true };
+    console.error("Error getting available printers:", result.error);
+    return [];
   } catch (error) {
-    console.error("Error printing document:", error);
-    return { success: false, error: String(error) };
+    console.error("Error getting available printers:", error);
+    return [];
   }
+};
+
+/**
+ * Prints a document based on the specified type and HTML content
+ * @param type - Type of print job (printInvoice, printInvoiceExtra, printLabel)
+ * @param html - HTML content to print
+ * @returns A promise that resolves to a success or error response
+ */
+export const printDocument = (
+  type: string,
+  html: string
+): Promise<PrintResponse> => {
+  return new Promise((resolve) => {
+    try {
+      if (!isElectronAvailable() || !window.electron?.printer) {
+        return resolve({
+          success: false,
+          error: "Printing is only available in the desktop app",
+        });
+      }
+
+      const responseHandler = (response: PrintResponse) => {
+        window.electron?.printer?.removeAllListeners("print-response");
+        resolve(response);
+      };
+
+      window.electron.printer.onPrintResponse(responseHandler);
+      window.electron.printer.print({ type, html });
+    } catch (error) {
+      console.error("Error in printDocument:", error);
+      resolve({
+        success: false,
+        error:
+          error instanceof Error ? error.message : "Unknown error occurred",
+      });
+    }
+  });
 };
 
 /**
@@ -116,22 +116,14 @@ export const printDocument = async (
  */
 export const sendPrintJobToAgent = async (
   docType: "invoice" | "label",
-  docRef: Record<string, any>
+  docRef: Record<string, any>,
+  printAgentId: string = ""
 ): Promise<PrintResponse> => {
   try {
-    // Get the print agent URL and port from environment variables
-    const agentUrl = process.env.REACT_APP_PRINT_AGENT_URL || "localhost";
-    const agentPort = process.env.REACT_APP_PRINT_AGENT_PORT || "3002";
-    
-    if (!agentUrl || !agentPort) {
-      console.error("Print agent URL or port not configured in environment variables");
-      return {
-        success: false,
-        error: "Print agent not configured. Please check your environment setup."
-      };
-    }
-
-    const printUrl = `http://${agentUrl}:${agentPort}/print`;
+    // Construct the print URL using the new print agent environment variables
+    const printAgentUrl = process.env.REACT_APP_PRINT_AGENT_URL || "localhost";
+    const printAgentPort = process.env.REACT_APP_PRINT_AGENT_PORT || "3030";
+    const printUrl = `http://${printAgentUrl}:${printAgentPort}/print`;
     
     // Format the payload according to the expected format for each document type
     const formattedDocRef = { ...docRef };
@@ -139,30 +131,18 @@ export const sendPrintJobToAgent = async (
     if (docType === "invoice") {
       // For invoice, we need a simple format with just the code
       formattedDocRef.code = docRef.kiotviet_invoice_code || docRef.code;
-      
-      // Remove unnecessary fields that the print agent doesn't expect
-      delete formattedDocRef.kiotviet_invoice_code;
-      delete formattedDocRef.invoice_id;
-      delete formattedDocRef.customer_id;
-      delete formattedDocRef.metadata;
     } 
     else if (docType === "label") {
       // For label, extract the needed properties
       formattedDocRef.code = docRef.item_code || docRef.code;
       formattedDocRef.quantity = docRef.item_details?.quantity || docRef.quantity || 1;
       formattedDocRef.copies = docRef.item_details?.copies || docRef.copies || 1;
-      
-      // Remove unnecessary fields
-      delete formattedDocRef.item_id;
-      delete formattedDocRef.item_code;
-      delete formattedDocRef.item_details;
-      delete formattedDocRef.kiotviet_invoice_code;
-      delete formattedDocRef.invoice_id;
     }
 
     console.log(`Sending print job to agent at ${printUrl}`, {
       doc_type: docType,
-      doc_ref: formattedDocRef
+      doc_ref: formattedDocRef,
+      metadata: docRef.metadata || {}
     });
 
     // Send the request to the print agent
@@ -173,7 +153,8 @@ export const sendPrintJobToAgent = async (
       },
       body: JSON.stringify({
         doc_type: docType,
-        doc_ref: formattedDocRef
+        doc_ref: formattedDocRef,
+        metadata: docRef.metadata || {}
       })
     });
 

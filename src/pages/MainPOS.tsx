@@ -48,10 +48,12 @@ import {
   CloseOutlined,
   PrinterFilled,
   DownOutlined,
+  TagsOutlined,
+  DoubleRightOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../services/supabaseClient";
-import { printDocument } from "../utils/printUtils";
+import { printDocument, sendPrintJobToServer } from "../utils/printUtils";
 import "../styles/MainPOS.css";
 import PrinterSettings from "../components/PrinterSettings";
 import { Customer, Product, Settings } from "../types";
@@ -60,7 +62,6 @@ import { generateInvoiceHtml } from "../templates/invoiceTemplate";
 import { generateLabelHtml as createLabelHtml } from "../templates/labelTemplate";
 import { generateInvoiceReceiptHtml as createInvoiceReceiptHtml } from "../templates/invoiceReceiptTemplate";
 import * as QRCodeGenerator from "qrcode";
-import { sendPrintJobToServer } from "../utils/printUtils";
 
 // QR code configuration type
 interface QRCodeConfig {
@@ -576,6 +577,7 @@ const MainPOS: React.FC = () => {
     promotion_min_amount?: number;
     promotion_start_date?: string;
     promotion_end_date?: string;
+    glt_retail_promotion?: boolean; // Add this property
   }
 
   // Update cart item quantity by ID or cartItemId
@@ -635,6 +637,10 @@ const MainPOS: React.FC = () => {
       return false;
     // Always enforce quantity threshold
     if (item.quantity < promo.apply_per) return false;
+    // Check if the product has glt_retail_promotion enabled
+    if (!item.glt_retail_promotion) {
+      return false;
+    }
     return true;
   };
 
@@ -645,8 +651,10 @@ const MainPOS: React.FC = () => {
     const customerGroup = customer?.glt_customer_group_name ?? "khách lẻ";
     let totalDiscount = 0;
 
-    // Process each cart item
-    cart.forEach((item) => {
+    // Filter cart items to only those with glt_retail_promotion enabled
+    const applicableItems = cart.filter(item => item.glt_retail_promotion);
+
+    applicableItems.forEach((item) => {
       // Find applicable promotions for this item
       const applicablePromos = promotions.filter((p) =>
         isPromoApplicable(p, item, customerGroup)
@@ -860,9 +868,10 @@ const MainPOS: React.FC = () => {
       );
       const manualDiscount = invoiceDiscount;
       const totalDiscount = lineDiscountTotal + manualDiscount;
-      const totalPayment = Math.max(0, originalSubtotal - totalDiscount);
+      // Calculate total payment based on isFullPayment flag
+      const totalPayment = isFullPayment ? Math.max(0, originalSubtotal - totalDiscount) : 0;
 
-      // Get backend URL from environment variables with validation
+      // Get backend URL from environment variables with validation  
       const backendUrl = process.env.REACT_APP_BACKEND_URL;
       if (!backendUrl) {
         console.error("REACT_APP_BACKEND_URL environment variable is not set");
@@ -886,7 +895,7 @@ const MainPOS: React.FC = () => {
         kv_sale_channel_name: "gltpos",
         // Calculate glt_paid based on payment amount versus total
         // A fully paid invoice is one where total_payment equals or exceeds the total amount
-        glt_paid: totalPayment >= calculateTotal(),
+        // glt_paid: totalPayment >= calculateTotal(),
         purchase_date: new Date(),
         status_value: "Hoàn thành",
         method: "Cash", // default
@@ -958,21 +967,17 @@ const MainPOS: React.FC = () => {
   // Update the print functions for web environment
   const printReceipt = async (printerType: PrinterType = PRINTER_TYPES.K80) => {
     try {
-      if (!receiptHtml) {
-        updateReceiptHtml();
-      }
+      // All receipt printing now uses the "invoice" doc type
+      const docType = "invoice";
 
-      // In the new print agent, we only use "invoice" or "label"
-      const docType = "invoice"; // All receipts are treated as invoices in the new system
-
-      message.loading("Sending receipt to printer...", 1.5);
-
-      // Generate a temporary invoice code for the receipt
       const tempInvoiceCode = `RECEIPT-${Date.now()}`;
 
       const result = await sendPrintJobToServer(docType, {
-        code: tempInvoiceCode
-      });
+        code: tempInvoiceCode,
+        metadata: {
+          printer_type: printerType
+        }
+      }, "");
 
       if (result.success) {
         message.success("Receipt sent to printer");
@@ -998,8 +1003,13 @@ const MainPOS: React.FC = () => {
       message.loading(`Printing invoice #${invoice.code}...`, 1.5);
 
       const result = await sendPrintJobToServer(docType, {
-        code: invoice.code
-      });
+        code: invoice.code,
+        invoice_id: invoice.id,
+        customer_id: invoice.kiotviet_customer_id,
+        metadata: {
+          printer_type: printerType
+        }
+      }, "");
 
       if (result.success) {
         message.success(`Invoice #${invoice.code} sent to printer`);
@@ -2769,32 +2779,31 @@ const MainPOS: React.FC = () => {
     copies: number = 1
   ) => {
     try {
-      message.loading("Printing product label...", 1.5);
+      message.loading("Sending label to printer...", 1);
 
       // Send print job to server with the simplified structure expected by the API
       sendPrintJobToServer("label", {
         code: product.code,
         quantity: quantity,
-        copies: copies
-      })
+        copies: copies,
+        metadata: {
+          printer_type: PRINTER_TYPES.LABEL
+        }
+      }, "")
         .then((response) => {
           if (response.success) {
             message.success("Product label sent to printer");
-            // Close modal after successful print
-            setPrintLabelProduct(null);
-            setPrintLabelQuantity(1);
-            setPrintLabelCopies(1);
           } else {
-            throw new Error(response.error);
+            message.error(`Failed to print label: ${response.error}`);
           }
         })
         .catch((error) => {
-          console.error("Error printing product label:", error);
-          message.error("Failed to print product label. Server error.");
+          console.error("Error printing label:", error);
+          message.error("Failed to print label. Check print server connection.");
         });
     } catch (error) {
-      console.error("Error printing product label:", error);
-      message.error("Failed to print product label. Check server connection.");
+      console.error("Error setting up label print:", error);
+      message.error("Failed to set up label printing");
     }
   };
 
@@ -2961,13 +2970,54 @@ const MainPOS: React.FC = () => {
   const PrintOptionsComponent = ({ record }: { record: InvoiceSummary }) => {
     const [isPrinting, setIsPrinting] = useState(false);
 
+    const handlePrintLabel = async (invoice: InvoiceSummary) => {
+      try {
+        // Fetch products from this invoice to print labels
+        const { data: invoiceDetails, error } = await supabase
+          .from("kv_invoice_details")
+          .select("*, kv_products(*)")
+          .eq("invoice_id", invoice.id);
+
+        if (error) throw error;
+
+        if (invoiceDetails && invoiceDetails.length > 0) {
+          // Get the first product to print its label
+          const firstDetail = invoiceDetails[0];
+          const product = firstDetail.kv_products;
+
+          if (!product) {
+            message.error("Product information not found");
+            return;
+          }
+
+          const quantity = firstDetail.quantity || 1;
+
+          // Send a label print request that includes the invoice information
+          // This allows the server to get product details from the invoice
+          await sendPrintJobToServer("label", {
+            code: product.code,
+            quantity: quantity,
+            copies: 1,
+            metadata: {
+              printer_type: PRINTER_TYPES.LABEL
+            }
+          }, "");
+
+          message.success("Product label sent to printer");
+        } else {
+          message.warning("No products found in this invoice");
+        }
+      } catch (error) {
+        console.error("Error printing label:", error);
+        message.error("Failed to print label");
+      }
+    };
+
     const handlePrint = async (type: string) => {
       try {
         setIsPrinting(true);
-        console.log(
-          `Starting print operation: ${type} for invoice ${record.code}`
-        );
-
+        message.loading(`Preparing to print ${type}...`, 1);
+        
         switch (type) {
           case "k80-label":
             // Print K80 receipt and label sequentially
@@ -2978,10 +3028,11 @@ const MainPOS: React.FC = () => {
               metadata: {
                 printer_type: PRINTER_TYPES.K80
               }
-            });
+            }, "");
 
             // Then print the label
             if (record.id) {
+              // After printing the invoice, retrieve the products and print labels
               await handlePrintLabel(record);
             }
             break;
@@ -2995,100 +3046,51 @@ const MainPOS: React.FC = () => {
               metadata: {
                 printer_type: PRINTER_TYPES.K80
               }
-            });
+            }, "");
             break;
 
           case "label":
-            // Print label only
             await handlePrintLabel(record);
             break;
 
           default:
-            console.error(`Unknown print type: ${type}`);
-            message.error(`Unknown print option: ${type}`);
+            message.warning("Unsupported print type");
         }
-
-        message.success(`Print job sent successfully: ${type}`);
-        console.log(`Completed print operation: ${type}`);
       } catch (error) {
-        console.error("Error in print action:", error);
-        message.error("Failed to complete print action");
+        message.error("Print failed. Please try again.");
+        console.error("Print error:", error);
       } finally {
         setIsPrinting(false);
       }
     };
 
-    const handlePrintLabel = async (invoice: InvoiceSummary) => {
-      try {
-        console.log(
-          `Getting product data for invoice ${invoice.id} to print label`
-        );
-        const { data, error } = await supabase
-          .from("kv_invoice_details")
-          .select("*, kv_products(*)")
-          .eq("invoice_id", invoice.id)
-          .limit(1);
-
-        if (error) throw error;
-
-        if (data && data.length > 0 && data[0].kv_products) {
-          const product = data[0].kv_products;
-          const quantity = data[0].quantity || 1;
-
-          // Send a label print request that includes the invoice information
-          // This allows the server to get product details from the invoice
-          await sendPrintJobToServer("label", {
-            code: product.code,
-            quantity: quantity,
-            copies: 1
-          });
-
-          message.success("Product label sent to printer");
-        } else {
-          console.warn(`No product data found for invoice ${invoice.id}`);
-          message.warning("No product data found to print label");
-        }
-      } catch (labelError) {
-        console.error("Error printing label:", labelError);
-        message.error("Failed to print product label");
-      }
-    };
-
-    const items: MenuProps["items"] = [
-      {
-        key: "k80-label",
-        label: "K80 + tem",
-      },
-      {
-        key: "k80",
-        label: "K80",
-      },
-      {
-        key: "label",
-        label: "Tem",
-      }
-    ];
-
-    const menuProps = {
-      items,
-      onClick: ({ key }: { key: string }) => handlePrint(key),
-    };
-
     return (
-      <Dropdown menu={menuProps} disabled={isPrinting}>
-        <Button
-          type="primary"
-          size="small"
-          loading={isPrinting}
-          icon={<PrinterOutlined />}
-          onClick={() => handlePrint("k80-label")}
-        >
-          <Space>
-            In HĐ + tem
-            <DownOutlined />
-          </Space>
-        </Button>
-      </Dropdown>
+      <Space>
+        <Tooltip title="Print invoice (K80)">
+          <Button
+            icon={<PrinterOutlined />}
+            loading={isPrinting}
+            onClick={() => handlePrint("k80")}
+            size="small"
+          />
+        </Tooltip>
+        <Tooltip title="Print label">
+          <Button
+            icon={<TagsOutlined />}
+            loading={isPrinting}
+            onClick={() => handlePrint("label")}
+            size="small"
+          />
+        </Tooltip>
+        <Tooltip title="Print both">
+          <Button
+            icon={<DoubleRightOutlined />}
+            loading={isPrinting}
+            onClick={() => handlePrint("k80-label")}
+            size="small"
+          />
+        </Tooltip>
+      </Space>
     );
   };
 
