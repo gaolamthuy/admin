@@ -50,6 +50,7 @@ import {
   DownOutlined,
   TagsOutlined,
   DoubleRightOutlined,
+  MoreOutlined,
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../services/supabaseClient";
@@ -678,6 +679,39 @@ const MainPOS: React.FC = () => {
     setCustomer(customer);
     setCustomerModalVisible(false);
 
+    // Update cart item prices based on the selected customer's pricebook
+    if (cart.length > 0 && pricebookEntries.length > 0) {
+      console.log("Updating cart prices based on customer group:", customer.glt_customer_group_name);
+      
+      // Create a copy of the cart to modify
+      const updatedCart = cart.map(item => {
+        // Find matching pricebook entry for this product and customer group
+        const pricebookEntry = pricebookEntries.find(
+          entry => entry.product_id === item.kiotviet_id && 
+                   entry.customer_group_title === customer.glt_customer_group_name
+        );
+        
+        if (pricebookEntry) {
+          // Apply pricebook price adjustment
+          const baseCost = item.cost ?? item.base_price;
+          const newPrice = baseCost + Number(pricebookEntry.adjustment_value);
+          console.log(`Updating price for ${item.name}: ${item.base_price} → ${newPrice}`);
+          
+          // Return updated item
+          return {
+            ...item,
+            base_price: newPrice,
+          };
+        }
+        
+        // If no pricebook entry found, keep the original item
+        return item;
+      });
+      
+      // Update the cart with adjusted prices
+      setCart(updatedCart);
+    }
+
     // Fetch the last order for this customer
     await fetchLastOrder(customer.kiotviet_id);
 
@@ -833,12 +867,28 @@ const MainPOS: React.FC = () => {
     setReceiptHtml(html);
   };
 
-  const handleCheckout = async () => {
+  // Function to create a full payment order
+  const createFullPaymentOrder = async () => {
+    console.log("Creating FULL PAYMENT order");
+    // Use true directly in the payload calculation
+    await processOrder(true);
+  };
+
+  // Function to create an unpaid order
+  const createUnpaidOrder = async () => {
+    console.log("Creating UNPAID order");
+    // Use false directly in the payload calculation
+    await processOrder(false);
+  };
+
+  // Core order processing function
+  const processOrder = async (isFullPayment: boolean) => {
     if (cart.length === 0) {
       message.error("Please add products to cart before checkout");
       return;
     }
 
+    console.log(`Processing order with isFullPayment: ${isFullPayment}`);
     setLoading(true);
     try {
       // Generate a random invoice code
@@ -878,9 +928,10 @@ const MainPOS: React.FC = () => {
       );
       const manualDiscount = invoiceDiscount;
       const totalDiscount = lineDiscountTotal + manualDiscount;
-      // Calculate total payment based on isFullPayment flag
+      // Calculate total payment based on isFullPayment parameter
       const totalPayment = isFullPayment ? Math.max(0, originalSubtotal - totalDiscount) : 0;
-
+      console.log(`Final payment calculation: isFullPayment=${isFullPayment}, totalPayment=${totalPayment}`);
+      
       // Get backend URL from environment variables with validation  
       const backendUrl = process.env.REACT_APP_BACKEND_URL;
       if (!backendUrl) {
@@ -913,7 +964,7 @@ const MainPOS: React.FC = () => {
         usingCod: false, // default
         soldById: 59020, // default
         orderId: null, // default
-        note: "gaolamthuy-pos",
+        note: isFullPayment ? "gaolamthuy-pos" : "gaolamthuy-pos unpaid",
         items: invoiceDetails,
       };
 
@@ -955,12 +1006,11 @@ const MainPOS: React.FC = () => {
       })();
 
       // Immediately reset UI and loading state
-      message.success("Tạo đơn thành công!");
+      message.success(isFullPayment ? "Tạo đơn thành công!" : "Tạo đơn chưa thanh toán thành công!");
 
       // Remove the auto-print code
       setCart([]);
       setCustomer(null);
-      setIsFullPayment(true);
       setInvoiceDiscount(0);
       setIsPromotionEnabled(true);
       setCustomerSearchText("");
@@ -1476,10 +1526,11 @@ const MainPOS: React.FC = () => {
                                 onMouseLeave={() => setHighlightedIndex(-1)}
                               >
                                 <div style={styles.largeText}>
-                                  <Text strong>{customer.name}</Text> -{" "}
-                                  <Text>
-                                    {customer.contact_number || "No phone"}
-                                  </Text>
+                                  <Text strong>{customer.name}</Text>{" "}
+                                  {index < 5 && (customer.search_priority || 0) > 0 && (
+                                    <span role="img" aria-label="trending">🔥</span>
+                                  )}
+                                  <Text> - {customer.contact_number || "No phone"}</Text>
                                 </div>
                                 <div style={styles.largeText}>
                                   <Text type="secondary">
@@ -1598,10 +1649,13 @@ const MainPOS: React.FC = () => {
                       <Dropdown.Button
                         type="primary"
                         size="large"
-                        icon={<ShoppingCartOutlined />}
+                        icon={<MoreOutlined />}
                         loading={loading}
                         disabled={cart.length === 0}
-                        onClick={() => setIsFullPayment(true)}
+                        onClick={() => {
+                          console.log("Main button clicked - creating full payment order");
+                          createFullPaymentOrder();
+                        }}
                         menu={{
                           items: [
                             {
@@ -1609,6 +1663,10 @@ const MainPOS: React.FC = () => {
                               label: 'Tạo đơn chưa thanh toán',
                               icon: <FileTextOutlined />,
                               disabled: !customer,
+                              onClick: () => {
+                                console.log("Dropdown option clicked - creating unpaid order");
+                                createUnpaidOrder();
+                              }
                             },
                           ],
                         }}
@@ -2449,7 +2507,7 @@ const MainPOS: React.FC = () => {
             open={todayInvoicesVisible}
             onCancel={() => setTodayInvoicesVisible(false)}
             footer={null}
-            width={800}
+            width={1200}
             destroyOnClose
           >
             <Table
@@ -2463,14 +2521,25 @@ const MainPOS: React.FC = () => {
                   dataIndex: "purchase_date",
                   key: "time",
                   render: (text) => (
-                    <span>{new Date(text).toLocaleTimeString("vi-VN")}</span>
+                      <div>{new Date(text).toLocaleTimeString("vi-VN")} {renderTimeDifference(text)}</div>
                   ),
-                  width: 100,
+                  width: 180,
                 },
                 {
                   title: "Số hóa đơn",
                   dataIndex: "code",
                   key: "code",
+                  width: 120,
+                  render: (code, record) => (
+                    <Popover 
+                      content={<InvoiceDetailsPopover invoiceId={record.id} invoiceCode={code} />}
+                      title="Chi tiết hóa đơn"
+                      trigger="click"
+                      placement="right"
+                    >
+                      <Button type="link" style={{ padding: 0 }}>{code}</Button>
+                    </Popover>
+                  )
                 },
                 {
                   title: "Khách hàng",
@@ -2480,7 +2549,7 @@ const MainPOS: React.FC = () => {
                 },
                 {
                   title: "Tổng tiền",
-                  dataIndex: "total_payment",
+                  dataIndex: "total",
                   key: "total",
                   render: (value) => (
                     <span>{Number(value).toLocaleString("vi-VN")}</span>
@@ -2490,9 +2559,10 @@ const MainPOS: React.FC = () => {
                 {
                   title: "Thanh toán",
                   key: "status",
+                  width: 120,
                   render: (_, record) => (
-                    <Tag color={record.glt_paid ? "green" : "blue"}>
-                      {record.glt_paid ? "Đã thanh toán" : "Chưa thanh toán"}
+                    <Tag color={record.total_payment === record.total ? "green" : "blue"}>
+                      {record.total_payment === record.total ? "Đã thanh toán" : "Chưa thanh toán"}
                     </Tag>
                   ),
                 },
@@ -2848,6 +2918,7 @@ const MainPOS: React.FC = () => {
         .select(
           "id, code, customer_name, purchase_date, total_payment, total, status_value, kiotviet_customer_id"
         )
+        .eq("status_value", "Hoàn thành")
         .gte("purchase_date", todayISOString)
         .order("purchase_date", { ascending: false });
 
@@ -2870,6 +2941,100 @@ const MainPOS: React.FC = () => {
     } finally {
       setLoadingInvoices(false);
     }
+  };
+
+  // Function to fetch invoice details for a specific invoice
+  const fetchInvoiceDetails = async (invoiceId: number) => {
+    try {
+      const { data, error } = await supabase
+        .from("kv_invoice_details")
+        .select("*")
+        .eq("invoice_id", invoiceId);
+
+      if (error) {
+        throw error;
+      }
+      
+      return data || [];
+    } catch (error) {
+      console.error("Error fetching invoice details:", error);
+      return [];
+    }
+  };
+
+  // Invoice Details component to be used in popover
+  const InvoiceDetailsPopover = ({ invoiceId, invoiceCode }: { invoiceId: number, invoiceCode: string }) => {
+    const [details, setDetails] = useState<any[]>([]);
+    const [loading, setLoading] = useState(true);
+
+    useEffect(() => {
+      const loadDetails = async () => {
+        setLoading(true);
+        const data = await fetchInvoiceDetails(invoiceId);
+        setDetails(data);
+        setLoading(false);
+      };
+      
+      loadDetails();
+    }, [invoiceId]);
+
+    if (loading) {
+      return <Spin size="small" />;
+    }
+
+    if (details.length === 0) {
+      return <div>No details found</div>;
+    }
+
+    return (
+      <div style={{ maxWidth: '600px', maxHeight: '400px', overflow: 'auto' }}>
+        <div style={{ marginBottom: '8px' }}>
+          <Text strong>Invoice #{invoiceCode}</Text>
+          <Text> - {details.length} items</Text>
+        </div>
+        <Table
+          dataSource={details}
+          rowKey="id"
+          size="small"
+          pagination={false}
+          columns={[
+            {
+              title: 'Product',
+              dataIndex: 'product_name',
+              ellipsis: true, 
+              width: 150
+            },
+            {
+              title: 'Qty',
+              dataIndex: 'quantity',
+              width: 60,
+              align: 'right'
+            },
+            {
+              title: 'Price',
+              dataIndex: 'price',
+              width: 80,
+              align: 'right',
+              render: (price) => price?.toLocaleString('vi-VN')
+            },
+            {
+              title: 'Discount',
+              dataIndex: 'discount',
+              width: 80,
+              align: 'right',
+              render: (discount) => discount ? discount.toLocaleString('vi-VN') : '0'
+            },
+            {
+              title: 'Subtotal',
+              dataIndex: 'sub_total',
+              width: 100,
+              align: 'right',
+              render: (subtotal) => subtotal?.toLocaleString('vi-VN')
+            }
+          ]}
+        />
+      </div>
+    );
   };
 
   // Function to show today's invoices modal
@@ -2981,35 +3146,37 @@ const MainPOS: React.FC = () => {
         if (error) throw error;
 
         if (invoiceDetails && invoiceDetails.length > 0) {
-          // Get the first product to print its label
-          const firstDetail = invoiceDetails[0];
-          const product = firstDetail.kv_products;
-
-          if (!product) {
-            message.error("Product information not found");
-            return;
-          }
-
-          const quantity = firstDetail.quantity || 1;
-
-          // Send a label print request that includes the invoice information
-          // This allows the server to get product details from the invoice
-          await sendPrintJobToServer("label", {
-            code: product.code,
-            quantity: quantity,
-            copies: 1,
-            metadata: {
-              printer_type: PRINTER_TYPES.LABEL
+          // Print labels for all invoice details
+          for (const detail of invoiceDetails) {
+            const product = detail.kv_products;
+            
+            if (!product) {
+              console.warn(`Product information not found for detail ${detail.id}`);
+              continue;
             }
-          });
 
-          message.success("Product label sent to printer");
+            const detailQuantity = detail.quantity || 1;
+            
+            // Send a label print request for each product
+            await sendPrintJobToServer("label", {
+              code: product.code,
+              quantity: detailQuantity,
+              copies: 1,
+              metadata: {
+                printer_type: PRINTER_TYPES.LABEL
+              }
+            });
+            
+            console.log(`Product label sent to printer for ${product.code}`);
+          }
+          
+          message.success("Product labels sent to printer");
         } else {
           message.warning("No products found in this invoice");
         }
       } catch (error) {
-        console.error("Error printing label:", error);
-        message.error("Failed to print label");
+        console.error("Error printing labels:", error);
+        message.error("Failed to print labels");
       }
     };
 
@@ -3117,29 +3284,33 @@ const MainPOS: React.FC = () => {
     const currentTime = Date.now();
     const purchaseTime = new Date(purchaseDate).getTime();
     const timeDiff = currentTime - purchaseTime;
-
-    const minuteThreshold = 60 * 1000; // 1 minute in milliseconds
-    const dayThreshold = 24 * 60 * minuteThreshold; // 1 day in milliseconds
-    const weekThreshold = 7 * dayThreshold; // 1 week in milliseconds
-    const monthThreshold = 30 * dayThreshold; // 1 month in milliseconds
-
-    if (timeDiff < minuteThreshold) {
-      const minutes = Math.floor(timeDiff / minuteThreshold);
+  
+    const minuteMs = 60 * 1000;
+    const hourMs = 60 * minuteMs;
+    const dayMs = 24 * hourMs;
+    const weekMs = 7 * dayMs;
+    const monthMs = 30 * dayMs;
+  
+    if (timeDiff < minuteMs) {
+      return <Tag color="orange">Vừa xong</Tag>;
+    } else if (timeDiff < hourMs) {
+      const minutes = Math.floor(timeDiff / minuteMs);
       return <Tag color="orange">{minutes} phút trước</Tag>;
-    } else if (timeDiff < dayThreshold) {
-      const hours = Math.floor(timeDiff / (60 * minuteThreshold));
+    } else if (timeDiff < dayMs) {
+      const hours = Math.floor(timeDiff / hourMs);
       return <Tag color="orange">{hours} giờ trước</Tag>;
-    } else if (timeDiff < weekThreshold) {
-      const days = Math.floor(timeDiff / dayThreshold);
+    } else if (timeDiff < weekMs) {
+      const days = Math.floor(timeDiff / dayMs);
       return <Tag color="orange">{days} ngày trước</Tag>;
-    } else if (timeDiff < monthThreshold) {
-      const weeks = Math.floor(timeDiff / weekThreshold);
+    } else if (timeDiff < monthMs) {
+      const weeks = Math.floor(timeDiff / weekMs);
       return <Tag color="orange">{weeks} tuần trước</Tag>;
     } else {
-      const months = Math.floor(timeDiff / monthThreshold);
+      const months = Math.floor(timeDiff / monthMs);
       return <Tag color="orange">{months} tháng trước</Tag>;
     }
   };
+  
 
   return renderSafely();
 };
