@@ -901,7 +901,7 @@ const MainPOS: React.FC = () => {
         method: "Cash", // default
         accountId: null, // default
         usingCod: false, // default
-        soldById: 28310, // default
+        soldById: 59020, // default
         orderId: null, // default
         note: "gaolamthuy-pos",
         items: invoiceDetails,
@@ -1513,19 +1513,6 @@ const MainPOS: React.FC = () => {
                             }}
                           >
                             <Switch
-                              checked={isFullPayment}
-                              onChange={(checked) => setIsFullPayment(checked)}
-                            />
-                            <span>Thanh toán đủ</span>
-                          </div>
-                          <div
-                            style={{
-                              display: "flex",
-                              alignItems: "center",
-                              gap: 8,
-                            }}
-                          >
-                            <Switch
                               checked={isPromotionEnabled}
                               onChange={(checked) =>
                                 setIsPromotionEnabled(checked)
@@ -1594,37 +1581,30 @@ const MainPOS: React.FC = () => {
                         </Text>
                       </div>
                     </Popover>
-                    <Button
-                      type={isFullPayment ? "primary" : "default"}
-                      icon={<ShoppingCartOutlined />}
-                      size="large"
-                      onClick={handleCheckout}
-                      loading={loading}
-                      disabled={
-                        cart.length === 0 || (!isFullPayment && !customer)
-                      }
-                      style={
-                        !isFullPayment && cart.length > 0 && customer
-                          ? {
-                              backgroundColor: "#faad14",
-                              borderColor: "#faad14",
-                              color: "#fff",
-                            }
-                          : undefined
-                      }
-                    >
-                      {isFullPayment ? (
-                        "Thanh toán"
-                      ) : (
-                        <div style={{ lineHeight: 1, textAlign: "center" }}>
-                          <span>Tạo đơn</span>
-                          <br />
-                          <span style={{ fontSize: "12px" }}>
-                            chưa thanh toán
-                          </span>
-                        </div>
-                      )}
-                    </Button>
+
+                    {/* change to antd dropdown.button  */}
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <Dropdown.Button
+                        type="primary"
+                        size="large"
+                        icon={<ShoppingCartOutlined />}
+                        loading={loading}
+                        disabled={cart.length === 0}
+                        onClick={() => setIsFullPayment(true)}
+                        menu={{
+                          items: [
+                            {
+                              key: 'create-unpaid-order',
+                              label: 'Tạo đơn chưa thanh toán',
+                              icon: <FileTextOutlined />,
+                              disabled: !customer,
+                            },
+                          ],
+                        }}
+                      >
+                        Thanh toán
+                      </Dropdown.Button>
+                    </div>
                   </div>
                 </Card>
 
@@ -3108,6 +3088,15 @@ const MainPOS: React.FC = () => {
       return ""; // Return empty string on error
     }
   };
+
+  // Define the dropdown menu items
+  const dropdownItems: MenuProps['items'] = [
+    {
+      key: 'create-unpaid-order',
+      label: 'Tạo đơn chưa thanh toán',
+      icon: <FileTextOutlined />,
+    },
+  ];
 
   return renderSafely();
 };
