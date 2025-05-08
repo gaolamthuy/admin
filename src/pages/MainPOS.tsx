@@ -3066,7 +3066,7 @@ const MainPOS: React.FC = () => {
 
     return (
       <Space>
-        <Tooltip title="Print invoice (K80)">
+        <Tooltip title="In Hóa Đơn">
           <Button
             icon={<PrinterOutlined />}
             loading={isPrinting}
@@ -3074,7 +3074,7 @@ const MainPOS: React.FC = () => {
             size="small"
           />
         </Tooltip>
-        <Tooltip title="Print label">
+        <Tooltip title="In Tem">
           <Button
             icon={<TagsOutlined />}
             loading={isPrinting}
@@ -3082,7 +3082,7 @@ const MainPOS: React.FC = () => {
             size="small"
           />
         </Tooltip>
-        <Tooltip title="Print both">
+        <Tooltip title="In HĐ và Tem">
           <Button
             icon={<DoubleRightOutlined />}
             loading={isPrinting}

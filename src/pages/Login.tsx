@@ -3,19 +3,19 @@ import { Form, Input, Button, message } from 'antd';
 import { UserOutlined, LockOutlined } from '@ant-design/icons';
 
 interface LoginProps {
-  onLogin: (password: string) => boolean;
+  onLogin: (username: string, password: string) => boolean;
 }
 
 const Login: React.FC<LoginProps> = ({ onLogin }) => {
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (values: { password: string }) => {
+  const handleSubmit = (values: { username: string, password: string }) => {
     setLoading(true);
     
     setTimeout(() => {
-      const success = onLogin(values.password);
+      const success = onLogin(values.username, values.password);
       if (!success) {
-        message.error('Incorrect password');
+        message.error('Incorrect username or password');
       }
       setLoading(false);
     }, 500);
@@ -26,6 +26,16 @@ const Login: React.FC<LoginProps> = ({ onLogin }) => {
       <div className="login-form">
         <h1 className="login-title">Gao Lam Thuy POS</h1>
         <Form name="login" onFinish={handleSubmit}>
+          <Form.Item
+            name="username"
+            rules={[{ required: true, message: 'Please input your username!' }]}
+          >
+            <Input
+              prefix={<UserOutlined />}
+              placeholder="Username"
+              size="large"
+            />
+          </Form.Item>
           <Form.Item
             name="password"
             rules={[{ required: true, message: 'Please input your password!' }]}

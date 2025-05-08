@@ -121,9 +121,8 @@ export const sendPrintJobToAgent = async (
 ): Promise<PrintResponse> => {
   try {
     // Construct the print URL using the new print agent environment variables
-    const printAgentUrl = process.env.REACT_APP_PRINT_AGENT_URL || "localhost";
-    const printAgentPort = process.env.REACT_APP_PRINT_AGENT_PORT || "3030";
-    const printUrl = `http://${printAgentUrl}:${printAgentPort}/print`;
+
+    const printUrl = process.env.REACT_APP_BACKEND_URL + "/print/jobs";
     
     // Format the payload according to the expected format for each document type
     const formattedDocRef = { ...docRef };
@@ -145,11 +144,14 @@ export const sendPrintJobToAgent = async (
       metadata: docRef.metadata || {}
     });
 
+    const auth = btoa(`${process.env.REACT_APP_API_USERNAME}:${process.env.REACT_APP_API_PASSWORD}`)
+
     // Send the request to the print agent
     const response = await fetch(printUrl, {
       method: "POST",
       headers: {
-        "Content-Type": "application/json"
+        "Content-Type": "application/json",
+        "Authorization": `Basic ${auth}`
       },
       body: JSON.stringify({
         doc_type: docType,
