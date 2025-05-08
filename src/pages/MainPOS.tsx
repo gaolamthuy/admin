@@ -53,7 +53,7 @@ import {
 } from "@ant-design/icons";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "../services/supabaseClient";
-import { printDocument, sendPrintJobToServer } from "../utils/printUtils";
+import { printDocument, sendPrintJobToServer, sendPrintJobToAgent } from "../utils/printUtils";
 import "../styles/MainPOS.css";
 import PrinterSettings from "../components/PrinterSettings";
 import { Customer, Product, Settings } from "../types";
@@ -977,7 +977,7 @@ const MainPOS: React.FC = () => {
         metadata: {
           printer_type: printerType
         }
-      }, "");
+      });
 
       if (result.success) {
         message.success("Receipt sent to printer");
@@ -993,7 +993,7 @@ const MainPOS: React.FC = () => {
   // Function to print an invoice receipt
   const printInvoice = async (
     invoice: InvoiceSummary,
-    printerType: PrinterType = PRINTER_TYPES.K80
+    printerType: PrinterType = PRINTER_TYPES.K80  
   ) => {
     try {
       // All invoice printing now uses the "invoice" doc type
@@ -1002,19 +1002,24 @@ const MainPOS: React.FC = () => {
       // Print the invoice using the server
       message.loading(`Printing invoice #${invoice.code}...`, 1.5);
 
-      const result = await sendPrintJobToServer(docType, {
+      const printAgentId = process.env.REACT_APP_PRINT_AGENT_ID || "";
+      console.log("Print Agent ID from env:", printAgentId);
+
+      const printPayload = {
         code: invoice.code,
         invoice_id: invoice.id,
         customer_id: invoice.kiotviet_customer_id,
         metadata: {
           printer_type: printerType
         }
-      }, "");
+      };
 
-      if (result.success) {
+      const printResponse = await sendPrintJobToAgent("invoice", printPayload,);
+
+      if (printResponse.success) {
         message.success(`Invoice #${invoice.code} sent to printer`);
       } else {
-        throw new Error(result.error);
+        throw new Error(printResponse.error);
       }
     } catch (error) {
       console.error("Error printing invoice:", error);
@@ -2789,7 +2794,7 @@ const MainPOS: React.FC = () => {
         metadata: {
           printer_type: PRINTER_TYPES.LABEL
         }
-      }, "")
+      })
         .then((response) => {
           if (response.success) {
             message.success("Product label sent to printer");
@@ -3001,7 +3006,7 @@ const MainPOS: React.FC = () => {
             metadata: {
               printer_type: PRINTER_TYPES.LABEL
             }
-          }, "");
+          });
 
           message.success("Product label sent to printer");
         } else {
@@ -3028,7 +3033,7 @@ const MainPOS: React.FC = () => {
               metadata: {
                 printer_type: PRINTER_TYPES.K80
               }
-            }, "");
+            });
 
             // Then print the label
             if (record.id) {
@@ -3046,7 +3051,7 @@ const MainPOS: React.FC = () => {
               metadata: {
                 printer_type: PRINTER_TYPES.K80
               }
-            }, "");
+            });
             break;
 
           case "label":

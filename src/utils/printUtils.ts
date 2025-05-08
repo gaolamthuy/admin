@@ -117,7 +117,6 @@ export const printDocument = (
 export const sendPrintJobToAgent = async (
   docType: "invoice" | "label",
   docRef: Record<string, any>,
-  printAgentId: string = ""
 ): Promise<PrintResponse> => {
   try {
     // Construct the print URL using the new print agent environment variables
@@ -139,6 +138,7 @@ export const sendPrintJobToAgent = async (
     }
 
     console.log(`Sending print job to agent at ${printUrl}`, {
+      print_agent_id: process.env.REACT_APP_PRINT_AGENT_ID,
       doc_type: docType,
       doc_ref: formattedDocRef,
       metadata: docRef.metadata || {}
@@ -154,6 +154,7 @@ export const sendPrintJobToAgent = async (
         "Authorization": `Basic ${auth}`
       },
       body: JSON.stringify({
+        print_agent_id: process.env.REACT_APP_PRINT_AGENT_ID,
         doc_type: docType,
         doc_ref: formattedDocRef,
         metadata: docRef.metadata || {}
