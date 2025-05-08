@@ -1,4 +1,5 @@
 export interface Customer {
+  search_priority?: number;
   id: number;
   kiotviet_id: number;
   code: string;

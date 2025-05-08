@@ -683,6 +683,16 @@ const MainPOS: React.FC = () => {
 
     // Open the customer note modal
     setCustomerNoteVisible(true);
+
+    // Increment search_priority
+    try {
+      await supabase
+        .from("kv_customers")
+        .update({ search_priority: (customer.search_priority || 0) + 1 })
+        .eq("kiotviet_id", customer.kiotviet_id);
+    } catch (error) {
+      console.error("Failed to increase priority:", error);
+    }
   };
 
   const openCustomerSearch = () => {
@@ -1031,7 +1041,7 @@ const MainPOS: React.FC = () => {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   const debouncedSearchCustomers = useCallback(
     debounce((searchValue: string) => {
-      if (searchValue.length < 3) return;
+      if (searchValue.length < 2) return; // Change from 3 to 2
       performCustomerSearch(searchValue);
     }, 300),
     []
@@ -1050,7 +1060,7 @@ const MainPOS: React.FC = () => {
   ) => {
     const value = e.target.value;
     setCustomerSearchText(value);
-    if (value.length >= 3) {
+    if (value.length >= 2) { // Change from 3 to 2
       debouncedSearchCustomers(value);
     } else {
       setCustomers([]);
@@ -1075,6 +1085,7 @@ const MainPOS: React.FC = () => {
             `code.ilike.%${searchValue}%,` +
             `contact_number.ilike.%${searchValue}%`
         )
+        .order('search_priority', { ascending: false })
         .limit(10);
 
       if (error) {
@@ -1439,7 +1450,7 @@ const MainPOS: React.FC = () => {
                               position: "absolute",
                               width: "100%",
                               zIndex: 1000,
-                              maxHeight: "200px",
+                              maxHeight: "1000px", // Change from 200px to 1000px
                               overflow: "auto",
                             }}
                             bodyStyle={{ padding: "8px" }}
@@ -1638,7 +1649,7 @@ const MainPOS: React.FC = () => {
                             });
                           }}
                         >
-                          Clear All
+                          Xóa tất cả
                         </Button>
                       )}
                     </div>
@@ -2279,10 +2290,14 @@ const MainPOS: React.FC = () => {
                       <div style={{ marginBottom: "10px" }}>
                         <Text style={styles.largeText}>
                           Mã đơn: {lastInvoices[currentInvoiceIndex].code} -
-                          Ngày:{" "}
+                          Thời gian:{" "}
                           {new Date(
                             lastInvoices[currentInvoiceIndex].purchase_date
-                          ).toLocaleDateString("vi-VN")}
+                          ).toLocaleString("vi-VN")} 
+                          {" "}
+                          {renderTimeDifference(
+                            lastInvoices[currentInvoiceIndex].purchase_date
+                          )}
                         </Text>
                       </div>
                     )}
@@ -3097,6 +3112,34 @@ const MainPOS: React.FC = () => {
       icon: <FileTextOutlined />,
     },
   ];
+
+  const renderTimeDifference = (purchaseDate: string) => {
+    const currentTime = Date.now();
+    const purchaseTime = new Date(purchaseDate).getTime();
+    const timeDiff = currentTime - purchaseTime;
+
+    const minuteThreshold = 60 * 1000; // 1 minute in milliseconds
+    const dayThreshold = 24 * 60 * minuteThreshold; // 1 day in milliseconds
+    const weekThreshold = 7 * dayThreshold; // 1 week in milliseconds
+    const monthThreshold = 30 * dayThreshold; // 1 month in milliseconds
+
+    if (timeDiff < minuteThreshold) {
+      const minutes = Math.floor(timeDiff / minuteThreshold);
+      return <Tag color="orange">{minutes} phút trước</Tag>;
+    } else if (timeDiff < dayThreshold) {
+      const hours = Math.floor(timeDiff / (60 * minuteThreshold));
+      return <Tag color="orange">{hours} giờ trước</Tag>;
+    } else if (timeDiff < weekThreshold) {
+      const days = Math.floor(timeDiff / dayThreshold);
+      return <Tag color="orange">{days} ngày trước</Tag>;
+    } else if (timeDiff < monthThreshold) {
+      const weeks = Math.floor(timeDiff / weekThreshold);
+      return <Tag color="orange">{weeks} tuần trước</Tag>;
+    } else {
+      const months = Math.floor(timeDiff / monthThreshold);
+      return <Tag color="orange">{months} tháng trước</Tag>;
+    }
+  };
 
   return renderSafely();
 };
