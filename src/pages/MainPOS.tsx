@@ -1649,7 +1649,7 @@ const MainPOS: React.FC = () => {
                       <Dropdown.Button
                         type="primary"
                         size="large"
-                        icon={<MoreOutlined />}
+                        icon={<DownOutlined  />}
                         loading={loading}
                         disabled={cart.length === 0}
                         onClick={() => {
@@ -1660,8 +1660,10 @@ const MainPOS: React.FC = () => {
                           items: [
                             {
                               key: 'create-unpaid-order',
-                              label: 'Tạo đơn chưa thanh toán',
-                              icon: <FileTextOutlined />,
+                              label: '⚠️ Tạo đơn chưa thanh toán',
+                              style: { fontSize: '20px' },
+                              // danger: true,
+                              // icon: <FileTextOutlined />,
                               disabled: !customer,
                               onClick: () => {
                                 console.log("Dropdown option clicked - creating unpaid order");
