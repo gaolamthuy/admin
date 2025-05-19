@@ -1,0 +1,23 @@
+{
+  "name": "glt-dashboard",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev",
+    "build": "next build",
+    "start": "next start",
+    "lint": "next lint"
+  },
+  "dependencies": {
+    "@ant-design/cssinjs": "^1.18.0",
+    "@babel/runtime": "^7.23.2",
+    "@supabase/supabase-js": "^2.39.0",
+    "antd": "5.11.1",
+    "axios": "^1.9.0",
+    "dayjs": "^1.11.10",
+    "next": "14.0.3",
+    "rc-util": "^5.38.0",
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0"
+  }
+}
