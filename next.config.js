@@ -1,5 +1,6 @@
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'export',
   transpilePackages: [
     '@ant-design',
     'antd',
@@ -19,11 +20,11 @@ const nextConfig = {
     'rc-notification',
     'rc-tooltip',
     'rc-trigger',
-    '@rc-component'
+    '@rc-component',
   ],
   experimental: {
-    esmExternals: false
-  }
+    esmExternals: false,
+  },
 };
 
-module.exports = nextConfig; 
+module.exports = nextConfig;
