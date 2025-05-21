@@ -16,6 +16,7 @@ import {
   Image,
   Tag,
   Layout,
+  notification,
 } from 'antd';
 import { SearchOutlined, UploadOutlined, PictureOutlined, PlusOutlined } from '@ant-design/icons';
 import { supabase } from '../../utils/api';
@@ -156,31 +157,47 @@ const UploadPage = () => {
       return;
     }
 
+    // Check file size (5MB limit - matches backend limit)
+    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+    if (file.size > MAX_FILE_SIZE) {
+      message.error('File size exceeds 5MB limit');
+      onError('File too large');
+      return;
+    }
+
     try {
       setUploading(true);
 
-      // Create a unique file name using kiotviet_id
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${uploadingProduct.kiotviet_id}_${Date.now()}.${fileExt}`;
-      const filePath = `product-images/${fileName}`;
+      // Create form data to send to backend
+      const formData = new FormData();
+      formData.append('file', file);
+      formData.append('kiotviet_id', uploadingProduct.kiotviet_id);
 
-      // Upload file to Supabase Storage
-      const { error: uploadError } = await supabase.storage.from('products').upload(filePath, file);
+      // Get API URL and auth credentials from env
+      const apiUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL;
+      const username = process.env.NEXT_PUBLIC_BACKEND_BASIC_USERNAME;
+      const password = process.env.NEXT_PUBLIC_BACKEND_BASIC_PASSWORD;
 
-      if (uploadError) throw uploadError;
+      // Basic auth credentials
+      const auth = btoa(`${username}:${password}`);
 
-      // Get the public URL
-      const { data } = supabase.storage.from('products').getPublicUrl(filePath);
+      // Send to backend API
+      const response = await fetch(`${apiUrl}/media/upload`, {
+        method: 'POST',
+        headers: {
+          Authorization: `Basic ${auth}`,
+        },
+        body: formData,
+      });
 
-      const publicUrl = data.publicUrl;
+      const result = await response.json();
 
-      // Update the product record with the new image URL
-      const { error: updateError } = await supabase
-        .from('kv_products')
-        .update({ image_url: publicUrl })
-        .eq('kiotviet_id', uploadingProduct.kiotviet_id);
+      if (!response.ok) {
+        throw new Error(result.message || 'Failed to upload image');
+      }
 
-      if (updateError) throw updateError;
+      // Get URLs from response
+      const { thumbnail: thumbnailUrl, zoom: zoomUrl } = result.data.images;
 
       message.success(`Uploaded image for ${uploadingProduct.full_name}`);
       onSuccess(file);
@@ -188,12 +205,29 @@ const UploadPage = () => {
       // Update local state to show the new image
       setProducts((prev) =>
         prev.map((p) =>
-          p.kiotviet_id === uploadingProduct.kiotviet_id ? { ...p, image_url: publicUrl } : p
+          p.kiotviet_id === uploadingProduct.kiotviet_id
+            ? { ...p, image_url: thumbnailUrl, zoom_url: zoomUrl }
+            : p
+        )
+      );
+
+      // Update filtered products as well
+      setFilteredProducts((prev) =>
+        prev.map((p) =>
+          p.kiotviet_id === uploadingProduct.kiotviet_id
+            ? { ...p, image_url: thumbnailUrl, zoom_url: zoomUrl }
+            : p
         )
       );
     } catch (error) {
       console.error('Error uploading image:', error);
-      message.error('Failed to upload image');
+
+      notification.error({
+        message: 'Upload Failed',
+        description: error.message || 'Failed to upload image',
+        duration: 4,
+      });
+
       onError(error);
     } finally {
       setUploading(false);
@@ -272,11 +306,15 @@ const UploadPage = () => {
                   showUploadList={false}
                   accept="image/*"
                   onClick={() => setUploadingProduct(product)}
+                  disabled={uploading && uploadingProduct?.kiotviet_id === product.kiotviet_id}
                 >
                   <div
                     style={{
                       borderRadius: '50%',
-                      background: '#1890ff',
+                      background:
+                        uploadingProduct?.kiotviet_id === product.kiotviet_id && uploading
+                          ? '#faad14'
+                          : '#1890ff',
                       width: 32,
                       height: 32,
                       display: 'flex',
@@ -285,7 +323,11 @@ const UploadPage = () => {
                       cursor: 'pointer',
                     }}
                   >
-                    <PlusOutlined style={{ color: 'white' }} />
+                    {uploadingProduct?.kiotviet_id === product.kiotviet_id && uploading ? (
+                      <Spin size="small" style={{ color: 'white' }} />
+                    ) : (
+                      <PlusOutlined style={{ color: 'white' }} />
+                    )}
                   </div>
                 </Upload>
               }
@@ -316,7 +358,9 @@ const UploadPage = () => {
                           maxWidth: '100%',
                           objectFit: 'contain',
                         }}
-                        preview={false}
+                        preview={{
+                          src: product.zoom_url || product.image_url,
+                        }}
                       />
                     ) : (
                       <PictureOutlined style={{ fontSize: 64, color: '#d9d9d9' }} />
