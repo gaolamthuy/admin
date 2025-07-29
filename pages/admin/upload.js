@@ -49,6 +49,13 @@ const UploadPage = () => {
   useEffect(() => {
     fetchProducts();
     fetchCategories();
+
+    // Debug environment variables on mount
+    console.log('Environment variables on mount:', {
+      webhookApiUrl: process.env.NEXT_PUBLIC_WEBHOOK_API_URL,
+      webhookUsername: process.env.NEXT_PUBLIC_WEBHOOK_USERNAME,
+      webhookPassword: process.env.NEXT_PUBLIC_WEBHOOK_PASSWORD ? '***' : 'undefined',
+    });
   }, []);
 
   // Filter products when search term or category changes
@@ -114,12 +121,25 @@ const UploadPage = () => {
   const fetchProducts = async () => {
     try {
       setLoading(true);
+
+      // Fetch products with image URLs from view_product
       const { data, error } = await supabase
         .from('view_product')
         .select('*')
         .order('category_rank, cost');
 
       if (error) throw error;
+
+      // View already contains image URLs, no need for additional queries
+      console.log('Products loaded from view_product:', data?.length || 0, 'items');
+      if (data && data.length > 0) {
+        console.log('Sample product data:', {
+          kiotviet_id: data[0].kiotviet_id,
+          full_name: data[0].full_name,
+          glt_gallery_thumbnail_url: data[0].glt_gallery_thumbnail_url,
+          glt_gallery_zoom_url: data[0].glt_gallery_zoom_url,
+        });
+      }
       setProducts(data || []);
       setFilteredProducts(data || []);
     } catch (error) {
@@ -168,21 +188,33 @@ const UploadPage = () => {
     try {
       setUploading(true);
 
-      // Create form data to send to backend
+      // Create form data to send to webhook
       const formData = new FormData();
-      formData.append('file', file);
-      formData.append('kiotviet_id', uploadingProduct.kiotviet_id);
+      formData.append('image', file);
+      formData.append('kiotvietProductId', uploadingProduct.kiotviet_id);
 
       // Get API URL and auth credentials from env
-      const apiUrl = process.env.NEXT_PUBLIC_BACKEND_API_URL;
-      const username = process.env.NEXT_PUBLIC_BACKEND_BASIC_USERNAME;
-      const password = process.env.NEXT_PUBLIC_BACKEND_BASIC_PASSWORD;
+      const apiUrl = process.env.NEXT_PUBLIC_WEBHOOK_API_URL || 'https://n8n.gaolamthuy.vn';
+      const username = process.env.NEXT_PUBLIC_WEBHOOK_USERNAME || 'gaolamthuy';
+      const password = process.env.NEXT_PUBLIC_WEBHOOK_PASSWORD || 'gaolamthuy.0627';
+
+      // Debug environment variables
+      console.log('Environment variables:', {
+        apiUrl,
+        username,
+        password: password ? '***' : 'undefined',
+      });
+
+      // Validate environment variables
+      if (!apiUrl || !username || !password) {
+        throw new Error('Missing environment variables for webhook configuration');
+      }
 
       // Basic auth credentials
       const auth = btoa(`${username}:${password}`);
 
-      // Send to backend API
-      const response = await fetch(`${apiUrl}/media/upload`, {
+      // Send to webhook API
+      const response = await fetch(`${apiUrl}/webhook/process-product-image`, {
         method: 'POST',
         headers: {
           Authorization: `Basic ${auth}`,
@@ -192,21 +224,57 @@ const UploadPage = () => {
 
       const result = await response.json();
 
+      // Debug logging
+      console.log('Webhook response:', result);
+
       if (!response.ok) {
         throw new Error(result.message || 'Failed to upload image');
       }
 
-      // Get URLs from response
-      const { thumbnail: thumbnailUrl, zoom: zoomUrl } = result.data.images;
+      // Validate response structure
+      if (!result.processedImageUrl || !result.originalImageUrl) {
+        console.error('Invalid response structure:', result);
+        throw new Error('Invalid response structure from webhook');
+      }
 
-      message.success(`Uploaded image for ${uploadingProduct.full_name}`);
+      // Get URLs from response - new structure
+      const { processedImageUrl: thumbnailUrl, originalImageUrl: zoomUrl } = result;
+
+      message.success(`Uploaded image for ${result.productFullname || uploadingProduct.full_name}`);
       onSuccess(file);
+
+      // Update database with new image URLs
+      try {
+        const { error: updateError } = await supabase
+          .from('kv_products')
+          .update({
+            glt_gallery_thumbnail_url: thumbnailUrl,
+            glt_gallery_zoom_url: zoomUrl,
+            glt_image_updated_at: new Date().toISOString(),
+          })
+          .eq('kiotviet_id', uploadingProduct.kiotviet_id);
+
+        if (updateError) {
+          console.error('Error updating database:', updateError);
+          message.warning('Image uploaded but database update failed');
+        } else {
+          console.log('Database updated successfully');
+        }
+      } catch (dbError) {
+        console.error('Database update error:', dbError);
+        message.warning('Image uploaded but database update failed');
+      }
 
       // Update local state to show the new image
       setProducts((prev) =>
         prev.map((p) =>
           p.kiotviet_id === uploadingProduct.kiotviet_id
-            ? { ...p, image_url: thumbnailUrl, zoom_url: zoomUrl }
+            ? {
+                ...p,
+                glt_gallery_thumbnail_url: thumbnailUrl,
+                glt_gallery_zoom_url: zoomUrl,
+                glt_image_updated_at: new Date().toISOString(),
+              }
             : p
         )
       );
@@ -215,7 +283,12 @@ const UploadPage = () => {
       setFilteredProducts((prev) =>
         prev.map((p) =>
           p.kiotviet_id === uploadingProduct.kiotviet_id
-            ? { ...p, image_url: thumbnailUrl, zoom_url: zoomUrl }
+            ? {
+                ...p,
+                glt_gallery_thumbnail_url: thumbnailUrl,
+                glt_gallery_zoom_url: zoomUrl,
+                glt_image_updated_at: new Date().toISOString(),
+              }
             : p
         )
       );
@@ -349,17 +422,18 @@ const UploadPage = () => {
                       background: '#f5f5f5',
                     }}
                   >
-                    {product.image_url ? (
+                    {product.glt_gallery_thumbnail_url ? (
                       <Image
                         alt={product.full_name}
-                        src={product.image_url}
+                        src={product.glt_gallery_thumbnail_url}
                         style={{
-                          maxHeight: '100%',
-                          maxWidth: '100%',
-                          objectFit: 'contain',
+                          width: '100%',
+                          height: '100%',
+                          objectFit: 'cover',
+                          borderRadius: '8px 8px 0 0',
                         }}
                         preview={{
-                          src: product.zoom_url || product.image_url,
+                          src: product.glt_gallery_zoom_url || product.glt_gallery_thumbnail_url,
                         }}
                       />
                     ) : (
