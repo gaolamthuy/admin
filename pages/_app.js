@@ -10,14 +10,12 @@ function MyApp({ Component, pageProps }) {
   return (
     <StyleProvider hashPriority="high">
       <Head>
-        <title>Print Service Dashboard</title>
+        <title>gaolamthuy admin</title>
         <meta name="viewport" content="initial-scale=1.0, width=device-width" />
       </Head>
-      <AuthProvider>
-        {getLayout(<Component {...pageProps} />)}
-      </AuthProvider>
+      <AuthProvider>{getLayout(<Component {...pageProps} />)}</AuthProvider>
     </StyleProvider>
   );
 }
 
-export default MyApp; 
+export default MyApp;

@@ -17,8 +17,16 @@ import {
   Tag,
   Layout,
   notification,
+  Button,
+  Tooltip,
 } from 'antd';
-import { SearchOutlined, UploadOutlined, PictureOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  SearchOutlined,
+  UploadOutlined,
+  PictureOutlined,
+  PlusOutlined,
+  ReloadOutlined,
+} from '@ant-design/icons';
 import { supabase } from '../../utils/api';
 import { useRouter } from 'next/router';
 
@@ -39,6 +47,8 @@ const UploadPage = () => {
   const [category, setCategory] = useState('all');
   const [uploadingProduct, setUploadingProduct] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [regeneratingProduct, setRegeneratingProduct] = useState(null);
+  const [regenerating, setRegenerating] = useState(false);
   const [categories, setCategories] = useState([{ label: 'All', value: 'all' }]);
 
   const router = useRouter();
@@ -170,6 +180,142 @@ const UploadPage = () => {
     setFilteredProducts(result);
   };
 
+  /**
+   * Gọi API webhook để xử lý ảnh sản phẩm
+   * @param {string} type - Loại xử lý: 'upload-new' hoặc 'regen'
+   * @param {File} file - File ảnh (chỉ cần cho upload-new)
+   * @param {Object} product - Thông tin sản phẩm
+   * @returns {Promise<Object>} Kết quả từ API
+   */
+  const callWebhookAPI = async (type, file = null, product) => {
+    // Validate environment variables
+    const apiUrl = process.env.NEXT_PUBLIC_WEBHOOK_API_URL;
+    const username = process.env.NEXT_PUBLIC_WEBHOOK_USERNAME;
+    const password = process.env.NEXT_PUBLIC_WEBHOOK_PASSWORD;
+
+    if (!apiUrl || !username || !password) {
+      throw new Error(
+        'Missing environment variables: NEXT_PUBLIC_WEBHOOK_API_URL, NEXT_PUBLIC_WEBHOOK_USERNAME, NEXT_PUBLIC_WEBHOOK_PASSWORD'
+      );
+    }
+
+    // Debug environment variables
+    console.log('Environment variables:', {
+      apiUrl,
+      username,
+      password: password ? '***' : 'undefined',
+    });
+
+    // Basic auth credentials
+    const auth = btoa(`${username}:${password}`);
+
+    // Prepare request
+    const requestOptions = {
+      method: 'POST',
+      headers: {
+        Authorization: `Basic ${auth}`,
+      },
+    };
+
+    // Add body based on type
+    if (type === 'upload-new') {
+      if (!file) {
+        throw new Error('File is required for upload-new type');
+      }
+
+      // Check file size (5MB limit - matches backend limit)
+      const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
+      if (file.size > MAX_FILE_SIZE) {
+        throw new Error('File size exceeds 5MB limit');
+      }
+
+      const formData = new FormData();
+      formData.append('image', file);
+      formData.append('kiotvietProductId', product.kiotviet_id);
+      formData.append('type', type);
+      requestOptions.body = formData;
+    } else if (type === 'regen') {
+      const formData = new FormData();
+      formData.append('kiotvietProductId', product.kiotviet_id);
+      formData.append('type', type);
+      requestOptions.body = formData;
+    } else {
+      throw new Error('Invalid type parameter');
+    }
+
+    // Send to webhook API
+    const response = await fetch(`${apiUrl}/webhook/process-product-image`, requestOptions);
+    const result = await response.json();
+
+    // Debug logging
+    console.log('Webhook response:', result);
+
+    if (!response.ok) {
+      throw new Error(result.message || 'Failed to process image');
+    }
+
+    // Validate response structure
+    if (!result.processedImageUrl || !result.originalImageUrl) {
+      console.error('Invalid response structure:', result);
+      throw new Error('Invalid response structure from webhook');
+    }
+
+    return result;
+  };
+
+  /**
+   * Cập nhật database với URL ảnh mới
+   * @param {string} productId - ID sản phẩm
+   * @param {string} thumbnailUrl - URL ảnh thumbnail
+   * @param {string} zoomUrl - URL ảnh zoom
+   */
+  const updateProductImages = async (productId, thumbnailUrl, zoomUrl) => {
+    try {
+      const { error: updateError } = await supabase
+        .from('kv_products')
+        .update({
+          glt_gallery_thumbnail_url: thumbnailUrl,
+          glt_gallery_zoom_url: zoomUrl,
+          glt_image_updated_at: new Date().toISOString(),
+        })
+        .eq('kiotviet_id', productId);
+
+      if (updateError) {
+        console.error('Error updating database:', updateError);
+        throw new Error('Database update failed');
+      }
+
+      console.log('Database updated successfully');
+    } catch (error) {
+      console.error('Database update error:', error);
+      throw error;
+    }
+  };
+
+  /**
+   * Cập nhật state local để hiển thị ảnh mới
+   * @param {string} productId - ID sản phẩm
+   * @param {string} thumbnailUrl - URL ảnh thumbnail
+   * @param {string} zoomUrl - URL ảnh zoom
+   */
+  const updateLocalState = (productId, thumbnailUrl, zoomUrl) => {
+    const updatedProduct = {
+      glt_gallery_thumbnail_url: thumbnailUrl,
+      glt_gallery_zoom_url: zoomUrl,
+      glt_image_updated_at: new Date().toISOString(),
+    };
+
+    // Update products state
+    setProducts((prev) =>
+      prev.map((p) => (p.kiotviet_id === productId ? { ...p, ...updatedProduct } : p))
+    );
+
+    // Update filtered products state
+    setFilteredProducts((prev) =>
+      prev.map((p) => (p.kiotviet_id === productId ? { ...p, ...updatedProduct } : p))
+    );
+  };
+
   const handleUpload = async ({ file, onSuccess, onError }) => {
     if (!uploadingProduct) {
       message.error('No product selected for this upload');
@@ -177,121 +323,21 @@ const UploadPage = () => {
       return;
     }
 
-    // Check file size (5MB limit - matches backend limit)
-    const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-    if (file.size > MAX_FILE_SIZE) {
-      message.error('File size exceeds 5MB limit');
-      onError('File too large');
-      return;
-    }
-
     try {
       setUploading(true);
 
-      // Create form data to send to webhook
-      const formData = new FormData();
-      formData.append('image', file);
-      formData.append('kiotvietProductId', uploadingProduct.kiotviet_id);
+      // Gọi API với type upload-new
+      const result = await callWebhookAPI('upload-new', file, uploadingProduct);
 
-      // Get API URL and auth credentials from env
-      const apiUrl = process.env.NEXT_PUBLIC_WEBHOOK_API_URL || 'https://n8n.gaolamthuy.vn';
-      const username = process.env.NEXT_PUBLIC_WEBHOOK_USERNAME || 'gaolamthuy';
-      const password = process.env.NEXT_PUBLIC_WEBHOOK_PASSWORD || 'gaolamthuy.0627';
-
-      // Debug environment variables
-      console.log('Environment variables:', {
-        apiUrl,
-        username,
-        password: password ? '***' : 'undefined',
-      });
-
-      // Validate environment variables
-      if (!apiUrl || !username || !password) {
-        throw new Error('Missing environment variables for webhook configuration');
-      }
-
-      // Basic auth credentials
-      const auth = btoa(`${username}:${password}`);
-
-      // Send to webhook API
-      const response = await fetch(`${apiUrl}/webhook/process-product-image`, {
-        method: 'POST',
-        headers: {
-          Authorization: `Basic ${auth}`,
-        },
-        body: formData,
-      });
-
-      const result = await response.json();
-
-      // Debug logging
-      console.log('Webhook response:', result);
-
-      if (!response.ok) {
-        throw new Error(result.message || 'Failed to upload image');
-      }
-
-      // Validate response structure
-      if (!result.processedImageUrl || !result.originalImageUrl) {
-        console.error('Invalid response structure:', result);
-        throw new Error('Invalid response structure from webhook');
-      }
-
-      // Get URLs from response - new structure
+      // Get URLs from response
       const { processedImageUrl: thumbnailUrl, originalImageUrl: zoomUrl } = result;
 
       message.success(`Uploaded image for ${result.productFullname || uploadingProduct.full_name}`);
       onSuccess(file);
 
-      // Update database with new image URLs
-      try {
-        const { error: updateError } = await supabase
-          .from('kv_products')
-          .update({
-            glt_gallery_thumbnail_url: thumbnailUrl,
-            glt_gallery_zoom_url: zoomUrl,
-            glt_image_updated_at: new Date().toISOString(),
-          })
-          .eq('kiotviet_id', uploadingProduct.kiotviet_id);
-
-        if (updateError) {
-          console.error('Error updating database:', updateError);
-          message.warning('Image uploaded but database update failed');
-        } else {
-          console.log('Database updated successfully');
-        }
-      } catch (dbError) {
-        console.error('Database update error:', dbError);
-        message.warning('Image uploaded but database update failed');
-      }
-
-      // Update local state to show the new image
-      setProducts((prev) =>
-        prev.map((p) =>
-          p.kiotviet_id === uploadingProduct.kiotviet_id
-            ? {
-                ...p,
-                glt_gallery_thumbnail_url: thumbnailUrl,
-                glt_gallery_zoom_url: zoomUrl,
-                glt_image_updated_at: new Date().toISOString(),
-              }
-            : p
-        )
-      );
-
-      // Update filtered products as well
-      setFilteredProducts((prev) =>
-        prev.map((p) =>
-          p.kiotviet_id === uploadingProduct.kiotviet_id
-            ? {
-                ...p,
-                glt_gallery_thumbnail_url: thumbnailUrl,
-                glt_gallery_zoom_url: zoomUrl,
-                glt_image_updated_at: new Date().toISOString(),
-              }
-            : p
-        )
-      );
+      // Cập nhật database và local state
+      await updateProductImages(uploadingProduct.kiotviet_id, thumbnailUrl, zoomUrl);
+      updateLocalState(uploadingProduct.kiotviet_id, thumbnailUrl, zoomUrl);
     } catch (error) {
       console.error('Error uploading image:', error);
 
@@ -305,6 +351,40 @@ const UploadPage = () => {
     } finally {
       setUploading(false);
       setUploadingProduct(null);
+    }
+  };
+
+  /**
+   * Xử lý re-generate ảnh cho sản phẩm
+   * @param {Object} product - Thông tin sản phẩm
+   */
+  const handleRegenerateImage = async (product) => {
+    try {
+      setRegenerating(true);
+      setRegeneratingProduct(product);
+
+      // Gọi API với type regen
+      const result = await callWebhookAPI('regen', null, product);
+
+      // Get URLs from response
+      const { processedImageUrl: thumbnailUrl, originalImageUrl: zoomUrl } = result;
+
+      message.success(`Regenerated image for ${result.productFullname || product.full_name}`);
+
+      // Cập nhật database và local state
+      await updateProductImages(product.kiotviet_id, thumbnailUrl, zoomUrl);
+      updateLocalState(product.kiotviet_id, thumbnailUrl, zoomUrl);
+    } catch (error) {
+      console.error('Error regenerating image:', error);
+
+      notification.error({
+        message: 'Regeneration Failed',
+        description: error.message || 'Failed to regenerate image',
+        duration: 4,
+      });
+    } finally {
+      setRegenerating(false);
+      setRegeneratingProduct(null);
     }
   };
 
@@ -371,102 +451,147 @@ const UploadPage = () => {
           }}
         >
           {filteredProducts.map((product) => (
-            <Badge
+            <Card
               key={product.kiotviet_id}
-              count={
-                <Upload
-                  customRequest={handleUpload}
-                  showUploadList={false}
-                  accept="image/*"
-                  onClick={() => setUploadingProduct(product)}
-                  disabled={uploading && uploadingProduct?.kiotviet_id === product.kiotviet_id}
+              hoverable
+              style={{
+                width: CARD_WIDTH,
+                borderColor: product.glt_color_border || '#d9d9d9',
+                position: 'relative',
+              }}
+              cover={
+                <div
+                  style={{
+                    height: IMAGE_HEIGHT,
+                    overflow: 'hidden',
+                    display: 'flex',
+                    alignItems: 'center',
+                    justifyContent: 'center',
+                    background: '#f5f5f5',
+                    position: 'relative',
+                  }}
                 >
-                  <div
-                    style={{
-                      borderRadius: '50%',
-                      background:
-                        uploadingProduct?.kiotviet_id === product.kiotviet_id && uploading
-                          ? '#faad14'
-                          : '#1890ff',
-                      width: 32,
-                      height: 32,
-                      display: 'flex',
-                      justifyContent: 'center',
-                      alignItems: 'center',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    {uploadingProduct?.kiotviet_id === product.kiotviet_id && uploading ? (
-                      <Spin size="small" style={{ color: 'white' }} />
-                    ) : (
-                      <PlusOutlined style={{ color: 'white' }} />
-                    )}
-                  </div>
-                </Upload>
+                  {product.glt_gallery_thumbnail_url ? (
+                    <Image
+                      alt={product.full_name}
+                      src={product.glt_gallery_thumbnail_url}
+                      style={{
+                        width: '100%',
+                        height: '100%',
+                        objectFit: 'cover',
+                        borderRadius: '8px 8px 0 0',
+                      }}
+                      preview={{
+                        src: product.glt_gallery_zoom_url || product.glt_gallery_thumbnail_url,
+                      }}
+                    />
+                  ) : (
+                    <PictureOutlined style={{ fontSize: 64, color: '#d9d9d9' }} />
+                  )}
+
+                  {/* Upload Badge */}
+                  <Badge
+                    count={
+                      <Upload
+                        customRequest={handleUpload}
+                        showUploadList={false}
+                        accept="image/*"
+                        onClick={() => setUploadingProduct(product)}
+                        disabled={
+                          uploading && uploadingProduct?.kiotviet_id === product.kiotviet_id
+                        }
+                      >
+                        <div
+                          style={{
+                            borderRadius: '50%',
+                            background:
+                              uploadingProduct?.kiotviet_id === product.kiotviet_id && uploading
+                                ? '#faad14'
+                                : '#1890ff',
+                            width: 32,
+                            height: 32,
+                            display: 'flex',
+                            justifyContent: 'center',
+                            alignItems: 'center',
+                            cursor: 'pointer',
+                            position: 'absolute',
+                            top: 8,
+                            right: 8,
+                            zIndex: 1,
+                          }}
+                        >
+                          {uploadingProduct?.kiotviet_id === product.kiotviet_id && uploading ? (
+                            <Spin size="small" style={{ color: 'white' }} />
+                          ) : (
+                            <PlusOutlined style={{ color: 'white' }} />
+                          )}
+                        </div>
+                      </Upload>
+                    }
+                  />
+
+                  {/* Regenerate Button - chỉ hiển thị khi đã có ảnh */}
+                  {product.glt_gallery_thumbnail_url && (
+                    <Tooltip title="Regenerate Image">
+                      <Button
+                        type="text"
+                        icon={
+                          regeneratingProduct?.kiotviet_id === product.kiotviet_id &&
+                          regenerating ? (
+                            <Spin size="small" />
+                          ) : (
+                            <ReloadOutlined />
+                          )
+                        }
+                        size="small"
+                        style={{
+                          position: 'absolute',
+                          bottom: 8,
+                          right: 8,
+                          background: 'rgba(255, 255, 255, 0.9)',
+                          border: '1px solid #d9d9d9',
+                          borderRadius: '50%',
+                          width: 32,
+                          height: 32,
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          zIndex: 1,
+                        }}
+                        disabled={
+                          regenerating && regeneratingProduct?.kiotviet_id === product.kiotviet_id
+                        }
+                        onClick={() => handleRegenerateImage(product)}
+                      />
+                    </Tooltip>
+                  )}
+                </div>
               }
             >
-              <Card
-                hoverable
-                style={{
-                  width: CARD_WIDTH,
-                  borderColor: product.glt_color_border || '#d9d9d9',
-                }}
-                cover={
-                  <div
+              <Meta
+                title={
+                  <Typography.Paragraph
+                    ellipsis={{ rows: 2, expandable: false }}
                     style={{
-                      height: IMAGE_HEIGHT,
-                      overflow: 'hidden',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      background: '#f5f5f5',
+                      marginBottom: 0,
+                      minHeight: '44px',
+                      fontSize: '14px',
+                      lineHeight: '1.5715',
                     }}
                   >
-                    {product.glt_gallery_thumbnail_url ? (
-                      <Image
-                        alt={product.full_name}
-                        src={product.glt_gallery_thumbnail_url}
-                        style={{
-                          width: '100%',
-                          height: '100%',
-                          objectFit: 'cover',
-                          borderRadius: '8px 8px 0 0',
-                        }}
-                        preview={{
-                          src: product.glt_gallery_zoom_url || product.glt_gallery_thumbnail_url,
-                        }}
-                      />
-                    ) : (
-                      <PictureOutlined style={{ fontSize: 64, color: '#d9d9d9' }} />
-                    )}
-                  </div>
+                    {product.full_name}
+                  </Typography.Paragraph>
                 }
-              >
-                <Meta
-                  title={
-                    <Typography.Paragraph
-                      ellipsis={{ rows: 2, expandable: false }}
-                      style={{
-                        marginBottom: 0,
-                        minHeight: '44px',
-                        fontSize: '14px',
-                        lineHeight: '1.5715',
-                      }}
-                    >
-                      {product.full_name}
-                    </Typography.Paragraph>
-                  }
-                  description={
-                    <Space direction="vertical" size={4} style={{ width: '100%' }}>
-                      <Text strong style={{ fontSize: '16px' }}>
-                        {formatPrice(product.whole_p10_price)}
-                      </Text>
-                      <Tag color={product.glt_color_border}>{product.category_name}</Tag>
-                    </Space>
-                  }
-                />
-              </Card>
-            </Badge>
+                description={
+                  <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                    <Text strong style={{ fontSize: '16px' }}>
+                      {formatPrice(product.whole_p10_price)}
+                    </Text>
+                    <Tag color={product.glt_color_border}>{product.category_name}</Tag>
+                  </Space>
+                }
+              />
+            </Card>
           ))}
         </div>
       )}

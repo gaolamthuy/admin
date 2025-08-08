@@ -1,9 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import DashboardLayout from '../../components/DashboardLayout';
-import { Typography, Calendar, Badge, Space, Alert, Spin, Modal, Table, Button, message } from 'antd';
+import {
+  Typography,
+  Calendar,
+  Badge,
+  Space,
+  Alert,
+  Spin,
+  Modal,
+  Table,
+  Button,
+  message,
+  Card,
+  Row,
+  Col,
+  Tag,
+} from 'antd';
 import { supabase } from '../../utils/api';
-import { CopyOutlined } from '@ant-design/icons';
-
+import {
+  CopyOutlined,
+  CalendarOutlined,
+  ClockCircleOutlined,
+  PrinterOutlined,
+} from '@ant-design/icons';
+import dayjs from 'dayjs';
 
 const { Title, Text } = Typography;
 
@@ -16,8 +36,8 @@ const ChangelogPage = () => {
   const [modalVisible, setModalVisible] = useState(false);
   const [selectedChanges, setSelectedChanges] = useState([]);
   const [plainChangelog, setPlainChangelog] = useState('');
-const [loadingPlain, setLoadingPlain] = useState(false);
-
+  const [loadingPlain, setLoadingPlain] = useState(false);
+  const [viewMode, setViewMode] = useState('latest'); // 'latest' hoặc 'calendar'
 
   useEffect(() => {
     const fetchData = async () => {
@@ -39,12 +59,12 @@ const [loadingPlain, setLoadingPlain] = useState(false);
         if (changelogError) throw changelogError;
 
         // Get unique kiotviet_ids from changelogs
-        const kiotvietIds = [...new Set(changelogData.map(log => log.kiotviet_id))];
+        const kiotvietIds = [...new Set(changelogData.map((log) => log.kiotviet_id))];
 
         // Fetch related products
         const { data: productData, error: productError } = await supabase
           .from('kv_products')
-          .select('kiotviet_id, name, code')
+          .select('kiotviet_id, full_name, code')
           .in('kiotviet_id', kiotvietIds);
 
         if (productError) throw productError;
@@ -70,7 +90,7 @@ const [loadingPlain, setLoadingPlain] = useState(false);
 
   const dateCellRender = (value) => {
     const date = value.format('YYYY-MM-DD');
-    const dayChanges = changelogs.filter(log => {
+    const dayChanges = changelogs.filter((log) => {
       const logDate = new Date(log.created_at).toISOString().split('T')[0];
       return logDate === date;
     });
@@ -79,12 +99,12 @@ const [loadingPlain, setLoadingPlain] = useState(false);
 
     return (
       <div className="changelog-cell">
-        <Badge 
-          count={dayChanges.length} 
-          style={{ 
+        <Badge
+          count={dayChanges.length}
+          style={{
             backgroundColor: '#1890ff',
-            marginTop: '4px'
-          }} 
+            marginTop: '4px',
+          }}
         />
       </div>
     );
@@ -92,7 +112,7 @@ const [loadingPlain, setLoadingPlain] = useState(false);
 
   const onSelect = (date) => {
     const selectedDateStr = date.format('YYYY-MM-DD');
-    const changes = changelogs.filter(log => {
+    const changes = changelogs.filter((log) => {
       const logDate = new Date(log.created_at).toISOString().split('T')[0];
       return logDate === selectedDateStr;
     });
@@ -104,6 +124,30 @@ const [loadingPlain, setLoadingPlain] = useState(false);
     }
   };
 
+  // Map field names to Vietnamese
+  const fieldMap = {
+    name: 'Tên',
+    price: 'Giá',
+    code: 'Mã',
+    category_name: 'Danh mục',
+    description: 'Mô tả',
+    // Add more field mappings as needed
+  };
+
+  // Get field color based on type
+  const getFieldColor = (field) => {
+    switch (field) {
+      case 'price':
+        return 'red';
+      case 'name':
+        return 'orange';
+      case 'description':
+        return 'green';
+      default:
+        return 'blue';
+    }
+  };
+
   const columns = [
     {
       title: 'Sản phẩm',
@@ -112,7 +156,7 @@ const [loadingPlain, setLoadingPlain] = useState(false);
         const product = products[record.kiotviet_id] || {};
         return (
           <Space direction="vertical" size={0}>
-            <Text strong>{product.name || 'Unknown Product'}</Text>
+            <Text strong>{product.full_name || 'Unknown Product'}</Text>
           </Space>
         );
       },
@@ -122,52 +166,150 @@ const [loadingPlain, setLoadingPlain] = useState(false);
       dataIndex: 'field',
       key: 'field',
       render: (text) => {
-        // Map field names to Vietnamese
-        const fieldMap = {
-          'name': 'Tên',
-          'price': 'Giá',
-          'code': 'Mã',
-          'category_name': 'Danh mục',
-          'description': 'Mô tả',
-          // Add more field mappings as needed
-        };
-        return fieldMap[text] || text;
-      }
+        return <Tag color={getFieldColor(text)}>{fieldMap[text] || text}</Tag>;
+      },
     },
     {
       title: 'Giá trị cũ',
       dataIndex: 'old_value',
       key: 'old_value',
-      render: (text) => text || '-'
+      render: (text) => text || '-',
     },
     {
       title: 'Giá trị mới',
       dataIndex: 'new_value',
       key: 'new_value',
-      render: (text) => text || '-'
+      render: (text) => text || '-',
     },
-
   ];
+
+  // Component hiển thị latest changelog
+  const LatestChangelogView = () => {
+    // Group changes by date
+    const groupedChanges = changelogs.reduce((acc, change) => {
+      const date = new Date(change.created_at).toISOString().split('T')[0];
+      if (!acc[date]) {
+        acc[date] = [];
+      }
+      acc[date].push(change);
+      return acc;
+    }, {});
+
+    // Sort dates descending
+    const sortedDates = Object.keys(groupedChanges).sort((a, b) => new Date(b) - new Date(a));
+
+    return (
+      <Space direction="vertical" size="large" style={{ width: '100%' }}>
+        {sortedDates.map((date) => {
+          const changes = groupedChanges[date];
+          const product = products[changes[0]?.kiotviet_id] || {};
+
+          return (
+            <Card
+              key={date}
+              title={
+                <Space>
+                  <ClockCircleOutlined />
+                  <span>{dayjs(date).format('DD/MM/YYYY')}</span>
+                  <Tag color="blue">{changes.length} thay đổi</Tag>
+                </Space>
+              }
+              extra={
+                <Space>
+                  <Button
+                    type="text"
+                    icon={<PrinterOutlined />}
+                    onClick={() => {
+                      window.open(
+                        `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/print/changelog?date=${dayjs(
+                          date
+                        ).format('DD/MM/YYYY')}`,
+                        '_blank'
+                      );
+                    }}
+                    title="In nhật ký"
+                  />
+                  <Button
+                    type="text"
+                    icon={<CopyOutlined />}
+                    onClick={async () => {
+                      setLoadingPlain(true);
+                      try {
+                        const dateStr = dayjs(date).format('DD/MM/YYYY');
+                        const res = await fetch(
+                          `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/print/changelog?date=${dateStr}&output_type=plain`
+                        );
+                        const text = await res.text();
+                        await navigator.clipboard.writeText(text);
+                        message.success('Đã copy nhật ký!');
+                      } catch (err) {
+                        message.error('Copy thất bại!');
+                      } finally {
+                        setLoadingPlain(false);
+                      }
+                    }}
+                    loading={loadingPlain}
+                    title="Copy nhật ký"
+                  />
+                </Space>
+              }
+            >
+              <Table
+                columns={columns}
+                dataSource={changes}
+                rowKey="id"
+                pagination={false}
+                size="small"
+              />
+            </Card>
+          );
+        })}
+      </Space>
+    );
+  };
 
   if (error) {
     return <Alert message="Error Loading Changelog" description={error} type="error" showIcon />;
   }
 
   return (
-    <Space direction="vertical" size="large" style={{width: '100%'}}>
-      <Title level={3}>Nhật ký thay đổi sản phẩm</Title>
+    <Space direction="vertical" size="large" style={{ width: '100%' }}>
+      <Space style={{ width: '100%', justifyContent: 'space-between', alignItems: 'center' }}>
+        <Title level={3} style={{ margin: 0 }}>
+          Nhật ký thay đổi sản phẩm
+        </Title>
+
+        <Space>
+          <Button
+            type={viewMode === 'latest' ? 'primary' : 'default'}
+            icon={<ClockCircleOutlined />}
+            onClick={() => setViewMode('latest')}
+          >
+            Mới nhất
+          </Button>
+          <Button
+            type={viewMode === 'calendar' ? 'primary' : 'default'}
+            icon={<CalendarOutlined />}
+            onClick={() => setViewMode('calendar')}
+          >
+            Lịch
+          </Button>
+        </Space>
+      </Space>
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '50px' }}>
           <Spin size="large" />
         </div>
+      ) : viewMode === 'latest' ? (
+        <LatestChangelogView />
       ) : (
         <>
           <Calendar
             dateCellRender={dateCellRender}
             onSelect={onSelect}
-            style={{ 
-              background: 'white', 
+            style={{
+              background: 'white',
               padding: '24px',
             }}
           />
@@ -184,7 +326,9 @@ const [loadingPlain, setLoadingPlain] = useState(false);
               style={{ marginBottom: 16 }}
               onClick={() => {
                 window.open(
-                  `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/print/changelog?date=${selectedDate?.format('DD/MM/YYYY')}`,
+                  `${
+                    process.env.NEXT_PUBLIC_BACKEND_API_URL
+                  }/print/changelog?date=${selectedDate?.format('DD/MM/YYYY')}`,
                   '_blank'
                 );
               }}
@@ -227,8 +371,6 @@ const [loadingPlain, setLoadingPlain] = useState(false);
               style={{ marginTop: 16 }}
             />
           </Modal>
-
-
         </>
       )}
 
@@ -249,4 +391,4 @@ ChangelogPage.getLayout = function getLayout(page) {
   return <DashboardLayout>{page}</DashboardLayout>;
 };
 
-export default ChangelogPage; 
+export default ChangelogPage;

@@ -77,7 +77,7 @@ const AdminLayout = ({ children }) => {
         <CrownOutlined style={{ fontSize: '24px', color: '#ffd700' }} />
         {!collapsed && (
           <Title level={4} style={{ color: 'white', margin: '0 0 0 10px', whiteSpace: 'nowrap' }}>
-            Admin Panel
+            gaolamthuy admin
           </Title>
         )}
       </div>

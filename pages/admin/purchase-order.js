@@ -27,6 +27,7 @@ import {
   SendOutlined,
   EditOutlined,
   UndoOutlined,
+  FilterOutlined,
 } from '@ant-design/icons';
 import { supabase } from '../../utils/api';
 import dayjs from 'dayjs';
@@ -53,13 +54,25 @@ const PurchaseOrderPage = () => {
   const [noteModalVisible, setNoteModalVisible] = useState(false);
   const [originalDescription, setOriginalDescription] = useState('');
   const [editingDescriptions, setEditingDescriptions] = useState({});
+  const [productFilter, setProductFilter] = useState('');
+  const [debouncedProductFilter, setDebouncedProductFilter] = useState('');
+  const [quickFilterProduct, setQuickFilterProduct] = useState('');
+
+  // Debounce product filter
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedProductFilter(productFilter);
+    }, 300);
+
+    return () => clearTimeout(timer);
+  }, [productFilter]);
 
   useEffect(() => {
     const fetchOrders = async () => {
       try {
         setLoading(true);
         const { data, error: supabaseError } = await supabase
-          .from('kv_po_detail_with_product_info')
+          .from('view_purchase_orders')
           .select('*')
           .eq('glt_status', 'pending')
           .order('purchase_date', { ascending: false });
@@ -95,6 +108,14 @@ const PurchaseOrderPage = () => {
     }));
   };
 
+  // Filter orders by product name
+  const filteredOrders = orders.filter((order) => {
+    // Ưu tiên quick filter trước, sau đó mới đến debounced filter
+    const activeFilter = quickFilterProduct || debouncedProductFilter;
+    if (!activeFilter) return true;
+    return order.product_name?.toLowerCase().includes(activeFilter.toLowerCase());
+  });
+
   const formatCurrency = (amount) => {
     return new Intl.NumberFormat('vi-VN', {
       //   style: 'currency',
@@ -121,42 +142,44 @@ const PurchaseOrderPage = () => {
         setOrders((prev) => prev.filter((order) => order.id !== record.id));
         message.success('Order marked as skipped');
       } else {
-        // Gửi payload lên backend qua axios POST
+        // Gửi payload lên webhook API
         const payload = {
           purchase_order_detail_id: record.id,
           status: 'done',
-          kiotviet_product_id: record.product_id,
-          cost: record.cost_suggestion,
-          baseprice: record.baseprice_suggestion,
-          description:
-            descriptions[record.id] && descriptions[record.id].trim() !== ''
-              ? descriptions[record.id]
-              : null,
         };
 
-        // Địa chỉ này là API backend bạn tự triển khai, ví dụ:
-        // const apiUrl = `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/product/update`;
-        const apiUrl = `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/kiotviet/product/update`;
+        // Sử dụng webhook API URL
+        const apiUrl = `${process.env.NEXT_PUBLIC_WEBHOOK_API_URL}/webhook/process-kv-purchase-order`;
 
         // Encode Basic Auth
-        const username = process.env.NEXT_PUBLIC_BACKEND_BASIC_USERNAME;
-        const password = process.env.NEXT_PUBLIC_BACKEND_BASIC_PASSWORD;
-        const basicAuth = btoa(`${username}:${password}`); // dùng window.btoa trên browser
+        const username = process.env.NEXT_PUBLIC_WEBHOOK_USERNAME;
+        const password = process.env.NEXT_PUBLIC_WEBHOOK_PASSWORD;
+        const basicAuth = btoa(`${username}:${password}`);
+
+        console.log('Processing purchase order:', {
+          apiUrl,
+          payload,
+          username: username ? '***' : 'undefined',
+        });
 
         const res = await axios.post(apiUrl, payload, {
-          withCredentials: true,
           headers: {
             'Content-Type': 'application/json',
             Authorization: `Basic ${basicAuth}`,
           },
         });
 
-        if (res.data && res.data.success) {
+        console.log('Webhook response:', {
+          status: res.status,
+          data: res.data,
+        });
+
+        if (res.status === 200) {
           // Thành công: xoá khỏi danh sách chờ xử lý
           setOrders((prev) => prev.filter((order) => order.id !== record.id));
           message.success('Đã xử lý đơn thành công!');
         } else {
-          throw new Error(res.data?.message || 'Backend trả về lỗi!');
+          throw new Error(`Webhook trả về status ${res.status}`);
         }
       }
     } catch (err) {
@@ -209,6 +232,33 @@ const PurchaseOrderPage = () => {
       title: 'Sản phẩm',
       dataIndex: 'product_name',
       key: 'product_name',
+      render: (text, record) => (
+        <Space>
+          <span>{text}</span>
+          <Tooltip title="Filter nhanh theo sản phẩm này">
+            <FilterOutlined
+              style={{
+                color: quickFilterProduct === text ? '#1890ff' : '#d9d9d9',
+                cursor: 'pointer',
+                fontSize: '12px',
+              }}
+              onClick={() => {
+                if (quickFilterProduct === text) {
+                  // Nếu đang filter theo sản phẩm này thì clear filter
+                  setQuickFilterProduct('');
+                  setProductFilter('');
+                  setDebouncedProductFilter('');
+                } else {
+                  // Nếu chưa filter thì set filter theo sản phẩm này
+                  setQuickFilterProduct(text);
+                  setProductFilter(text);
+                  setDebouncedProductFilter(text);
+                }
+              }}
+            />
+          </Tooltip>
+        </Space>
+      ),
     },
     {
       title: 'Ghi chú mới',
@@ -367,6 +417,41 @@ const PurchaseOrderPage = () => {
     <Space direction="vertical" size="large" style={{ width: '100%' }}>
       <Title level={3}>Đơn đặt hàng chờ xử lý</Title>
 
+      {/* Global Product Filter */}
+      <div style={{ display: 'flex', alignItems: 'center', gap: 16, marginBottom: 16 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+          <Text strong>Sản phẩm:</Text>
+          <Input
+            placeholder="Tìm kiếm theo sản phẩm..."
+            value={productFilter}
+            onChange={(e) => setProductFilter(e.target.value)}
+            style={{ width: 300 }}
+            allowClear
+            prefix={<SearchOutlined />}
+          />
+        </div>
+        {(productFilter || quickFilterProduct) && (
+          <Button
+            icon={<ClearOutlined />}
+            onClick={() => {
+              setProductFilter('');
+              setQuickFilterProduct('');
+              setDebouncedProductFilter('');
+            }}
+            size="small"
+          >
+            Xóa filter
+          </Button>
+        )}
+        {(debouncedProductFilter || quickFilterProduct) && (
+          <Tag color="blue">
+            {quickFilterProduct
+              ? `Filter: ${quickFilterProduct}`
+              : `${filteredOrders.length} kết quả`}
+          </Tag>
+        )}
+      </div>
+
       {loading ? (
         <div style={{ textAlign: 'center', padding: '50px' }}>
           <Spin size="large" />
@@ -374,7 +459,7 @@ const PurchaseOrderPage = () => {
       ) : (
         <Table
           columns={columns}
-          dataSource={orders}
+          dataSource={filteredOrders}
           rowKey="id"
           pagination={{
             showSizeChanger: true,

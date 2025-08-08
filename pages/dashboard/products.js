@@ -8,12 +8,20 @@ import {
   Tag,
   Alert,
   Spin,
-  Select,
   Input,
   Modal,
   Radio,
+  Card,
+  Row,
+  Col,
 } from 'antd';
-import { SearchOutlined, PrinterOutlined, CopyOutlined } from '@ant-design/icons';
+import {
+  SearchOutlined,
+  PrinterOutlined,
+  CopyOutlined,
+  AppstoreOutlined,
+  TableOutlined,
+} from '@ant-design/icons';
 import { supabase } from '../../utils/api';
 import dayjs from 'dayjs';
 import 'dayjs/locale/vi';
@@ -24,11 +32,7 @@ dayjs.locale('vi');
 
 const { Title } = Typography;
 
-const WEIGHTS = [
-  { label: '5kg', value: '5' },
-  { label: '10kg', value: '10' },
-  // Bạn muốn thêm loại nào thì thêm ở đây
-];
+// Bỏ WEIGHTS array vì không còn cần thiết
 
 const ProductsPage = () => {
   const [products, setProducts] = useState([]);
@@ -37,6 +41,7 @@ const ProductsPage = () => {
   const [categories, setCategories] = useState([]);
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [searchText, setSearchText] = useState('');
+  const [viewMode, setViewMode] = useState('table'); // 'table' hoặc 'card'
 
   useEffect(() => {
     const fetchProducts = async () => {
@@ -48,7 +53,10 @@ const ProductsPage = () => {
       try {
         setLoading(true);
         setError(null);
-        const { data, error } = await supabase.from('view_product').select(`*`);
+        const { data, error } = await supabase
+          .from('view_product')
+          .select(`*`)
+          .order('modified_date', { ascending: false });
 
         if (error) {
           throw error;
@@ -78,14 +86,7 @@ const ProductsPage = () => {
     return matchesCategory && matchesSearch;
   });
 
-  const handleWeightPrint = (record, weight) => {
-    window.open(
-      `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/print/label-product?code=${
-        record.code
-      }&quantity=${weight || 1}`,
-      '_blank'
-    );
-  };
+  // Bỏ handleWeightPrint vì không còn cần thiết
 
   const handleCopyChangelog = async (date) => {
     try {
@@ -150,30 +151,85 @@ const ProductsPage = () => {
       key: 'print',
       width: '20%',
       render: (_, record) => (
-        <Space>
-          <Select
-            style={{ width: 120 }}
-            placeholder="Chọn tem"
-            onChange={(value) => handleWeightPrint(record, value)}
-            options={WEIGHTS}
-            dropdownStyle={{ minWidth: '120px' }}
-          />
-
-          <Button
-            icon={<PrinterOutlined />}
-            onClick={() =>
-              window.open(
-                `${process.env.NEXT_PUBLIC_BACKEND_API_URL}/print/price-board?kiotviet_product_id=${record.kiotviet_id}`,
-                '_blank'
-              )
-            }
-          >
-            In bảng giá bán lẻ
-          </Button>
-        </Space>
+        <Button
+          icon={<PrinterOutlined />}
+          onClick={() =>
+            window.open(
+              `${process.env.NEXT_PUBLIC_WEBHOOK_API_URL}/webhook/print?printType=priceboard&productId=${record.kiotviet_id}`,
+              '_blank'
+            )
+          }
+        >
+          In bảng giá bán lẻ
+        </Button>
       ),
     },
   ];
+
+  // Component hiển thị sản phẩm dạng card
+  const ProductCard = ({ product }) => {
+    const isRecent = dayjs(product.modified_date).isAfter(dayjs().subtract(3, 'day'));
+
+    return (
+      <Card
+        hoverable
+        style={{ height: '100%', position: 'relative' }}
+        bodyStyle={{ paddingBottom: 8 }}
+      >
+        {/* Icon in ở góc phải */}
+        <Button
+          type="text"
+          icon={<PrinterOutlined />}
+          onClick={() =>
+            window.open(
+              `${process.env.NEXT_PUBLIC_WEBHOOK_API_URL}/webhook/print?printType=priceboard&productId=${product.kiotviet_id}`,
+              '_blank'
+            )
+          }
+          title="In bảng giá bán lẻ"
+          style={{
+            position: 'absolute',
+            top: 8,
+            right: 8,
+            zIndex: 1,
+          }}
+        />
+
+        <Card.Meta
+          title={
+            <div style={{ paddingRight: 40 }}>
+              <div>{product.full_name}</div>
+              {isRecent && (
+                <div style={{ marginTop: 4 }}>
+                  <Tag color="green" size="small">
+                    Mới cập nhật
+                  </Tag>
+                </div>
+              )}
+            </div>
+          }
+          description={
+            <Space direction="vertical" size="small" style={{ width: '100%' }}>
+              <div>
+                <strong>Mô tả:</strong> {product.description || 'Không có mô tả'}
+              </div>
+              <div>
+                <strong>Ngày cập nhật:</strong> {dayjs(product.modified_date).fromNow()}
+              </div>
+              <div style={{ marginTop: 8 }}>
+                <span style={{ color: '#1890ff', fontWeight: 'bold', fontSize: '16px' }}>
+                  {new Intl.NumberFormat('vi-VN', {
+                    style: 'currency',
+                    currency: 'VND',
+                  }).format(product.base_price || 0)}
+                </span>
+              </div>
+            </Space>
+          }
+        />
+      </Card>
+    );
+  };
 
   const ChangelogModal = ({ visible, data, onClose }) => (
     <Modal
@@ -280,13 +336,31 @@ const ProductsPage = () => {
             style={{ width: 300 }}
           />
         </Space>
+        <Space>
+          <Button.Group>
+            <Button
+              type={viewMode === 'table' ? 'primary' : 'default'}
+              icon={<TableOutlined />}
+              onClick={() => setViewMode('table')}
+            >
+              Bảng
+            </Button>
+            <Button
+              type={viewMode === 'card' ? 'primary' : 'default'}
+              icon={<AppstoreOutlined />}
+              onClick={() => setViewMode('card')}
+            >
+              Card
+            </Button>
+          </Button.Group>
+        </Space>
       </Space>
 
       {loading ? (
         <div style={{ textAlign: 'center', padding: '50px' }}>
           <Spin size="large" />
         </div>
-      ) : (
+      ) : viewMode === 'table' ? (
         <Table
           columns={columns}
           dataSource={filteredProducts}
@@ -297,6 +371,14 @@ const ProductsPage = () => {
             showTotal: (total) => `Tổng số ${total} sản phẩm`,
           }}
         />
+      ) : (
+        <Row gutter={[16, 16]}>
+          {filteredProducts.map((product) => (
+            <Col key={product.id} xs={24} sm={12} md={8} lg={6} xl={4}>
+              <ProductCard product={product} />
+            </Col>
+          ))}
+        </Row>
       )}
     </Space>
   );
