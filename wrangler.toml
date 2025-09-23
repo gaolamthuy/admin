@@ -1,0 +1,14 @@
+# Cloudflare configuration for Pages Functions
+# Ensures Node.js compatibility APIs are available at runtime.
+
+name = "portal"
+compatibility_date = "2025-09-23"
+compatibility_flags = [
+  "nodejs_compat",
+  "nodejs_compat_populate_process_env"
+]
+
+# Note: For Cloudflare Pages, this file is detected automatically (Wrangler-in-Pages beta)
+# and applied to the generated worker in `.vercel/output/static/_worker.js`.
+
+
