@@ -13,5 +13,3 @@ pages_build_output_dir = ".vercel/output/static"
 
 # Note: For Cloudflare Pages, this file is detected automatically (Wrangler-in-Pages beta)
 # and applied to the generated worker in `.vercel/output/static/_worker.js`.
-
-

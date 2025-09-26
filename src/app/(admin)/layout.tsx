@@ -4,33 +4,7 @@ import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClientComponentClient } from "@/lib/supabase";
 import { Button } from "@/components/ui/button";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  LayoutDashboard,
-  Users,
-  Package,
-  ShoppingCart,
-  Settings,
-  LogOut,
-  Menu,
-  Sun,
-  Moon,
-} from "lucide-react";
-import { useTheme } from "@/lib/theme";
+import { LayoutDashboard, Package } from "lucide-react";
 import { toast } from "sonner";
 import { AppHeader } from "@/components/layout/AppHeader";
 
@@ -42,7 +16,6 @@ export default function AdminLayout({
   const [user, setUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const router = useRouter();
-  const { theme, setTheme } = useTheme();
 
   useEffect(() => {
     const getUser = async () => {
@@ -97,7 +70,7 @@ export default function AdminLayout({
         roleLabel={"Admin"}
         userEmail={user?.email}
         onSignOut={handleSignOut}
-        title="Admin Portal"
+        title="Gạo Lâm Thúy"
         logoHref="/admin/dashboard"
       />
 
@@ -116,34 +89,10 @@ export default function AdminLayout({
             <Button
               variant="ghost"
               className="w-full justify-start"
-              onClick={() => router.push("/admin/users")}
-            >
-              <Users className="mr-2 h-4 w-4" />
-              Quản lý người dùng
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
               onClick={() => router.push("/admin/products")}
             >
               <Package className="mr-2 h-4 w-4" />
               Sản phẩm
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => router.push("/admin/customers")}
-            >
-              <ShoppingCart className="mr-2 h-4 w-4" />
-              Khách hàng
-            </Button>
-            <Button
-              variant="ghost"
-              className="w-full justify-start"
-              onClick={() => router.push("/admin/settings")}
-            >
-              <Settings className="mr-2 h-4 w-4" />
-              Cài đặt
             </Button>
           </nav>
         </aside>

@@ -77,6 +77,50 @@ export const updateProduct = async (
   return data;
 };
 
+/**
+ * Cập nhật trạng thái khuyến mãi bán lẻ cho sản phẩm
+ * @param code - Mã sản phẩm
+ * @param promotion - Trạng thái khuyến mãi (true/false)
+ * @returns Sản phẩm đã được cập nhật
+ */
+export const updateProductPromotion = async (
+  code: string,
+  promotion: boolean
+): Promise<Product> => {
+  const supabase = createClientComponentClient();
+  const { data, error } = await supabase
+    .from("kv_products")
+    .update({ glt_retail_promotion: promotion })
+    .eq("code", code)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
+/**
+ * Cập nhật baseprice markup cho sản phẩm
+ * @param code - Mã sản phẩm
+ * @param markup - Giá trị markup (0-10000)
+ * @returns Promise<Product> - Sản phẩm đã được cập nhật
+ */
+export const updateProductMarkup = async (
+  code: string,
+  markup: number
+): Promise<Product> => {
+  const supabase = createClientComponentClient();
+  const { data, error } = await supabase
+    .from("kv_products")
+    .update({ glt_baseprice_markup: markup })
+    .eq("code", code)
+    .select()
+    .single();
+
+  if (error) throw error;
+  return data;
+};
+
 export const getCustomers = async (): Promise<Customer[]> => {
   const supabase = createClientComponentClient();
   const { data, error } = await supabase
