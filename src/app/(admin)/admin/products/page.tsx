@@ -42,7 +42,7 @@ export default function AdminProductsPage() {
   const [loading, setLoading] = useState<boolean>(true);
 
   /**
-   * Lấy danh sách sản phẩm từ Supabase view_product
+   * Lấy danh sách sản phẩm từ Supabase v_products
    * Bao gồm thông tin cơ bản và trạng thái yêu thích
    */
   useEffect(() => {
@@ -51,7 +51,7 @@ export default function AdminProductsPage() {
       try {
         const supabase = createClientComponentClient();
         const { data, error } = await supabase
-          .from("view_product")
+          .from("v_products")
           .select(
             "kiotviet_id,code,full_name,base_price,category_name,images,glt_gallery_thumbnail_url,glt_labelprint_favorite,glt_baseprice_markup,glt_retail_promotion"
           )

@@ -48,7 +48,7 @@ export default function PrintLabelRetailPage() {
       try {
         const supabase = createClientComponentClient();
         const { data, error } = await supabase
-          .from("view_product")
+          .from("v_products")
           .select(
             "kiotviet_id,code,full_name,base_price,category_name,images,glt_gallery_thumbnail_url,glt_labelprint_favorite"
           )

@@ -112,10 +112,10 @@ export function ProductCard({
         return;
       }
 
-      // Fetch detailed product data from view_product
+      // Fetch detailed product data from v_products
       const supabase = createClientComponentClient();
       const { data: productData, error } = await supabase
-        .from("view_product")
+        .from("v_products")
         .select(
           "full_name, order_template, base_price, child_units, glt_retail_promotion"
         )

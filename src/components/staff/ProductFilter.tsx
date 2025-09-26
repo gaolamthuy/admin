@@ -25,11 +25,11 @@ export function ProductFilter({ selectedKey, onSelect }: ProductFilterProps) {
       const supabase = createClientComponentClient();
       const [{ data }, favResp] = await Promise.all([
         supabase
-          .from("view_product")
+          .from("v_products")
           .select("category_name, category_rank")
           .order("category_rank", { ascending: true }),
         supabase
-          .from("view_product")
+          .from("v_products")
           .select("glt_labelprint_favorite", { count: "exact", head: true })
           .eq("glt_labelprint_favorite", true),
       ]);
@@ -75,7 +75,7 @@ export function ProductFilter({ selectedKey, onSelect }: ProductFilterProps) {
       (async () => {
         const supabase = createClientComponentClient();
         const { count } = await supabase
-          .from("view_product")
+          .from("v_products")
           .select("glt_labelprint_favorite", { count: "exact", head: true })
           .eq("glt_labelprint_favorite", true);
         setDbCategories((prev) =>
