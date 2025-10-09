@@ -165,3 +165,40 @@ export const getDashboardStats = async () => {
     totalInvoices: invoicesResult.count || 0,
   };
 };
+
+/**
+ * Upload ảnh sản phẩm lên webhook để xử lý
+ * @param file - File ảnh cần upload
+ * @param kiotvietProductId - ID sản phẩm trong KiotViet
+ * @returns Promise<string> - Thông báo từ server
+ */
+export const uploadProductImage = async (
+  file: File,
+  kiotvietProductId: string
+): Promise<string> => {
+  const webhookUrl = process.env.NEXT_PUBLIC_WEBHOOK_URL;
+  const basicAuth = process.env.NEXT_PUBLIC_WEBHOOK_BASIC_AUTH;
+
+  if (!webhookUrl || !basicAuth) {
+    throw new Error("Webhook configuration not found");
+  }
+
+  const formData = new FormData();
+  formData.append("data", file);
+  formData.append("kiotvietProductId", kiotvietProductId);
+
+  const response = await fetch(`${webhookUrl}/process-product-image`, {
+    method: "POST",
+    headers: {
+      Authorization: `Basic ${btoa(basicAuth)}`,
+    },
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Upload failed: ${response.statusText}`);
+  }
+
+  const result = await response.text();
+  return result;
+};

@@ -9,14 +9,18 @@ import {
 } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import Image from "next/image";
-import { Heart } from "lucide-react";
-import { useEffect, useState } from "react";
+import { Heart, Upload } from "lucide-react";
+import { useEffect, useState, useRef } from "react";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Switch } from "../ui/switch";
 import { Spinner } from "../ui/spinner";
 import { createClientComponentClient } from "@/lib/supabase";
-import { updateProductMarkup, updateProductPromotion } from "@/lib/api";
+import {
+  updateProductMarkup,
+  updateProductPromotion,
+  uploadProductImage,
+} from "@/lib/api";
 import { toast } from "sonner";
 
 export interface AdminProductCardProps {
@@ -33,6 +37,7 @@ export interface AdminProductCardProps {
 }
 
 export function ProductCard({
+  id,
   name,
   price,
   barcode,
@@ -47,6 +52,8 @@ export function ProductCard({
   const [markupValue, setMarkupValue] = useState<string>(String(markup));
   const [isUpdating, setIsUpdating] = useState<boolean>(false);
   const [isPromotion, setIsPromotion] = useState<boolean>(Boolean(promotion));
+  const [isUploading, setIsUploading] = useState<boolean>(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     setIsFavorite(Boolean(favorite));
@@ -136,6 +143,54 @@ export function ProductCard({
     }
   };
 
+  /**
+   * Xử lý upload ảnh sản phẩm
+   * Gửi file lên webhook để xử lý và cập nhật ảnh sản phẩm
+   */
+  const handleImageUpload = async (
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    const file = event.target.files?.[0];
+    if (!file || !id) return;
+
+    // Kiểm tra loại file
+    if (!file.type.startsWith("image/")) {
+      toast.error("Vui lòng chọn file ảnh");
+      return;
+    }
+
+    // Kiểm tra kích thước file (max 10MB)
+    if (file.size > 10 * 1024 * 1024) {
+      toast.error("Kích thước file không được vượt quá 10MB");
+      return;
+    }
+
+    setIsUploading(true);
+    try {
+      const result = await uploadProductImage(file, id);
+      toast.success("Ảnh đang được xử lý...");
+      // eslint-disable-next-line no-console
+      console.log("Upload result:", result);
+    } catch (error) {
+      // eslint-disable-next-line no-console
+      console.error("Error uploading image:", error);
+      toast.error("Lỗi khi upload ảnh");
+    } finally {
+      setIsUploading(false);
+      // Reset file input
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  /**
+   * Mở dialog chọn file ảnh
+   */
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
+  };
+
   return (
     <Card className="w-full border overflow-hidden hover:shadow-md transition-shadow">
       <div className="relative aspect-[4/3] bg-muted">
@@ -165,6 +220,27 @@ export function ProductCard({
             className={isFavorite ? "text-red-500" : "text-muted-foreground"}
           />
         </button>
+        <button
+          className="absolute top-2 right-12 inline-flex h-8 w-8 items-center justify-center rounded-full bg-background/70"
+          onClick={handleUploadClick}
+          disabled={isUploading}
+          aria-label="Upload ảnh"
+          title="Upload ảnh"
+        >
+          {isUploading ? (
+            <Spinner size="small" />
+          ) : (
+            <Upload className="h-4 w-4 text-muted-foreground" />
+          )}
+        </button>
+        {/* Hidden file input */}
+        <input
+          ref={fileInputRef}
+          type="file"
+          accept="image/*"
+          onChange={handleImageUpload}
+          className="hidden"
+        />
       </div>
       <CardHeader>
         <CardTitle className="flex items-center justify-between">
