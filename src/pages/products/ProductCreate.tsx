@@ -5,20 +5,16 @@
 import React from "react";
 import { Create } from "@refinedev/antd";
 import { Form, Input, InputNumber, Switch, Space, Button } from "antd";
-import { useForm } from "@refinedev/core";
+// import { useForm } from "@refinedev/core";
 
 /**
  * Product Create component
  * Form tạo sản phẩm mới
  */
 export const ProductCreate: React.FC = () => {
-  const { form } = useForm({
-    resource: "kv_products",
-  });
-
   return (
     <Create title="Tạo sản phẩm mới">
-      <Form {...form} layout="vertical">
+      <Form layout="vertical">
         <Form.Item
           label="ID KiotViet"
           name="kiotviet_id"
@@ -78,7 +74,7 @@ export const ProductCreate: React.FC = () => {
 
         <Form.Item>
           <Space>
-            <Button type="primary" htmlType="submit" {...saveButtonProps}>
+            <Button type="primary" htmlType="submit">
               Tạo sản phẩm
             </Button>
             <Button href="/products">Hủy</Button>
