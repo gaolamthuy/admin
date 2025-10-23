@@ -11,6 +11,26 @@ export default defineConfig({
   build: {
     outDir: "dist",
     sourcemap: true,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          // Vendor chunks
+          "react-vendor": ["react", "react-dom"],
+          "antd-vendor": ["antd", "@ant-design/icons"],
+          "refine-vendor": [
+            "@refinedev/core",
+            "@refinedev/antd",
+            "@refinedev/react-router",
+            "@refinedev/supabase",
+          ],
+          "supabase-vendor": ["@supabase/supabase-js"],
+          "router-vendor": ["react-router-dom"],
+          "utils-vendor": ["dayjs"],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 1000, // Tăng limit để tránh warning
+    minify: "esbuild", // Sử dụng esbuild thay vì terser
   },
   define: {
     // Đảm bảo process.env được định nghĩa

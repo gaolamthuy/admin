@@ -29,24 +29,50 @@ import routerProvider from "@refinedev/react-router";
 import { dataProvider } from "@refinedev/supabase";
 import { authProvider } from "./providers/authProvider";
 import { supabase } from "./lib/supabase";
-import {
-  ProductList,
-  ProductCreate,
-  ProductEdit,
-  ProductShow,
-} from "./pages/products";
-import {
-  CustomerList,
-  CustomerCreate,
-  CustomerEdit,
-  CustomerShow,
-} from "./pages/customers";
-import {
-  InvoiceList,
-  InvoiceCreate,
-  InvoiceEdit,
-  InvoiceShow,
-} from "./pages/invoices";
+// Lazy load pages for better performance
+import { lazy, Suspense } from "react";
+
+// Lazy load product pages
+const ProductList = lazy(() =>
+  import("./pages/products").then((m) => ({ default: m.ProductList }))
+);
+const ProductCreate = lazy(() =>
+  import("./pages/products").then((m) => ({ default: m.ProductCreate }))
+);
+const ProductEdit = lazy(() =>
+  import("./pages/products").then((m) => ({ default: m.ProductEdit }))
+);
+const ProductShow = lazy(() =>
+  import("./pages/products").then((m) => ({ default: m.ProductShow }))
+);
+
+// Lazy load customer pages
+const CustomerList = lazy(() =>
+  import("./pages/customers").then((m) => ({ default: m.CustomerList }))
+);
+const CustomerCreate = lazy(() =>
+  import("./pages/customers").then((m) => ({ default: m.CustomerCreate }))
+);
+const CustomerEdit = lazy(() =>
+  import("./pages/customers").then((m) => ({ default: m.CustomerEdit }))
+);
+const CustomerShow = lazy(() =>
+  import("./pages/customers").then((m) => ({ default: m.CustomerShow }))
+);
+
+// Lazy load invoice pages
+const InvoiceList = lazy(() =>
+  import("./pages/invoices").then((m) => ({ default: m.InvoiceList }))
+);
+const InvoiceCreate = lazy(() =>
+  import("./pages/invoices").then((m) => ({ default: m.InvoiceCreate }))
+);
+const InvoiceEdit = lazy(() =>
+  import("./pages/invoices").then((m) => ({ default: m.InvoiceEdit }))
+);
+const InvoiceShow = lazy(() =>
+  import("./pages/invoices").then((m) => ({ default: m.InvoiceShow }))
+);
 import { Login } from "./pages/auth/Login";
 import { Dashboard } from "./pages/dashboard/Dashboard";
 import { ThemeProvider, useTheme } from "./contexts/ThemeContext";
@@ -170,22 +196,106 @@ const AppContent: React.FC = () => {
               >
                 <Route index element={<Dashboard />} />
                 <Route path="/products" element={<Outlet />}>
-                  <Route index element={<ProductList />} />
-                  <Route path="create" element={<ProductCreate />} />
-                  <Route path="edit/:id" element={<ProductEdit />} />
-                  <Route path="show/:id" element={<ProductShow />} />
+                  <Route
+                    index
+                    element={
+                      <Suspense fallback={<div>Loading...</div>}>
+                        <ProductList />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="create"
+                    element={
+                      <Suspense fallback={<div>Loading...</div>}>
+                        <ProductCreate />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="edit/:id"
+                    element={
+                      <Suspense fallback={<div>Loading...</div>}>
+                        <ProductEdit />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="show/:id"
+                    element={
+                      <Suspense fallback={<div>Loading...</div>}>
+                        <ProductShow />
+                      </Suspense>
+                    }
+                  />
                 </Route>
                 <Route path="/customers" element={<Outlet />}>
-                  <Route index element={<CustomerList />} />
-                  <Route path="create" element={<CustomerCreate />} />
-                  <Route path="edit/:id" element={<CustomerEdit />} />
-                  <Route path="show/:id" element={<CustomerShow />} />
+                  <Route
+                    index
+                    element={
+                      <Suspense fallback={<div>Loading...</div>}>
+                        <CustomerList />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="create"
+                    element={
+                      <Suspense fallback={<div>Loading...</div>}>
+                        <CustomerCreate />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="edit/:id"
+                    element={
+                      <Suspense fallback={<div>Loading...</div>}>
+                        <CustomerEdit />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="show/:id"
+                    element={
+                      <Suspense fallback={<div>Loading...</div>}>
+                        <CustomerShow />
+                      </Suspense>
+                    }
+                  />
                 </Route>
                 <Route path="/invoices" element={<Outlet />}>
-                  <Route index element={<InvoiceList />} />
-                  <Route path="create" element={<InvoiceCreate />} />
-                  <Route path="edit/:id" element={<InvoiceEdit />} />
-                  <Route path="show/:id" element={<InvoiceShow />} />
+                  <Route
+                    index
+                    element={
+                      <Suspense fallback={<div>Loading...</div>}>
+                        <InvoiceList />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="create"
+                    element={
+                      <Suspense fallback={<div>Loading...</div>}>
+                        <InvoiceCreate />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="edit/:id"
+                    element={
+                      <Suspense fallback={<div>Loading...</div>}>
+                        <InvoiceEdit />
+                      </Suspense>
+                    }
+                  />
+                  <Route
+                    path="show/:id"
+                    element={
+                      <Suspense fallback={<div>Loading...</div>}>
+                        <InvoiceShow />
+                      </Suspense>
+                    }
+                  />
                 </Route>
                 <Route path="*" element={<ErrorComponent />} />
               </Route>
