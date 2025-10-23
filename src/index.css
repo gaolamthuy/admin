@@ -1,0 +1,126 @@
+/**
+ * Global CSS styles
+ * Styles toàn cục cho ứng dụng
+ */
+:root {
+  font-family: Inter, system-ui, -apple-system, Segoe UI, Roboto, Helvetica,
+    Arial, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  -webkit-text-size-adjust: 100%;
+}
+
+a {
+  font-weight: 500;
+  color: #646cff;
+  text-decoration: inherit;
+}
+a:hover {
+  color: #535bf2;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background: #fff;
+}
+
+h1 {
+  font-size: 3.2em;
+  line-height: 1.1;
+}
+
+/* Ant Design overrides */
+.ant-layout {
+  min-height: 100vh;
+}
+
+.ant-layout-header {
+  padding: 0 24px;
+}
+
+.ant-layout-content {
+  padding: 24px;
+}
+
+.ant-layout-sider {
+  background: #fff;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: #f1f1f1;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #c1c1c1;
+  border-radius: 3px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: #a8a8a8;
+}
+
+/* Loading states */
+.ant-spin-container {
+  min-height: 200px;
+}
+
+/* Form styles */
+.ant-form-item-label > label {
+  font-weight: 500;
+}
+
+/* Table styles */
+.ant-table-thead > tr > th {
+  background: #fafafa;
+  font-weight: 600;
+}
+
+/* Card styles */
+.ant-card {
+  border-radius: 8px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Button styles - GLT Brand Color */
+.ant-btn-primary {
+  background: #f5a31c !important;
+  border-color: #f5a31c !important;
+}
+
+.ant-btn-primary:hover {
+  background: #d48a0a !important;
+  border-color: #d48a0a !important;
+}
+
+.ant-btn-primary:focus {
+  background: #f5a31c !important;
+  border-color: #f5a31c !important;
+}
+
+.ant-btn-primary:active {
+  background: #b8750a !important;
+  border-color: #b8750a !important;
+}
+
+/* Responsive design */
+@media (max-width: 768px) {
+  .ant-layout-content {
+    padding: 16px;
+  }
+
+  .ant-layout-header {
+    padding: 0 16px;
+  }
+}
