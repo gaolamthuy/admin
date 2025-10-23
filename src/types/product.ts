@@ -3,7 +3,7 @@
  * Các types và interfaces liên quan đến sản phẩm
  */
 
-import { Database } from "../lib/supabase";
+import type { Database } from "../lib/supabase";
 
 // ===== DATABASE TYPES =====
 

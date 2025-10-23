@@ -102,7 +102,7 @@ export const InvoiceList: React.FC = () => {
         <Table.Column
           title="Thao tác"
           dataIndex="actions"
-          render={(_, record) => (
+          render={(_, _record) => (
             <Space>
               {/* <Button
                 type="link"

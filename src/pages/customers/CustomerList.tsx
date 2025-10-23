@@ -4,7 +4,7 @@
  */
 import React from "react";
 import { List, TextField, TagField, DateField } from "@refinedev/antd";
-import { Button, Table, Space } from "antd";
+import { Table, Space } from "antd";
 import { useTable } from "@refinedev/antd";
 
 /**
@@ -80,7 +80,7 @@ export const CustomerList: React.FC = () => {
         <Table.Column
           title="Thao tác"
           dataIndex="actions"
-          render={(_, record) => (
+          render={(_, _record) => (
             <Space>
               {/* <Button
                 type="link"

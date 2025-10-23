@@ -102,7 +102,7 @@ export const getUserProfile = async (
  * @param user - User object
  * @returns boolean
  */
-export const isAdmin = (user: User | null): boolean => {
+export const isAdmin = (_user: User | null): boolean => {
   // Logic check admin role sẽ được implement trong auth provider
   return false;
 };
@@ -112,7 +112,7 @@ export const isAdmin = (user: User | null): boolean => {
  * @param user - User object
  * @returns boolean
  */
-export const isStaff = (user: User | null): boolean => {
+export const isStaff = (_user: User | null): boolean => {
   // Logic check staff role sẽ được implement trong auth provider
   return false;
 };

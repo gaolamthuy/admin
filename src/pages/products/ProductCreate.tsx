@@ -12,13 +12,13 @@ import { useForm } from "@refinedev/core";
  * Form tạo sản phẩm mới
  */
 export const ProductCreate: React.FC = () => {
-  const { formProps, saveButtonProps } = useForm({
+  const { form } = useForm({
     resource: "kv_products",
   });
 
   return (
-    <Create title="Tạo sản phẩm mới" saveButtonProps={saveButtonProps}>
-      <Form {...formProps} layout="vertical">
+    <Create title="Tạo sản phẩm mới">
+      <Form {...form} layout="vertical">
         <Form.Item
           label="ID KiotViet"
           name="kiotviet_id"

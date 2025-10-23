@@ -7,7 +7,6 @@ import {
   Show,
   TextField,
   NumberField,
-  BooleanField,
   DateField,
   TagField,
 } from "@refinedev/antd";
