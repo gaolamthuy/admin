@@ -1,6 +1,5 @@
 #!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
 
 echo "🔍 Running quality checks before push..."
-npm run quality:check
+npm run quality
 
