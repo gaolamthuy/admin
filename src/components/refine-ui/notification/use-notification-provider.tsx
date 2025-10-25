@@ -1,6 +1,6 @@
-import { UndoableNotification } from "@/components/refine-ui/notification/undoable-notification";
-import type { NotificationProvider } from "@refinedev/core";
-import { toast } from "sonner";
+import { UndoableNotification } from '@/components/refine-ui/notification/undoable-notification';
+import type { NotificationProvider } from '@refinedev/core';
+import { toast } from 'sonner';
 
 export function useNotificationProvider(): NotificationProvider {
   return {
@@ -13,7 +13,7 @@ export function useNotificationProvider(): NotificationProvider {
       cancelMutation,
     }) => {
       switch (type) {
-        case "success":
+        case 'success':
           toast.success(message, {
             id: key,
             description,
@@ -21,7 +21,7 @@ export function useNotificationProvider(): NotificationProvider {
           });
           return;
 
-        case "error":
+        case 'error':
           toast.error(message, {
             id: key,
             description,
@@ -29,7 +29,7 @@ export function useNotificationProvider(): NotificationProvider {
           });
           return;
 
-        case "progress": {
+        case 'progress': {
           const toastId = key || Date.now();
 
           toast(
@@ -55,7 +55,7 @@ export function useNotificationProvider(): NotificationProvider {
           return;
       }
     },
-    close: (id) => {
+    close: id => {
       toast.dismiss(id);
     },
   };

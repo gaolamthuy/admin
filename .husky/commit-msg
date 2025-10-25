@@ -1,0 +1,19 @@
+#!/usr/bin/env sh
+. "$(dirname -- "$0")/_/husky.sh"
+
+# Validate commit message format
+# Allow conventional commits: feat:, fix:, docs:, style:, refactor:, perf:, test:, chore:, ci:
+if ! head -1 "$1" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|chore|ci)(\(.+\))?!?: .{1,}'; then
+  echo "❌ Commit message must follow conventional commits format"
+  echo "Examples:"
+  echo "  feat: add new feature"
+  echo "  fix: resolve bug"
+  echo "  docs: update documentation"
+  echo "  style: format code"
+  echo "  refactor: restructure code"
+  echo "  perf: improve performance"
+  echo "  test: add tests"
+  echo "  chore: update dependencies"
+  exit 1
+fi
+

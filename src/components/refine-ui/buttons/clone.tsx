@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { Button } from "@/components/ui/button";
-import { type BaseKey, useCloneButton } from "@refinedev/core";
-import { Copy } from "lucide-react";
-import React from "react";
+import { Button } from '@/components/ui/button';
+import { type BaseKey, useCloneButton } from '@refinedev/core';
+import { Copy } from 'lucide-react';
+import React from 'react';
 
 type CloneButtonProps = {
   /**
@@ -78,4 +78,4 @@ export const CloneButton = React.forwardRef<
   }
 );
 
-CloneButton.displayName = "CloneButton";
+CloneButton.displayName = 'CloneButton';

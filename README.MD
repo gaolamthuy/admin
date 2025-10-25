@@ -1,19 +1,28 @@
-# admin-v3-refine-shadcn
+# Gạo Lâm Thúy - Admin Panel
 
 <div align="center" style="margin: 30px;">
-    <a href="https://refine.dev">
-    <img alt="refine logo" src="https://refine.ams3.cdn.digitaloceanspaces.com/readme/refine-readme-banner.png">
-    </a>
+    <h1>🌾 Gạo Lâm Thúy - Admin Panel</h1>
+    <p>Hệ thống quản lý sản phẩm và đơn hàng cho Gạo Lâm Thúy</p>
 </div>
 <br/>
 
-This [Refine](https://github.com/refinedev/refine) project was generated with [create refine-app](https://github.com/refinedev/refine/tree/master/packages/create-refine-app).
+## Giới thiệu
 
-## Getting Started
+Admin Panel được xây dựng với [Refine](https://github.com/refinedev/refine) và [shadcn/ui](https://ui.shadcn.com/) để quản lý:
 
-A React Framework for building internal tools, admin panels, dashboards & B2B apps with unmatched flexibility ✨
+- 📦 **Quản lý sản phẩm**: Danh sách, thêm, sửa, xóa sản phẩm
+- 🏷️ **Quản lý danh mục**: Phân loại sản phẩm theo danh mục
+- ⭐ **Sản phẩm yêu thích**: Đánh dấu và lọc sản phẩm yêu thích
+- 👥 **Phân quyền**: Admin và User với các quyền khác nhau
+- 🎨 **Giao diện hiện đại**: Card view và List view
 
-Refine's hooks and components simplifies the development process and eliminates the repetitive tasks by providing industry-standard solutions for crucial aspects of a project, including authentication, access control, routing, networking, state management, and i18n.
+## Công nghệ sử dụng
+
+- **Frontend**: React 19, TypeScript, Tailwind CSS
+- **UI Library**: shadcn/ui, Radix UI
+- **Backend**: Supabase
+- **Framework**: Refine
+- **Routing**: React Router
 
 ## Available Scripts
 

@@ -1,14 +1,14 @@
-"use client";
+'use client';
 
-import { Button } from "@/components/ui/button";
+import { Button } from '@/components/ui/button';
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover";
-import { type BaseKey, useDeleteButton } from "@refinedev/core";
-import { Loader2, Trash } from "lucide-react";
-import React from "react";
+} from '@/components/ui/popover';
+import { type BaseKey, useDeleteButton } from '@refinedev/core';
+import { Loader2, Trash } from 'lucide-react';
+import React from 'react';
 
 type DeleteButtonProps = {
   /**
@@ -97,7 +97,7 @@ export const DeleteButton = React.forwardRef<
               size="sm"
               disabled={loading}
               onClick={() => {
-                if (typeof onConfirm === "function") {
+                if (typeof onConfirm === 'function') {
                   onConfirm();
                 }
                 setOpen(false);
@@ -112,4 +112,4 @@ export const DeleteButton = React.forwardRef<
   );
 });
 
-DeleteButton.displayName = "DeleteButton";
+DeleteButton.displayName = 'DeleteButton';

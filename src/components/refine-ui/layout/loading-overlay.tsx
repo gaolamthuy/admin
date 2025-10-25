@@ -1,8 +1,8 @@
-"use client";
+'use client';
 
-import { cn } from "@/lib/utils";
-import { Loader2 } from "lucide-react";
-import * as React from "react";
+import { cn } from '@/lib/utils';
+import { Loader2 } from 'lucide-react';
+import * as React from 'react';
 
 interface LoadingOverlayProps extends React.HTMLAttributes<HTMLDivElement> {
   loading?: boolean;
@@ -20,8 +20,8 @@ export const LoadingOverlay = React.forwardRef<
       {children}
       <div
         className={cn(
-          "absolute inset-0 z-50 flex items-center justify-center",
-          "bg-background/60",
+          'absolute inset-0 z-50 flex items-center justify-center',
+          'bg-background/60',
           className
         )}
       >
@@ -33,4 +33,4 @@ export const LoadingOverlay = React.forwardRef<
   );
 });
 
-LoadingOverlay.displayName = "LoadingOverlay";
+LoadingOverlay.displayName = 'LoadingOverlay';

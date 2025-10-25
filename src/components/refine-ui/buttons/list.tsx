@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { Button } from "@/components/ui/button";
-import { type BaseKey, useListButton } from "@refinedev/core";
-import { List } from "lucide-react";
-import React from "react";
+import { Button } from '@/components/ui/button';
+import { type BaseKey, useListButton } from '@refinedev/core';
+import { List } from 'lucide-react';
+import React from 'react';
 
 type ListButtonProps = {
   /**
@@ -67,4 +67,4 @@ export const ListButton = React.forwardRef<
   );
 });
 
-ListButton.displayName = "ListButton";
+ListButton.displayName = 'ListButton';

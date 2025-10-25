@@ -1,9 +1,9 @@
-"use client";
+'use client';
 
-import { Button } from "@/components/ui/button";
-import { type BaseKey, useEditButton } from "@refinedev/core";
-import { Pencil } from "lucide-react";
-import React from "react";
+import { Button } from '@/components/ui/button';
+import { type BaseKey, useEditButton } from '@refinedev/core';
+import { Pencil } from 'lucide-react';
+import React from 'react';
 
 type EditButtonProps = {
   /**
@@ -78,4 +78,4 @@ export const EditButton = React.forwardRef<
   }
 );
 
-EditButton.displayName = "EditButton";
+EditButton.displayName = 'EditButton';

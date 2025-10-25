@@ -1,10 +1,10 @@
-"use client";
+'use client';
 
-import { Button } from "@/components/ui/button";
-import { cn } from "@/lib/utils";
-import { type BaseKey, useRefreshButton } from "@refinedev/core";
-import { RefreshCcw } from "lucide-react";
-import React from "react";
+import { Button } from '@/components/ui/button';
+import { cn } from '@/lib/utils';
+import { type BaseKey, useRefreshButton } from '@refinedev/core';
+import { RefreshCcw } from 'lucide-react';
+import React from 'react';
 
 type RefreshButtonProps = {
   /**
@@ -65,11 +65,11 @@ export const RefreshButton = React.forwardRef<
         {children ?? (
           <div className="flex items-center gap-2">
             <RefreshCcw
-              className={cn("h-4 w-4", {
-                "animate-spin": loading,
+              className={cn('h-4 w-4', {
+                'animate-spin': loading,
               })}
             />
-            <span>{label ?? "Refresh"}</span>
+            <span>{label ?? 'Refresh'}</span>
           </div>
         )}
       </Button>
@@ -77,4 +77,4 @@ export const RefreshButton = React.forwardRef<
   }
 );
 
-RefreshButton.displayName = "RefreshButton";
+RefreshButton.displayName = 'RefreshButton';
