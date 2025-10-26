@@ -1,12 +1,12 @@
 import { Form } from '@/components/ui/form';
 import { cn } from '@/lib/utils';
 import React from 'react';
-import { UseFormReturn } from 'react-hook-form';
+import { UseFormReturn, FieldValues } from 'react-hook-form';
 
 interface AuthFormProps {
   children: React.ReactNode;
-  form: UseFormReturn<unknown>;
-  onSubmit: (values: unknown) => void;
+  form: UseFormReturn<FieldValues>;
+  onSubmit: (values: FieldValues) => void;
   className?: string;
 }
 

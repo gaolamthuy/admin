@@ -16,25 +16,29 @@ export const useAuthError = ({ error }: UseAuthErrorProps = {}) => {
       return err;
     }
 
-    if (err?.message) {
-      return err.message;
-    }
+    if (err && typeof err === 'object') {
+      const errorObj = err as unknown as any;
+      
+      if (errorObj?.message) {
+        return errorObj.message;
+      }
 
-    if (err?.error?.message) {
-      return err.error.message;
-    }
+      if (errorObj?.error?.message) {
+        return errorObj.error.message;
+      }
 
-    // Default error messages based on error type
-    if (err?.code === 'invalid_credentials') {
-      return 'Email hoặc mật khẩu không chính xác';
-    }
+      // Default error messages based on error type
+      if (errorObj?.code === 'invalid_credentials') {
+        return 'Email hoặc mật khẩu không chính xác';
+      }
 
-    if (err?.code === 'user_already_exists') {
-      return 'Email này đã được đăng ký';
-    }
+      if (errorObj?.code === 'user_already_exists') {
+        return 'Email này đã được đăng ký';
+      }
 
-    if (err?.code === 'weak_password') {
-      return 'Mật khẩu không đủ mạnh';
+      if (errorObj?.code === 'weak_password') {
+        return 'Mật khẩu không đủ mạnh';
+      }
     }
 
     return 'Có lỗi xảy ra, vui lòng thử lại';

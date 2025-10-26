@@ -43,7 +43,7 @@ export const ForgotPassword = () => {
         title="Đặt lại mật khẩu"
         description="Chúng tôi sẽ gửi link đặt lại mật khẩu đến email của bạn"
       >
-        <AuthForm form={form} onSubmit={onSubmit}>
+        <AuthForm form={form as unknown as any} onSubmit={onSubmit as unknown as any}>
           <FormField
             control={form.control}
             name="email"

@@ -54,7 +54,7 @@ export const Register = () => {
         title="Đăng ký"
         description="Nhập thông tin để tạo tài khoản admin mới"
       >
-        <AuthForm form={form} onSubmit={onSubmit}>
+        <AuthForm form={form as unknown as any} onSubmit={onSubmit as unknown as any}>
           <FormField
             control={form.control}
             name="email"

@@ -5,20 +5,22 @@ export const formatFormData = (
   data: unknown,
   type: 'login' | 'register' | 'forgot-password'
 ) => {
+  const formData = data as unknown as any;
+  
   switch (type) {
     case 'login':
       return {
-        email: data.email.trim(),
-        password: data.password,
+        email: formData.email.trim(),
+        password: formData.password,
       };
     case 'register':
       return {
-        email: data.email.trim(),
-        password: data.password,
+        email: formData.email.trim(),
+        password: formData.password,
       };
     case 'forgot-password':
       return {
-        email: data.email.trim(),
+        email: formData.email.trim(),
       };
     default:
       return data;
@@ -33,12 +35,16 @@ export const formatErrorMessage = (error: unknown): string => {
     return error;
   }
 
-  if (error?.message) {
-    return error.message;
-  }
+  if (error && typeof error === 'object') {
+    const errorObj = error as unknown as any;
+    
+    if (errorObj?.message) {
+      return errorObj.message;
+    }
 
-  if (error?.error?.message) {
-    return error.error.message;
+    if (errorObj?.error?.message) {
+      return errorObj.error.message;
+    }
   }
 
   return 'Có lỗi xảy ra, vui lòng thử lại';
