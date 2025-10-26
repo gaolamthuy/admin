@@ -41,7 +41,7 @@ export interface ProductActions {
  */
 export interface ProductListViewProps {
   viewMode: 'list' | 'card';
-  products: Product[];
+  products: Partial<Product>[];
   loading: boolean;
   isAdmin: boolean;
   onEdit: (id: string | number) => void;

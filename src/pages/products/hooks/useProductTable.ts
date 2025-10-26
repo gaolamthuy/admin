@@ -22,7 +22,7 @@ export const useProductTable = (
   table: UseTableReturnType<Product>;
   columns: unknown[];
   config: unknown;
-  getProcessedProducts: () => unknown[];
+  getProcessedProducts: () => Partial<Product>[];
   isLoading: boolean;
   totalCount: number;
 } => {
@@ -72,7 +72,7 @@ export const useProductTable = (
    */
   const getProcessedProducts = () => {
     return table.reactTable.getRowModel().rows.map(row => ({
-      id: String(row.original.id),
+      id: row.original.id,
       code: row.original.code,
       kiotviet_id: row.original.kiotviet_id,
       name: row.original.name,
