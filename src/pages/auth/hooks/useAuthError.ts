@@ -18,7 +18,7 @@ export const useAuthError = ({ error }: UseAuthErrorProps = {}) => {
 
     if (err && typeof err === 'object') {
       const errorObj = err as unknown as any;
-      
+
       if (errorObj?.message) {
         return errorObj.message;
       }

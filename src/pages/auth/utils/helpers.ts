@@ -6,7 +6,7 @@ export const formatFormData = (
   type: 'login' | 'register' | 'forgot-password'
 ) => {
   const formData = data as unknown as any;
-  
+
   switch (type) {
     case 'login':
       return {
@@ -37,7 +37,7 @@ export const formatErrorMessage = (error: unknown): string => {
 
   if (error && typeof error === 'object') {
     const errorObj = error as unknown as any;
-    
+
     if (errorObj?.message) {
       return errorObj.message;
     }
