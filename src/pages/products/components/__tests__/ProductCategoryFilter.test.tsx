@@ -58,7 +58,7 @@ describe('ProductCategoryFilter Component', () => {
     it('should render select trigger after loading', async () => {
       renderWithProviders(<ProductCategoryFilter />);
       await waitFor(() => {
-        expect(screen.getByRole('combobox')).toBeTruthy();
+        expect(screen.getByRole('button')).toBeTruthy();
       });
     });
 
@@ -76,7 +76,7 @@ describe('ProductCategoryFilter Component', () => {
     it('should load categories from Supabase', async () => {
       renderWithProviders(<ProductCategoryFilter />);
       await waitFor(() => {
-        expect(screen.getByRole('combobox')).toBeTruthy();
+        expect(screen.getByRole('button')).toBeTruthy();
       });
     });
   });
@@ -97,7 +97,7 @@ describe('ProductCategoryFilter Component', () => {
       renderWithProviders(<ProductCategoryFilter size="lg" />);
 
       await waitFor(() => {
-        expect(screen.getByRole('combobox')).toBeTruthy();
+        expect(screen.getByRole('button')).toBeTruthy();
       });
     });
 
@@ -105,7 +105,7 @@ describe('ProductCategoryFilter Component', () => {
       renderWithProviders(<ProductCategoryFilter variant="ghost" />);
 
       await waitFor(() => {
-        expect(screen.getByRole('combobox')).toBeTruthy();
+        expect(screen.getByRole('button')).toBeTruthy();
       });
     });
 
@@ -113,7 +113,7 @@ describe('ProductCategoryFilter Component', () => {
       renderWithProviders(<ProductCategoryFilter disabled />);
 
       await waitFor(() => {
-        const trigger = screen.getByRole('combobox');
+        const trigger = screen.getByRole('button');
         expect(trigger).toHaveAttribute('disabled');
       });
     });
@@ -122,7 +122,7 @@ describe('ProductCategoryFilter Component', () => {
       renderWithProviders(<ProductCategoryFilter value="1" />);
 
       await waitFor(() => {
-        expect(screen.getByRole('combobox')).toBeTruthy();
+        expect(screen.getByRole('button')).toBeTruthy();
       });
     });
   });
@@ -139,7 +139,7 @@ describe('ProductCategoryFilter Component', () => {
       renderWithProviders(<ProductCategoryFilter onChange={onChange} />);
 
       await waitFor(() => {
-        expect(screen.getByRole('combobox')).toBeTruthy();
+        expect(screen.getByRole('button')).toBeTruthy();
       });
     });
 
@@ -147,7 +147,7 @@ describe('ProductCategoryFilter Component', () => {
       renderWithProviders(<ProductCategoryFilter value="1" allowClear />);
 
       await waitFor(() => {
-        expect(screen.getByRole('combobox')).toBeTruthy();
+        expect(screen.getByRole('button')).toBeTruthy();
       });
     });
   });
