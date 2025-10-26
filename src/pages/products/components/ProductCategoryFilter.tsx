@@ -212,7 +212,7 @@ export const ProductCategoryFilter = ({
           <div className="max-h-[200px] overflow-y-auto">
             {filteredOptions.length === 0 ? (
               <div className="p-2 text-center text-sm text-muted-foreground">
-                {searchTerm
+                {debouncedSearchTerm
                   ? 'Không tìm thấy danh mục'
                   : 'Không có danh mục nào'}
               </div>

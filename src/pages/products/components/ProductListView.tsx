@@ -5,7 +5,7 @@
 
 import React from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { DataTable } from '@/components/refine-ui/data-table/data-table';
+// import { DataTable } from '@/components/refine-ui/data-table/data-table';
 import { ProductListViewProps } from '../types/product-list';
 import { ProductCardGrid } from './ProductCardGrid';
 import { ProductCard } from '@/types';
@@ -22,7 +22,7 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
   onEdit,
   onShow,
   onDelete,
-  table,
+  // table,
 }) => {
   if (viewMode === 'list') {
     return (
@@ -36,7 +36,7 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
               Hiển thị {products.length} sản phẩm
             </p>
           </div>
-          {table && <DataTable table={table} />}
+          {/* {table && <DataTable table={table as any} />} */}
         </CardContent>
       </Card>
     );
@@ -45,15 +45,15 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
   // Convert Product[] to ProductCard[] for ProductCardGrid
   const productCards: ProductCard[] = products.map(product => ({
     id: String(product.id),
-    kiotviet_id: product.kiotviet_id,
-    code: product.code,
-    name: product.name,
-    full_name: product.full_name,
-    base_price: product.base_price,
-    images: product.images,
-    is_active: product.is_active,
-    glt_visible: product.glt_visible,
-    glt_labelprint_favorite: product.glt_labelprint_favorite,
+    kiotviet_id: product.kiotviet_id || 0,
+    code: product.code || '',
+    name: product.name || '',
+    full_name: product.full_name || '',
+    base_price: product.base_price || 0,
+    images: product.images || [],
+    is_active: product.is_active || false,
+    glt_visible: product.glt_visible || false,
+    glt_labelprint_favorite: product.glt_labelprint_favorite || false,
   }));
 
   return (
