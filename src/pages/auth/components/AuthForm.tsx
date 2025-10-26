@@ -5,8 +5,8 @@ import { UseFormReturn } from 'react-hook-form';
 
 interface AuthFormProps {
   children: React.ReactNode;
-  form: UseFormReturn<any>;
-  onSubmit: (values: any) => void;
+  form: UseFormReturn<unknown>;
+  onSubmit: (values: unknown) => void;
   className?: string;
 }
 

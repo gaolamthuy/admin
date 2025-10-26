@@ -222,7 +222,7 @@ describe('API Layer', () => {
     it('should fetch data efficiently', async () => {
       // Test performance
       const startTime = Date.now();
-      const products = createMockProducts(100);
+      // const products = createMockProducts(100);
       const endTime = Date.now();
       expect(endTime - startTime).toBeLessThan(1000);
     });

@@ -44,7 +44,7 @@ const authProvider: AuthProvider = {
           redirectTo: '/',
         };
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error,
@@ -79,7 +79,7 @@ const authProvider: AuthProvider = {
           redirectTo: '/',
         };
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error,
@@ -115,7 +115,7 @@ const authProvider: AuthProvider = {
           success: true,
         };
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error,
@@ -149,7 +149,7 @@ const authProvider: AuthProvider = {
           redirectTo: '/',
         };
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         success: false,
         error,
@@ -198,7 +198,7 @@ const authProvider: AuthProvider = {
           redirectTo: '/login',
         };
       }
-    } catch (error: any) {
+    } catch (error: unknown) {
       return {
         authenticated: false,
         error: error || {

@@ -4,7 +4,7 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { renderWithProviders } from '@/test/utils';
+// import { renderWithProviders } from '@/test/utils';
 
 // Mock Login component for testing
 describe('Login Component', () => {

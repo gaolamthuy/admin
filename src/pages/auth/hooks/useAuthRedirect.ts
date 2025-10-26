@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 
 interface UseAuthRedirectProps {
   onSuccess?: () => void;
-  onError?: (error: any) => void;
+  onError?: (error: unknown) => void;
 }
 
 /**
@@ -38,7 +38,7 @@ export const useAuthRedirect = ({
   }, [onSuccess, redirectToDashboard]);
 
   const handleAuthError = useCallback(
-    (error: any) => {
+    (error: unknown) => {
       onError?.(error);
     },
     [onError]

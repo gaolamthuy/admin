@@ -31,7 +31,7 @@ export const ProductFavoriteFilter = ({
   className = '',
   disabled = false,
   variant = 'outline',
-  size: _size = 'default',
+  // size: _size = 'default',
 }: ProductFavoriteFilterProps) => {
   /**
    * Handle toggle state change

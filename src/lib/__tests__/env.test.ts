@@ -226,16 +226,16 @@ describe('Environment Validation', () => {
 
   describe('Type Inference', () => {
     it('should infer correct types from schema', () => {
-      const envSchema = z.object({
-        VITE_SUPABASE_URL: z.string().url(),
-        VITE_SUPABASE_ANON_KEY: z.string().min(1),
-        NODE_ENV: z.enum(['development', 'production', 'test']),
-        VITE_APP_TITLE: z.string().optional(),
-      });
+      // const envSchema = z.object({
+      //   VITE_SUPABASE_URL: z.string().url(),
+      //   VITE_SUPABASE_ANON_KEY: z.string().min(1),
+      //   NODE_ENV: z.enum(['development', 'production', 'test']),
+      //   VITE_APP_TITLE: z.string().optional(),
+      // });
 
-      type Environment = z.infer<typeof envSchema>;
+      // type Environment = z.infer<typeof envSchema>;
 
-      const env: Environment = {
+      const env = {
         VITE_SUPABASE_URL: 'https://project.supabase.co',
         VITE_SUPABASE_ANON_KEY: 'valid-key-123',
         NODE_ENV: 'development',

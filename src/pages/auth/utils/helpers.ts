@@ -2,7 +2,7 @@
  * Format form data before submission
  */
 export const formatFormData = (
-  data: any,
+  data: unknown,
   type: 'login' | 'register' | 'forgot-password'
 ) => {
   switch (type) {
@@ -28,7 +28,7 @@ export const formatFormData = (
 /**
  * Format error message for display
  */
-export const formatErrorMessage = (error: any): string => {
+export const formatErrorMessage = (error: unknown): string => {
   if (typeof error === 'string') {
     return error;
   }

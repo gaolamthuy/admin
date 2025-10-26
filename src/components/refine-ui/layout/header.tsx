@@ -116,7 +116,7 @@ function MobileHeader() {
 }
 
 const UserDropdown = () => {
-  const { mutate: logout, isPending: isLoggingOut } = useLogout();
+  const { mutate: logout } = useLogout();
   const { user, signOut } = useAuthUser();
 
   const authProvider = useActiveAuthProvider();

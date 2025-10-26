@@ -1,12 +1,6 @@
 import { Button } from '@/components/ui/button';
 import { ButtonGroup } from '@/components/ui/button-group';
-import {
-  Card,
-  CardContent,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
+import { Card, CardContent, CardFooter, CardTitle } from '@/components/ui/card';
 import {
   Dialog,
   DialogContent,
@@ -16,11 +10,11 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { cn } from '@/lib/utils';
+// import { cn } from '@/lib/utils';
 import { Edit, MoreHorizontal, Printer } from 'lucide-react';
 import React, { useState } from 'react';
 import { ProductCard as ProductCardType, ProductCardProps } from '@/types';
-import { useIsAdmin } from '@/hooks/useIsAdmin';
+// import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { CanAccess } from '@/components/auth/CanAccess';
 
 /**
@@ -195,7 +189,7 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   onEdit,
 }) => {
   const product = productData as ProductCardType;
-  const { isAdmin } = useIsAdmin();
+  // const { isAdmin } = useIsAdmin();
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
 
   const imageUrl = product.images?.[0] || '/placeholder-product.png';

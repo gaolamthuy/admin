@@ -8,16 +8,16 @@ import {
   DropdownMenu,
   DropdownMenuCheckboxItem,
   DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuSeparator,
+  // DropdownMenuLabel,
+  // DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
-import { Input } from '@/components/ui/input';
+// import { Input } from '@/components/ui/input';
 import { supabaseClient } from '@/utility';
 import { ProductCategoryFilterProps, CategoryOption } from '@/types';
-import { AlertCircle, Search, ChevronDown } from 'lucide-react';
+import { AlertCircle, ChevronDown } from 'lucide-react';
 
 /**
  * Interface for category data from Supabase
@@ -46,7 +46,7 @@ export const ProductCategoryFilter = ({
   onChange,
   placeholder = 'Chọn danh mục',
   // allowClear is not used in current implementation but kept for API compatibility
-  allowClear: _allowClear = true,
+  // allowClear: _allowClear = true,
   className = '',
   disabled = false,
   variant = 'outline',
@@ -55,7 +55,7 @@ export const ProductCategoryFilter = ({
   const [options, setOptions] = useState<CategoryOption[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<CategoryError | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
+  // const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearchTerm, setDebouncedSearchTerm] = useState('');
   const [retryCount, setRetryCount] = useState(0);
 
@@ -122,16 +122,16 @@ export const ProductCategoryFilter = ({
   // Fetch categories on mount
   useEffect(() => {
     fetchCategories();
-  }, []); // Remove fetchCategories from dependencies to prevent infinite loop
+  }, [fetchCategories]); // Include fetchCategories in dependencies
 
   // Debounce search term for performance
   useEffect(() => {
     const timer = setTimeout(() => {
-      setDebouncedSearchTerm(searchTerm);
+      setDebouncedSearchTerm('');
     }, 300);
 
     return () => clearTimeout(timer);
-  }, [searchTerm]);
+  }, []); // Remove searchTerm dependency
 
   // Filter options based on debounced search term (memoized for performance)
   const filteredOptions = useMemo(() => {
@@ -160,11 +160,11 @@ export const ProductCategoryFilter = ({
   };
 
   // Variant classes
-  const variantClasses = {
-    default: 'bg-primary text-primary-foreground hover:bg-primary/90',
-    outline: 'border border-input bg-background hover:bg-accent',
-    ghost: 'hover:bg-accent hover:text-accent-foreground',
-  };
+  // const variantClasses = {
+  //   default: 'bg-primary text-primary-foreground hover:bg-primary/90',
+  //   outline: 'border border-input bg-background hover:bg-accent',
+  //   ghost: 'hover:bg-accent hover:text-accent-foreground',
+  // };
 
   if (loading) {
     return <Skeleton className={`${sizeClasses[size]} w-32 ${className}`} />;

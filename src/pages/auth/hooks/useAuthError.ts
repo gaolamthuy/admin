@@ -11,7 +11,7 @@ interface UseAuthErrorProps {
 export const useAuthError = ({ error }: UseAuthErrorProps = {}) => {
   const [localError, setLocalError] = useState<string | null>(error || null);
 
-  const getErrorMessage = (err: any): string => {
+  const getErrorMessage = (err: unknown): string => {
     if (typeof err === 'string') {
       return err;
     }
@@ -44,7 +44,7 @@ export const useAuthError = ({ error }: UseAuthErrorProps = {}) => {
     setLocalError(null);
   };
 
-  const setError = (err: any) => {
+  const setError = (err: unknown) => {
     setLocalError(getErrorMessage(err));
   };
 
