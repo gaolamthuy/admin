@@ -46,7 +46,9 @@ export const Login = () => {
         description="Nhập thông tin tài khoản để truy cập hệ thống"
       >
         <AuthForm
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           form={form as unknown as any}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           onSubmit={onSubmit as unknown as any}
         >
           <FormField

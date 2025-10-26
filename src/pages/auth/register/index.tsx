@@ -55,7 +55,9 @@ export const Register = () => {
         description="Nhập thông tin để tạo tài khoản admin mới"
       >
         <AuthForm
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           form={form as unknown as any}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           onSubmit={onSubmit as unknown as any}
         >
           <FormField

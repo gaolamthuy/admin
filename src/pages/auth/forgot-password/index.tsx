@@ -44,7 +44,9 @@ export const ForgotPassword = () => {
         description="Chúng tôi sẽ gửi link đặt lại mật khẩu đến email của bạn"
       >
         <AuthForm
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           form={form as unknown as any}
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
           onSubmit={onSubmit as unknown as any}
         >
           <FormField

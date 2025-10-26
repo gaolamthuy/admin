@@ -17,6 +17,7 @@ export const useAuthError = ({ error }: UseAuthErrorProps = {}) => {
     }
 
     if (err && typeof err === 'object') {
+      // eslint-disable-next-line @typescript-eslint/no-explicit-any
       const errorObj = err as unknown as any;
 
       if (errorObj?.message) {

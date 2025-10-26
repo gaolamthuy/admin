@@ -5,6 +5,7 @@ export const formatFormData = (
   data: unknown,
   type: 'login' | 'register' | 'forgot-password'
 ) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const formData = data as unknown as any;
 
   switch (type) {
@@ -36,6 +37,7 @@ export const formatErrorMessage = (error: unknown): string => {
   }
 
   if (error && typeof error === 'object') {
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
     const errorObj = error as unknown as any;
 
     if (errorObj?.message) {
