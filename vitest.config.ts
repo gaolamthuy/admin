@@ -16,6 +16,13 @@ export default defineConfig({
     // Setup files
     setupFiles: ['./src/test/setup.ts'],
 
+    // Fix JSDOM compatibility
+    environmentOptions: {
+      jsdom: {
+        resources: 'usable',
+      },
+    },
+
     // Test patterns
     include: ['src/**/*.{test,spec}.{js,ts,jsx,tsx}'],
     exclude: ['node_modules', 'dist', '.git'],

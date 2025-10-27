@@ -7,6 +7,17 @@ import '@testing-library/jest-dom';
 import { afterEach, beforeAll, afterAll, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
+// Fix JSDOM compatibility issues
+Object.defineProperty(global, 'TextEncoder', {
+  writable: true,
+  value: TextEncoder,
+});
+
+Object.defineProperty(global, 'TextDecoder', {
+  writable: true,
+  value: TextDecoder,
+});
+
 // Cleanup after each test
 afterEach(cleanup);
 
