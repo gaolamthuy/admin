@@ -13,11 +13,15 @@ import { createProductTableColumns } from '../components/ProductTableColumns';
  * Hook quản lý table configuration cho product list
  * @param isAdmin - Whether user is admin
  * @param filters - Array of filters to apply
+ * @param onEdit - Edit action handler
+ * @param onShow - Show action handler
  * @returns Table instance và configuration
  */
 export const useProductTable = (
   isAdmin: boolean,
-  filters: ProductFilter[]
+  filters: ProductFilter[],
+  onEdit?: (id: string | number) => void,
+  onShow?: (id: string | number) => void
 ): {
   table: UseTableReturnType<Product>;
   columns: unknown[];
@@ -30,8 +34,8 @@ export const useProductTable = (
    * Tạo columns cho table với type safety
    */
   const columns = useMemo(() => {
-    return createProductTableColumns(isAdmin);
-  }, [isAdmin]);
+    return createProductTableColumns(isAdmin, onEdit, onShow);
+  }, [isAdmin, onEdit, onShow]);
 
   /**
    * Table configuration với performance optimization
@@ -42,7 +46,7 @@ export const useProductTable = (
       refineCoreProps: {
         syncWithLocation: true,
         meta: {
-          select: '*, kv_product_categories!inner(category_id,glt_is_active)',
+          select: '*',
           count: 'estimated', // Performance optimization theo docs
         },
         filters: {

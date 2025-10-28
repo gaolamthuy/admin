@@ -1,68 +1,73 @@
+import { Grid, List } from 'lucide-react';
+import React from 'react';
+import { ProductListViewProps } from '@/types';
+import { ProductCategoryFilter } from './ProductCategoryFilter';
+import { ProductFavoriteFilter } from './ProductFavoriteFilter';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+
 /**
  * ProductListView Component
- * Main view component cho product list với support cho cả list và card view
- */
-
-import React from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-// import { DataTable } from '@/components/refine-ui/data-table/data-table';
-import { ProductListViewProps } from '../types/product-list';
-import { ProductCardGrid } from './ProductCardGrid';
-import { ProductCard } from '@/types';
-
-/**
- * Component chính hiển thị product list với 2 view modes
- * @param props - ProductListViewProps
- * @returns JSX Element
+ * Header với view mode toggle (List/Grid)
  */
 export const ProductListView: React.FC<ProductListViewProps> = ({
   viewMode,
-  products,
-  loading,
-  onEdit,
-  onShow,
-  onDelete,
-  // table,
+  onViewModeChange,
+  children,
+  selectedCategory,
+  onCategoryChange,
+  isFavorite,
+  onFavoriteChange,
+  isAdmin = false,
 }) => {
-  if (viewMode === 'list') {
-    return (
-      <Card>
-        <CardHeader>
-          <CardTitle>Danh sách sản phẩm</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="flex justify-between items-center mb-4">
-            <p className="text-sm text-muted-foreground">
-              Hiển thị {products.length} sản phẩm
-            </p>
-          </div>
-          {/* {table && <DataTable table={table as any} />} */}
-        </CardContent>
-      </Card>
-    );
-  }
-
-  // Convert Product[] to ProductCard[] for ProductCardGrid
-  const productCards: ProductCard[] = products.map(product => ({
-    id: String(product.id),
-    kiotviet_id: product.kiotviet_id || 0,
-    code: product.code || '',
-    name: product.name || '',
-    full_name: product.full_name || '',
-    base_price: product.base_price || 0,
-    images: product.images || [],
-    is_active: product.is_active || false,
-    glt_visible: product.glt_visible || false,
-    glt_labelprint_favorite: product.glt_labelprint_favorite || false,
-  }));
-
   return (
-    <ProductCardGrid
-      products={productCards}
-      loading={loading}
-      onEdit={onEdit}
-      onShow={onShow}
-      onDelete={onDelete}
-    />
+    <div className="space-y-4">
+      {/* Header với View Mode Toggle và Filter */}
+      <div className="flex items-center justify-between">
+        <h2 className="text-2xl font-bold">Danh sách sản phẩm</h2>
+
+        {/* Right side: Filter + View Mode Toggle */}
+        <div className="flex items-center gap-2">
+          {/* Category Filter */}
+          <ProductCategoryFilter
+            value={selectedCategory}
+            onChange={onCategoryChange}
+            placeholder="Danh mục"
+            allowClear
+            size="md"
+          />
+
+          {/* Favorite Filter */}
+          <ProductFavoriteFilter
+            pressed={isFavorite}
+            onPressedChange={onFavoriteChange}
+            aria-label="Toggle favorite products"
+            size="default"
+          />
+
+          {/* View Mode Tabs */}
+          <Tabs value={viewMode} onValueChange={onViewModeChange}>
+            <TabsList
+              className={`grid w-full ${isAdmin ? 'grid-cols-2' : 'grid-cols-1'}`}
+            >
+              <TabsTrigger value="card" className="gap-2">
+                <List className="h-4 w-4" />
+                <div className="hidden sm:block">Thẻ</div>
+              </TabsTrigger>
+              {isAdmin && (
+                <TabsTrigger value="list" className="gap-2">
+                  <Grid className="h-4 w-4" />
+                  <div className="hidden sm:block">Danh sách</div>
+                </TabsTrigger>
+              )}
+            </TabsList>
+          </Tabs>
+        </div>
+      </div>
+
+      {/* Content */}
+      <div className="mt-6">{children}</div>
+    </div>
   );
 };
+
+export default ProductListView;

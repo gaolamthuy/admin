@@ -31,11 +31,6 @@ export const useProductFilters = () => {
         operator: 'null',
         value: true,
       },
-      {
-        field: 'kv_product_categories.glt_is_active',
-        operator: 'eq',
-        value: true,
-      },
     ],
     []
   );
@@ -61,7 +56,7 @@ export const useProductFilters = () => {
       const categoryId = parseInt(selectedCategory, 10);
       if (!isNaN(categoryId)) {
         filters.push({
-          field: 'kv_product_categories.category_id',
+          field: 'category_id',
           operator: 'eq',
           value: categoryId,
         });

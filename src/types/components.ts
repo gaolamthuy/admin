@@ -9,15 +9,13 @@ import type { ProductCard, ProductCategoryFilterProps } from './product';
  * ProductCard component props
  * @interface ProductCardProps
  * @property {ProductCard} product - Product data to display
- * @property {(id: string) => void} onEdit - Edit button callback
- * @property {(id: string) => void} onDelete - Delete button callback
  * @property {(id: string) => void} onShow - Show/View button callback
+ * @property {(id: string) => void} onDelete - Delete button callback
  */
 export interface ProductCardProps {
   product: ProductCard;
-  onEdit?: (id: string) => void;
-  onDelete?: (id: string) => void;
   onShow?: (id: string) => void;
+  onDelete?: (id: string) => void;
 }
 
 /**

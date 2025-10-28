@@ -6,15 +6,21 @@
 import React from 'react';
 import { createColumnHelper } from '@tanstack/react-table';
 import { Product } from '@/types';
-import { EditButton } from '@/components/refine-ui/buttons/edit';
-import { ShowButton } from '@/components/refine-ui/buttons/show';
+import { Button } from '@/components/ui/button';
+import { Eye, Edit } from 'lucide-react';
 
 /**
  * Tạo columns cho product table
  * @param isAdmin - Whether user is admin
+ * @param onEdit - Edit action handler
+ * @param onShow - Show action handler
  * @returns Array of column definitions
  */
-export const createProductTableColumns = (isAdmin: boolean) => {
+export const createProductTableColumns = (
+  isAdmin: boolean,
+  onEdit?: (id: string | number) => void,
+  onShow?: (id: string | number) => void
+) => {
   const columnHelper = createColumnHelper<Product>();
 
   return [
@@ -66,19 +72,23 @@ export const createProductTableColumns = (isAdmin: boolean) => {
       header: 'Thao tác',
       cell: ({ row }) => (
         <div className="flex gap-2">
-          {isAdmin && (
-            <EditButton
-              recordItemId={row.original.id}
-              size="sm"
+          {isAdmin && onEdit && (
+            <Button
               variant="outline"
-            />
+              size="sm"
+              onClick={() => onEdit(row.original.id)}
+            >
+              <Edit className="h-4 w-4" />
+            </Button>
           )}
-          {isAdmin && (
-            <ShowButton
-              recordItemId={row.original.id}
-              size="sm"
+          {onShow && (
+            <Button
               variant="outline"
-            />
+              size="sm"
+              onClick={() => onShow(row.original.id)}
+            >
+              <Eye className="h-4 w-4" />
+            </Button>
           )}
         </div>
       ),

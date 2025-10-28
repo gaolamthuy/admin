@@ -20,7 +20,7 @@ import { ThemeProvider } from './components/refine-ui/theme/theme-provider';
 import { Login, Register, ForgotPassword } from './pages/auth';
 import {
   ProductCreate,
-  ProductEdit,
+  // ProductEdit, // Disabled - using inline editing in show page
   ProductList,
   ProductShow,
 } from './pages/products';
@@ -78,7 +78,7 @@ function App() {
                   <Route path="/products">
                     <Route index element={<ProductList />} />
                     <Route path="create" element={<ProductCreate />} />
-                    <Route path="edit/:id" element={<ProductEdit />} />
+                    {/* <Route path="edit/:id" element={<ProductEdit />} /> Disabled - using inline editing */}
                     <Route path="show/:id" element={<ProductShow />} />
                   </Route>
                   <Route path="*" element={<ErrorComponent />} />

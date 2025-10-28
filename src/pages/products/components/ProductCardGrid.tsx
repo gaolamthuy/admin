@@ -10,7 +10,7 @@ import { ProductCard } from './ProductCard';
 export const ProductCardGrid: React.FC<ProductCardGridProps> = ({
   products,
   loading = false,
-  onEdit,
+  onEdit: _onEdit, // eslint-disable-line @typescript-eslint/no-unused-vars
   onDelete,
   onShow,
 }) => {
@@ -55,9 +55,8 @@ export const ProductCardGrid: React.FC<ProductCardGridProps> = ({
         <ProductCard
           key={product.id}
           product={product}
-          onEdit={onEdit}
-          onDelete={onDelete}
           onShow={onShow}
+          onDelete={onDelete}
         />
       ))}
     </div>

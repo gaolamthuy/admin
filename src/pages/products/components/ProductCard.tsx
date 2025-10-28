@@ -11,7 +11,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 // import { cn } from '@/lib/utils';
-import { Edit, MoreHorizontal, Printer } from 'lucide-react';
+import { Eye, MoreHorizontal, Printer } from 'lucide-react';
 import React, { useState } from 'react';
 import { ProductCard as ProductCardType, ProductCardProps } from '@/types';
 // import { useIsAdmin } from '@/hooks/useIsAdmin';
@@ -186,7 +186,7 @@ const PrintModal: React.FC<PrintModalProps> = ({
  */
 export const ProductCard: React.FC<ProductCardProps> = ({
   product: productData,
-  onEdit,
+  onShow,
 }) => {
   const product = productData as ProductCardType;
   // const { isAdmin } = useIsAdmin();
@@ -241,9 +241,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                   size="sm"
                   variant="secondary"
                   className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => onEdit?.(product.id)}
+                  onClick={() => onShow?.(product.id)}
                 >
-                  <Edit className="h-4 w-4" />
+                  <Eye className="h-4 w-4" />
                 </Button>
               </CanAccess>
             </div>
