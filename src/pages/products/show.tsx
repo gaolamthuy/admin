@@ -77,7 +77,7 @@ export const ProductShow = () => {
       });
       hasResetForm.current = true;
     }
-  }, [record, form]);
+  }, [record]); // Loại bỏ form khỏi dependency array để tránh vòng lặp vô hạn
 
   // Loading state
   if (recordLoading) {
