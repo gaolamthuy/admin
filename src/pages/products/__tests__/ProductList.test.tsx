@@ -4,7 +4,16 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createMockProducts } from '@/test/utils';
+// Mock utility function
+const createMockProducts = (count: number) => {
+  return Array.from({ length: count }, (_, i) => ({
+    id: i + 1,
+    name: `Product ${i + 1}`,
+    category_id: 1,
+    is_active: true,
+    base_price: 100 + i * 10,
+  }));
+};
 
 // Mock the ProductList component for testing
 // In real scenario, you would import the actual component

@@ -4,7 +4,25 @@
  */
 
 import { describe, it, expect, vi, beforeEach } from 'vitest';
-import { createMockProducts, createMockProduct } from '@/test/utils';
+// Mock utility functions
+const createMockProducts = (count: number = 5) => {
+  return Array.from({ length: count }, (_, i) => ({
+    id: i + 1,
+    name: `Product ${i + 1}`,
+    category_id: 1,
+    is_active: true,
+    base_price: 100 + i * 10,
+  }));
+};
+
+const createMockProduct = (overrides: Record<string, unknown> = {}) => ({
+  id: 1,
+  name: 'Test Product',
+  category_id: 1,
+  is_active: true,
+  base_price: 100,
+  ...overrides,
+});
 
 describe('API Layer', () => {
   beforeEach(() => {
