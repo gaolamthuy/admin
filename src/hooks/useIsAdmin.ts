@@ -49,7 +49,7 @@ export const useIsAdmin = () => {
     };
 
     checkAdminRole();
-  }, [user?.id]);
+  }, [user?.id]); // Chỉ depend on user.id, không phải toàn bộ user object
 
   return { isAdmin, loading };
 };
@@ -137,7 +137,7 @@ export const usePermissions = () => {
     };
 
     checkPermissions();
-  }, [user?.id]);
+  }, [user?.id]); // Chỉ depend on user.id, không phải toàn bộ user object
 
   return { ...permissions, loading };
 };
