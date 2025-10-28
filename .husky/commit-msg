@@ -1,6 +1,3 @@
-#!/usr/bin/env sh
-. "$(dirname -- "$0")/_/husky.sh"
-
 # Validate commit message format
 # Allow conventional commits: feat:, fix:, docs:, style:, refactor:, perf:, test:, chore:, ci:
 if ! head -1 "$1" | grep -qE '^(feat|fix|docs|style|refactor|perf|test|chore|ci)(\(.+\))?!?: .{1,}'; then
