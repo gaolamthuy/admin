@@ -126,11 +126,11 @@ export const ProductShow = () => {
   // Handle form submission - Auto save khi có thay đổi
   const onSubmit = (values: Record<string, unknown>) => {
     const processedValues = {
-      glt_retail_promotion: values.glt_retail_promotion ?? false,
+      glt_retail_promotion: Boolean(values.glt_retail_promotion),
       glt_baseprice_markup: values.glt_baseprice_markup
-        ? parseFloat(values.glt_baseprice_markup)
+        ? parseFloat(String(values.glt_baseprice_markup))
         : 0,
-      glt_labelprint_favorite: values.glt_labelprint_favorite ?? false,
+      glt_labelprint_favorite: Boolean(values.glt_labelprint_favorite),
     };
 
     onFinish(processedValues);
@@ -343,12 +343,14 @@ export const ProductShow = () => {
                               clearTimeout(
                                 (
                                   window as unknown as {
-                                    markupTimeout?: number;
+                                    markupTimeout?: NodeJS.Timeout;
                                   }
                                 ).markupTimeout
                               );
                               (
-                                window as unknown as { markupTimeout?: number }
+                                window as unknown as {
+                                  markupTimeout?: NodeJS.Timeout;
+                                }
                               ).markupTimeout = setTimeout(() => {
                                 form.handleSubmit(onSubmit)();
                               }, 1000);
