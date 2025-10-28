@@ -39,7 +39,7 @@ export const ProductList = () => {
   // Sync filters to table khi filters thay đổi
   useEffect(() => {
     table.refineCore.setFilters(filters, 'replace');
-  }, [filters, table.refineCore]); // Include table.refineCore để tránh warning
+  }, [filters]); // Chỉ depend on filters, không depend on table.refineCore
 
   // Get processed products data
   const filteredProducts = getProcessedProducts();

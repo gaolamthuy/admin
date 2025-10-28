@@ -122,7 +122,7 @@ export const ProductCategoryFilter = ({
   // Fetch categories on mount
   useEffect(() => {
     fetchCategories();
-  }, [fetchCategories]); // Include fetchCategories in dependencies
+  }, []); // Empty dependency array - only run once on mount
 
   // Debounce search term for performance
   useEffect(() => {

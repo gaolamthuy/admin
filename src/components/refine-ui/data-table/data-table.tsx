@@ -76,7 +76,7 @@ export function DataTable<TData extends BaseRecord>({
       window.removeEventListener('resize', checkOverflow);
       clearTimeout(timeoutId);
     };
-  }, [tableQuery.data?.data, pageSize]);
+  }, [pageSize]); // Chỉ depend on pageSize, không depend on tableQuery.data?.data
 
   return (
     <div className={cn('flex', 'flex-col', 'flex-1', 'gap-4')}>

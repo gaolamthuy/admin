@@ -594,8 +594,7 @@ export function DataTableFilterDropdownDateRangePicker<TData>({
 
   useEffect(() => {
     setFilterValue(parseDateRange(columnFilterValue));
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- objects are always different
-  }, [JSON.stringify(columnFilterValue)]);
+  }, [columnFilterValue]); // Sử dụng columnFilterValue trực tiếp thay vì JSON.stringify
 
   const hasDateRange = filterValue?.from && filterValue?.to;
 
