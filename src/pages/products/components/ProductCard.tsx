@@ -204,14 +204,6 @@ export const ProductCard: React.FC<ProductCardProps> = ({
       return;
     }
     const url = generatePrintUrl(product.code, quantity);
-    console.log(
-      'Print URL:',
-      url,
-      'Product Code:',
-      product.code,
-      'Product:',
-      product
-    );
     window.open(url, '_blank');
   };
 
