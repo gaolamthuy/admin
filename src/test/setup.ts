@@ -7,7 +7,7 @@ import '@testing-library/jest-dom';
 import { afterEach, beforeAll, afterAll, vi } from 'vitest';
 import { cleanup } from '@testing-library/react';
 
-// Fix JSDOM compatibility issues
+// Fix JSDOM compatibility issues for Node.js 18+
 Object.defineProperty(global, 'TextEncoder', {
   writable: true,
   value: TextEncoder,
@@ -17,6 +17,26 @@ Object.defineProperty(global, 'TextDecoder', {
   writable: true,
   value: TextDecoder,
 });
+
+// Fix URL constructor for JSDOM
+if (typeof global.URL === 'undefined') {
+  global.URL = class URL {
+    constructor(url: string, base?: string) {
+      const parsed = new URL(url, base);
+      Object.assign(this, parsed);
+    }
+  } as unknown as typeof URL;
+}
+
+// Fix URLSearchParams for JSDOM
+if (typeof global.URLSearchParams === 'undefined') {
+  global.URLSearchParams = class URLSearchParams {
+    constructor(init?: string | URLSearchParams | Record<string, string>) {
+      const params = new URLSearchParams(init);
+      Object.assign(this, params);
+    }
+  } as unknown as typeof URLSearchParams;
+}
 
 // Cleanup after each test
 afterEach(cleanup);

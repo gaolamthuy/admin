@@ -16,10 +16,22 @@ export default defineConfig({
     // Setup files
     setupFiles: ['./src/test/setup.ts'],
 
-    // Fix JSDOM compatibility
+    // Fix JSDOM compatibility for Node.js 18+
     environmentOptions: {
       jsdom: {
         resources: 'usable',
+        // Fix for Node.js 18+ compatibility
+        beforeParse(window) {
+          // Mock URL constructor for JSDOM
+          if (!window.URL) {
+            window.URL = class URL {
+              constructor(url: string, base?: string) {
+                const parsed = new URL(url, base);
+                Object.assign(this, parsed);
+              }
+            } as unknown as typeof URL;
+          }
+        },
       },
     },
 
