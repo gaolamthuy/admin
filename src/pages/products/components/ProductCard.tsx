@@ -214,6 +214,9 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         const res = await uploadImageToCloudinary({
           file,
           kiotvietId: product.kiotviet_id,
+          // Set useCloudflareFunction=true để dùng Cloudflare Function (an toàn hơn)
+          // API_SECRET sẽ không bị expose trong client bundle
+          useCloudflareFunction: import.meta.env.PROD, // Tự động dùng Function ở production
         });
         console.log('Cloudinary uploaded:', res);
         toast.success('Upload ảnh thành công', {

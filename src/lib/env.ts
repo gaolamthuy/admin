@@ -43,6 +43,19 @@ const envSchema = z.object({
     .string()
     .optional()
     .describe('Cloudinary folder prefix, e.g. staging/products'),
+  // Cloudinary signed upload (for overwrite capability)
+  // ⚠️ WARNING: API_SECRET should NOT be exposed in production client-side code
+  // For production, use Supabase Edge Function or backend API to generate signature
+  VITE_CLOUDINARY_API_KEY: z
+    .string()
+    .optional()
+    .describe('Cloudinary API key (for signed upload, DEV ONLY)'),
+  VITE_CLOUDINARY_API_SECRET: z
+    .string()
+    .optional()
+    .describe(
+      'Cloudinary API secret (for signed upload, DEV ONLY - DO NOT COMMIT)'
+    ),
 });
 
 /**
@@ -53,7 +66,7 @@ export type Environment = z.infer<typeof envSchema>;
 /**
  * Validate and parse environment variables
  */
-let env: Environment;
+let env: Environment | undefined;
 
 try {
   env = envSchema.parse(import.meta.env);
@@ -78,24 +91,58 @@ try {
     console.error('\n📚 Documentation:');
     console.error('  See docs/environment.md for more details');
 
-    // Fail fast in production
-    if (import.meta.env.PROD) {
-      process.exit(1);
+    // In test environment, provide safe fallbacks to allow component tests to run
+    const isTest =
+      import.meta.env.MODE === 'test' ||
+      (typeof process !== 'undefined' && Boolean(process.env?.VITEST));
+
+    if (isTest) {
+      const fallback: Partial<Environment> = {
+        VITE_SUPABASE_URL: 'https://example.supabase.co',
+        VITE_SUPABASE_ANON_KEY: 'test-anon-key',
+        NODE_ENV: 'test',
+      };
+
+      try {
+        env = envSchema.parse({ ...fallback, ...import.meta.env });
+        console.warn(
+          '⚠️ Using test fallback environment values for validation in Vitest.'
+        );
+      } catch {
+        // If even fallback fails, proceed to standard failure path below
+      }
     }
 
-    // Throw error to prevent app from running with invalid config
-    throw new Error(
-      'Environment validation failed. Check console for details.'
-    );
-  }
+    // If env has been set (e.g., via test fallback), skip failing
+    if (env !== undefined) {
+      // no-op: env is valid, carry on
+    } else {
+      // Fail fast in production
+      if (import.meta.env.PROD) {
+        process.exit(1);
+      }
 
-  throw error;
+      // Throw error to prevent app from running with invalid config
+      throw new Error(
+        'Environment validation failed. Check console for details.'
+      );
+    }
+  } else {
+    throw error;
+  }
 }
+
+// Type assertion: env is guaranteed to be defined at this point
+if (env === undefined) {
+  throw new Error('Environment validation failed: env is undefined');
+}
+
+const validatedEnv = env;
 
 /**
  * Export validated environment
  */
-export { env };
+export { validatedEnv as env };
 
 /**
  * Export schema for testing
