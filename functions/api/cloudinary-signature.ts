@@ -20,22 +20,24 @@
  * }
  */
 
-import crypto from 'crypto';
-
 /**
- * Tạo SHA-1 hash từ string
+ * Tạo SHA-1 hash từ string (dùng Web Crypto API - native trong Cloudflare Workers)
  */
-function sha1(message: string): string {
-  return crypto.createHash('sha1').update(message).digest('hex');
+async function sha1(message: string): Promise<string> {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(message);
+  const hashBuffer = await crypto.subtle.digest('SHA-1', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 }
 
 /**
  * Generate Cloudinary signature
  */
-function generateCloudinarySignature(
+async function generateCloudinarySignature(
   params: Record<string, string | boolean>,
   apiSecret: string
-): string {
+): Promise<string> {
   // Sắp xếp keys theo alphabet và build string_to_sign
   const sortedKeys = Object.keys(params)
     .filter(key => key !== 'file' && key !== 'api_key' && key !== 'signature')
@@ -44,7 +46,7 @@ function generateCloudinarySignature(
   const stringToSign = sortedKeys.map(key => `${key}=${params[key]}`).join('&');
 
   // SHA1(string_to_sign + api_secret)
-  return sha1(stringToSign + apiSecret);
+  return await sha1(stringToSign + apiSecret);
 }
 
 export async function onRequestPost(context: {
@@ -95,7 +97,10 @@ export async function onRequestPost(context: {
     };
 
     // Generate signature
-    const signature = generateCloudinarySignature(signatureParams, apiSecret);
+    const signature = await generateCloudinarySignature(
+      signatureParams,
+      apiSecret
+    );
 
     // Return signature and api_key
     return new Response(
