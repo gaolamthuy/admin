@@ -11,11 +11,13 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 // import { cn } from '@/lib/utils';
-import { Eye, MoreHorizontal, Printer } from 'lucide-react';
-import React, { useState } from 'react';
+import { Eye, MoreHorizontal, Printer, UploadCloud } from 'lucide-react';
+import React, { useRef, useState, useCallback } from 'react';
 import { ProductCard as ProductCardType, ProductCardProps } from '@/types';
 // import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { CanAccess } from '@/components/auth/CanAccess';
+import { uploadImageToCloudinary, validateImageFile } from '@/lib/cloudinary';
+import { toast } from 'sonner';
 
 /**
  * Helper function to generate N8N print URL
@@ -191,6 +193,43 @@ export const ProductCard: React.FC<ProductCardProps> = ({
   const product = productData as ProductCardType;
   // const { isAdmin } = useIsAdmin();
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
+  const [uploading, setUploading] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement | null>(null);
+
+  const triggerFileSelect = useCallback(() => {
+    fileInputRef.current?.click();
+  }, []);
+
+  const onFileSelected = useCallback(
+    async (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      if (!file) return;
+      if (!product.kiotviet_id) {
+        console.warn('Thiếu kiotviet_id để tạo public_id cho Cloudinary');
+        return;
+      }
+      try {
+        validateImageFile(file);
+        setUploading(true);
+        const res = await uploadImageToCloudinary({
+          file,
+          kiotvietId: product.kiotviet_id,
+        });
+        console.log('Cloudinary uploaded:', res);
+        toast.success('Upload ảnh thành công', {
+          description: product.full_name || product.name,
+        });
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Upload thất bại';
+        console.error(msg);
+        toast.error('Upload ảnh thất bại', { description: String(msg) });
+      } finally {
+        setUploading(false);
+        if (fileInputRef.current) fileInputRef.current.value = '';
+      }
+    },
+    [product.kiotviet_id]
+  );
 
   const imageUrl = product.images?.[0] || '/placeholder-product.png';
   const formattedPrice = new Intl.NumberFormat('vi-VN', {
@@ -237,6 +276,28 @@ export const ProductCard: React.FC<ProductCardProps> = ({
                 >
                   <Eye className="h-4 w-4" />
                 </Button>
+              </CanAccess>
+              {/* Upload test button */}
+              <CanAccess requireAdmin>
+                <div className="flex items-center gap-2">
+                  <input
+                    ref={fileInputRef}
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={onFileSelected}
+                  />
+                  <Button
+                    size="sm"
+                    variant="secondary"
+                    className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
+                    onClick={triggerFileSelect}
+                    disabled={uploading}
+                    title={uploading ? 'Đang upload...' : 'Upload ảnh tạm'}
+                  >
+                    <UploadCloud className="h-4 w-4" />
+                  </Button>
+                </div>
               </CanAccess>
             </div>
           </div>

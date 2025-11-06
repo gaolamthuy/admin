@@ -1,6 +1,6 @@
 import { useForm } from '@refinedev/react-hook-form';
 import { useNavigate } from 'react-router';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState, useCallback } from 'react';
 
 import { EditView } from '@/components/refine-ui/views/edit-view';
 import { Button } from '@/components/ui/button';
@@ -16,6 +16,9 @@ import { Input } from '@/components/ui/input';
 // import { Textarea } from '@/components/ui/textarea';
 import { Switch } from '@/components/ui/switch';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { uploadImageToCloudinary, validateImageFile } from '@/lib/cloudinary';
+import { Progress } from '@/components/ui/progress';
+import { toast } from 'sonner';
 
 /**
  * Component chỉnh sửa sản phẩm
@@ -37,6 +40,10 @@ export const ProductEdit = () => {
 
   const productData = query?.data?.data;
   const hasResetForm = useRef(false);
+  const [file, setFile] = useState<File | null>(null);
+  const [uploading, setUploading] = useState(false);
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
 
   // Set form values khi productData thay đổi
   useEffect(() => {
@@ -51,6 +58,38 @@ export const ProductEdit = () => {
   }, [productData, form]);
 
   // Không cần query categories vì đã có category_name trong productData
+  const onSelectFile = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const f = e.target.files?.[0] || null;
+    setUploadError(null);
+    setUploadedUrl(null);
+    setFile(f);
+  }, []);
+
+  const onUpload = useCallback(async () => {
+    if (!file) return;
+    if (!productData?.kiotviet_id) {
+      setUploadError('Thiếu kiotviet_id để đặt public_id');
+      return;
+    }
+    try {
+      validateImageFile(file);
+      setUploading(true);
+      const res = await uploadImageToCloudinary({
+        file,
+        kiotvietId: productData.kiotviet_id,
+      });
+      setUploadedUrl(res.secure_url);
+      toast.success('Upload ảnh thành công', {
+        description: productData?.full_name || productData?.name,
+      });
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : 'Upload thất bại';
+      setUploadError(msg);
+      toast.error('Upload ảnh thất bại', { description: String(msg) });
+    } finally {
+      setUploading(false);
+    }
+  }, [file, productData?.kiotviet_id]);
 
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   function onSubmit(values: any) {
@@ -128,6 +167,41 @@ export const ProductEdit = () => {
                 </label>
                 <p className="text-sm">{productData?.description || 'N/A'}</p>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Cloudinary upload (tạm thời) */}
+        <Card>
+          <CardHeader>
+            <CardTitle>Ảnh sản phẩm (Cloudinary tạm)</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <Input type="file" accept="image/*" onChange={onSelectFile} />
+                <Button
+                  type="button"
+                  onClick={onUpload}
+                  disabled={!file || uploading}
+                >
+                  {uploading ? 'Đang upload...' : 'Upload ảnh'}
+                </Button>
+              </div>
+              {uploading && <Progress value={60} className="w-full" />}
+              {uploadError && (
+                <p className="text-sm text-red-600">{uploadError}</p>
+              )}
+              {uploadedUrl && (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">Đã upload: </p>
+                  <img
+                    src={uploadedUrl}
+                    alt="Uploaded preview"
+                    className="max-h-48 rounded border"
+                  />
+                </div>
+              )}
             </div>
           </CardContent>
         </Card>

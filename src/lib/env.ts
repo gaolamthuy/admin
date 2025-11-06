@@ -29,6 +29,20 @@ const envSchema = z.object({
   // Application metadata (optional)
   VITE_APP_TITLE: z.string().optional().describe('Application title'),
   VITE_APP_VERSION: z.string().optional().describe('Application version'),
+
+  // Cloudinary (client-side unsigned upload)
+  VITE_CLOUDINARY_CLOUD_NAME: z
+    .string()
+    .optional()
+    .describe('Cloudinary cloud name (public on client)'),
+  VITE_CLOUDINARY_UPLOAD_PRESET: z
+    .string()
+    .optional()
+    .describe('Cloudinary unsigned upload preset (public on client)'),
+  VITE_CLOUDINARY_FOLDER: z
+    .string()
+    .optional()
+    .describe('Cloudinary folder prefix, e.g. staging/products'),
 });
 
 /**

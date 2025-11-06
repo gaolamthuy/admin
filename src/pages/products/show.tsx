@@ -1,7 +1,7 @@
 import { useOne } from '@refinedev/core';
 import { useForm } from '@refinedev/react-hook-form';
 import { useNavigate, useParams } from 'react-router';
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react';
 
 import { ShowView } from '@/components/refine-ui/views/show-view';
 import { Badge } from '@/components/ui/badge';
@@ -24,7 +24,25 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import { supabaseClient } from '@/utility';
 // Không cần import icons nữa vì đã xóa edit buttons
+
+/**
+ * Interface cho product image từ bảng glt_product_images
+ */
+interface ProductImage {
+  id: number;
+  url: string | null;
+  path: string | null;
+  role: string | null;
+  width: number | null;
+  height: number | null;
+  format: string | null;
+  alt: string | null;
+  description: string | null;
+  created_at: string;
+  updated_at: string | null;
+}
 
 /**
  * Component hiển thị chi tiết sản phẩm với hot editing
@@ -34,6 +52,10 @@ export const ProductShow = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const hasResetForm = useRef(false);
+
+  // State để lưu product images từ glt_product_images
+  const [productImages, setProductImages] = useState<ProductImage[]>([]);
+  const [imagesLoading, setImagesLoading] = useState(false);
 
   // Lấy data sản phẩm từ ID trong URL
   const {
@@ -49,6 +71,58 @@ export const ProductShow = () => {
   const record = recordData?.data;
 
   // Không cần query riêng category vì đã có category_name trong record
+
+  /**
+   * Query product images từ bảng glt_product_images
+   * Sắp xếp theo role priority: main > main-thumbnail > main-resized > main-original > main-infocard
+   */
+  useEffect(() => {
+    const fetchProductImages = async () => {
+      if (!record?.kiotviet_id) {
+        setProductImages([]);
+        return;
+      }
+
+      try {
+        setImagesLoading(true);
+        const { data, error } = await supabaseClient
+          .from('glt_product_images')
+          .select('*')
+          .eq('product_id', record.kiotviet_id)
+          .order('created_at', { ascending: false });
+
+        if (error) {
+          console.error('Error fetching product images:', error);
+          setProductImages([]);
+          return;
+        }
+
+        // Sắp xếp theo role priority
+        const rolePriority: Record<string, number> = {
+          main: 1,
+          'main-thumbnail': 2,
+          'main-resized': 3,
+          'main-original': 4,
+          'main-infocard': 5,
+        };
+
+        const sortedImages = (data || []).sort((a, b) => {
+          const priorityA = rolePriority[a.role || ''] || 999;
+          const priorityB = rolePriority[b.role || ''] || 999;
+          return priorityA - priorityB;
+        });
+
+        setProductImages(sortedImages as ProductImage[]);
+      } catch (error) {
+        console.error('Error fetching product images:', error);
+        setProductImages([]);
+      } finally {
+        setImagesLoading(false);
+      }
+    };
+
+    fetchProductImages();
+  }, [record?.kiotviet_id]);
 
   // Form cho inline editing
   const {
@@ -214,72 +288,174 @@ export const ProductShow = () => {
 
             <Separator />
 
-            {/* Hiển thị hình ảnh sản phẩm */}
-            {(record.images && record.images.length > 0) ||
-            record.glt_images_homepage ? (
+            {/* Hiển thị hình ảnh sản phẩm từ glt_product_images */}
+            {(productImages.length > 0 ||
+              (record.images && record.images.length > 0) ||
+              record.glt_images_homepage) && (
               <div>
-                <h4 className="text-sm font-medium mb-2">Hình ảnh sản phẩm</h4>
-                <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                  {/* Hiển thị images array */}
-                  {record.images &&
-                    record.images.map((image: string, index: number) => (
-                      <div key={`images-${index}`} className="relative group">
-                        <img
-                          src={image}
-                          alt={`${record.name} - Hình ${index + 1}`}
-                          className="w-full h-24 object-cover rounded-lg border hover:scale-105 transition-transform cursor-pointer"
-                          onError={e => {
-                            e.currentTarget.src = '/placeholder-product.png';
-                          }}
-                          onClick={() => window.open(image, '_blank')}
-                        />
-                      </div>
-                    ))}
+                <h4 className="text-sm font-medium mb-4">Hình ảnh sản phẩm</h4>
 
-                  {/* Hiển thị glt_images_homepage nếu có */}
-                  {record.glt_images_homepage &&
-                    Array.isArray(record.glt_images_homepage) &&
-                    record.glt_images_homepage.map(
-                      (
-                        image: string | { url?: string; src?: string },
-                        index: number
-                      ) => {
-                        const imageUrl =
-                          typeof image === 'string'
-                            ? image
-                            : image.url || image.src;
+                {/* Hiển thị images từ glt_product_images (ưu tiên) */}
+                {productImages.length > 0 && (
+                  <div className="mb-6">
+                    <h5 className="text-xs font-medium text-muted-foreground mb-3">
+                      Hình ảnh từ hệ thống (glt_product_images)
+                    </h5>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {productImages.map(image => {
+                        const imageUrl = image.url || image.path;
+                        if (!imageUrl) return null;
+
+                        // Map role sang tiếng Việt
+                        const roleLabels: Record<string, string> = {
+                          main: 'Hình chính',
+                          'main-thumbnail': 'Thumbnail',
+                          'main-resized': 'Đã resize',
+                          'main-original': 'Gốc',
+                          'main-infocard': 'Info card',
+                        };
+
                         return (
                           <div
-                            key={`glt-images-${index}`}
+                            key={`glt-product-image-${image.id}`}
                             className="relative group"
                           >
-                            <img
-                              src={imageUrl}
-                              alt={`${record.name} - Hình homepage ${index + 1}`}
-                              className="w-full h-24 object-cover rounded-lg border hover:scale-105 transition-transform cursor-pointer"
-                              onError={e => {
-                                e.currentTarget.src =
-                                  '/placeholder-product.png';
-                              }}
-                              onClick={() => window.open(imageUrl, '_blank')}
-                            />
+                            <div className="relative">
+                              <img
+                                src={imageUrl}
+                                alt={
+                                  image.alt ||
+                                  image.description ||
+                                  `${record.name} - ${roleLabels[image.role || ''] || image.role}`
+                                }
+                                className="w-full h-24 object-cover rounded-lg border hover:scale-105 transition-transform cursor-pointer"
+                                onError={e => {
+                                  e.currentTarget.src =
+                                    '/placeholder-product.png';
+                                }}
+                                onClick={() => window.open(imageUrl, '_blank')}
+                              />
+                              {/* Badge hiển thị role */}
+                              {image.role && (
+                                <Badge
+                                  variant="secondary"
+                                  className="absolute top-1 left-1 text-xs"
+                                >
+                                  {roleLabels[image.role] || image.role}
+                                </Badge>
+                              )}
+                              {/* Hiển thị kích thước nếu có */}
+                              {image.width && image.height && (
+                                <div className="absolute bottom-1 right-1 bg-black/60 text-white text-xs px-1 rounded">
+                                  {image.width}×{image.height}
+                                </div>
+                              )}
+                            </div>
+                            {/* Thông tin thêm */}
+                            {(image.description || image.format) && (
+                              <p className="text-xs text-muted-foreground mt-1 truncate">
+                                {image.description ||
+                                  (image.format && `Format: ${image.format}`)}
+                              </p>
+                            )}
                           </div>
                         );
-                      }
-                    )}
-                </div>
-                <p className="text-xs text-muted-foreground mt-2">
+                      })}
+                    </div>
+                  </div>
+                )}
+
+                {/* Hiển thị images array từ kv_products */}
+                {record.images && record.images.length > 0 && (
+                  <div className="mb-6">
+                    <h5 className="text-xs font-medium text-muted-foreground mb-3">
+                      Hình ảnh từ KiotViet (images array)
+                    </h5>
+                    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                      {record.images.map((image: string, index: number) => (
+                        <div key={`images-${index}`} className="relative group">
+                          <img
+                            src={image}
+                            alt={`${record.name} - Hình ${index + 1}`}
+                            className="w-full h-24 object-cover rounded-lg border hover:scale-105 transition-transform cursor-pointer"
+                            onError={e => {
+                              e.currentTarget.src = '/placeholder-product.png';
+                            }}
+                            onClick={() => window.open(image, '_blank')}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {/* Hiển thị glt_images_homepage nếu có */}
+                {record.glt_images_homepage &&
+                  Array.isArray(record.glt_images_homepage) &&
+                  record.glt_images_homepage.length > 0 && (
+                    <div className="mb-6">
+                      <h5 className="text-xs font-medium text-muted-foreground mb-3">
+                        Hình ảnh homepage (glt_images_homepage)
+                      </h5>
+                      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                        {record.glt_images_homepage.map(
+                          (
+                            image: string | { url?: string; src?: string },
+                            index: number
+                          ) => {
+                            const imageUrl =
+                              typeof image === 'string'
+                                ? image
+                                : image.url || image.src;
+                            if (!imageUrl) return null;
+                            return (
+                              <div
+                                key={`glt-images-${index}`}
+                                className="relative group"
+                              >
+                                <img
+                                  src={imageUrl}
+                                  alt={`${record.name} - Hình homepage ${index + 1}`}
+                                  className="w-full h-24 object-cover rounded-lg border hover:scale-105 transition-transform cursor-pointer"
+                                  onError={e => {
+                                    e.currentTarget.src =
+                                      '/placeholder-product.png';
+                                  }}
+                                  onClick={() =>
+                                    window.open(imageUrl, '_blank')
+                                  }
+                                />
+                              </div>
+                            );
+                          }
+                        )}
+                      </div>
+                    </div>
+                  )}
+
+                <p className="text-xs text-muted-foreground mt-4">
                   Click vào hình để xem kích thước đầy đủ
-                </p>
-              </div>
-            ) : (
-              <div>
-                <h4 className="text-sm font-medium mb-2">Hình ảnh sản phẩm</h4>
-                <p className="text-sm text-muted-foreground">
-                  Chưa có hình ảnh
+                  {imagesLoading && ' (Đang tải...)'}
                 </p>
               </div>
             )}
+
+            {/* Hiển thị khi không có hình ảnh nào */}
+            {!imagesLoading &&
+              productImages.length === 0 &&
+              (!record.images || record.images.length === 0) &&
+              (!record.glt_images_homepage ||
+                (Array.isArray(record.glt_images_homepage) &&
+                  record.glt_images_homepage.length === 0)) && (
+                <div>
+                  <h4 className="text-sm font-medium mb-2">
+                    Hình ảnh sản phẩm
+                  </h4>
+                  <p className="text-sm text-muted-foreground">
+                    Chưa có hình ảnh
+                  </p>
+                </div>
+              )}
           </CardContent>
         </Card>
 
