@@ -28,11 +28,26 @@ import {
   type TreeMenuItem,
 } from '@refinedev/core';
 import { ChevronRight, ListIcon } from 'lucide-react';
-import React from 'react';
+import React, { useMemo } from 'react';
+import { useIsAdmin } from '@/hooks/useIsAdmin';
 
 export function Sidebar() {
   const { open } = useShadcnSidebar();
   const { menuItems, selectedKey } = useMenu();
+  const { isAdmin } = useIsAdmin();
+
+  /**
+   * Filter menu items để ẩn "Đơn mua hàng" nếu không phải admin
+   * Chỉ hiển thị menu "kv_purchase_orders" cho admin
+   */
+  const filteredMenuItems = useMemo(() => {
+    if (isAdmin) {
+      return menuItems;
+    }
+    return menuItems.filter(
+      (item: TreeMenuItem) => item.name !== 'kv_purchase_orders'
+    );
+  }, [menuItems, isAdmin]);
 
   return (
     <ShadcnSidebar collapsible="icon" className={cn('border-none')}>
@@ -55,7 +70,7 @@ export function Sidebar() {
           }
         )}
       >
-        {menuItems.map((item: TreeMenuItem) => (
+        {filteredMenuItems.map((item: TreeMenuItem) => (
           <SidebarItem
             key={item.key || item.name}
             item={item}
