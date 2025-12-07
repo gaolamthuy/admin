@@ -109,3 +109,8 @@ temp/
 # Project specific
 docs/
 instruction/
+
+n8n/
+downloads/
+scripts/
+.cursor/

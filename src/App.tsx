@@ -1,4 +1,5 @@
 import { Authenticated, Refine } from '@refinedev/core';
+import { useEffect } from 'react';
 import { DevtoolsPanel, DevtoolsProvider } from '@refinedev/devtools';
 import { RefineKbar, RefineKbarProvider } from '@refinedev/kbar';
 
@@ -24,9 +25,21 @@ import {
   ProductList,
   ProductShow,
 } from './pages/products';
+import {
+  PurchaseOrderCreate,
+  PurchaseOrderEdit,
+  PurchaseOrderList,
+  PurchaseOrderShow,
+} from './pages/purchase-orders';
 import { supabaseClient } from './utility';
+import { startSupabaseSessionWatcher } from './lib/supabase-session';
 
 function App() {
+  useEffect(() => {
+    const cleanup = startSupabaseSessionWatcher(supabaseClient);
+    return cleanup;
+  }, []);
+
   return (
     <BrowserRouter>
       <RefineKbarProvider>
@@ -48,6 +61,17 @@ function App() {
                   meta: {
                     canDelete: true,
                     label: 'Sản phẩm',
+                  },
+                },
+                {
+                  name: 'kv_purchase_orders',
+                  list: '/purchase-orders',
+                  create: '/purchase-orders/create',
+                  edit: '/purchase-orders/edit/:id',
+                  show: '/purchase-orders/show/:id',
+                  meta: {
+                    canDelete: true,
+                    label: 'Đơn mua hàng',
                   },
                 },
               ]}
@@ -80,6 +104,12 @@ function App() {
                     <Route path="create" element={<ProductCreate />} />
                     {/* <Route path="edit/:id" element={<ProductEdit />} /> Disabled - using inline editing */}
                     <Route path="show/:id" element={<ProductShow />} />
+                  </Route>
+                  <Route path="/purchase-orders">
+                    <Route index element={<PurchaseOrderList />} />
+                    <Route path="create" element={<PurchaseOrderCreate />} />
+                    <Route path="edit/:id" element={<PurchaseOrderEdit />} />
+                    <Route path="show/:id" element={<PurchaseOrderShow />} />
                   </Route>
                   <Route path="*" element={<ErrorComponent />} />
                 </Route>

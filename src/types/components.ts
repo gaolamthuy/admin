@@ -55,6 +55,8 @@ export interface ProductListViewProps {
   onCategoryChange?: (category: string | null) => void;
   isFavorite?: boolean;
   onFavoriteChange?: (favorite: boolean) => void;
+  showPriceDifference?: boolean;
+  onPriceDifferenceChange?: (show: boolean) => void;
   isAdmin?: boolean;
 }
 

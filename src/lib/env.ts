@@ -20,6 +20,27 @@ const envSchema = z.object({
     .min(1, 'Supabase anonymous key is required')
     .describe('Supabase anonymous key'),
 
+  // n8n webhook configuration
+  VITE_N8N_WEBHOOK_URL: z
+    .string()
+    .url('Invalid n8n webhook URL format')
+    .optional()
+    .describe(
+      'Base URL for n8n webhooks, e.g. https://n8n.example.com/webhook'
+    ),
+  VITE_N8N_WEBHOOK_BASIC_AUTH: z
+    .string()
+    .optional()
+    .describe('Basic auth credential (username:password) for n8n webhooks'),
+  VITE_N8N_WEBHOOK_HEADER_KEY: z
+    .string()
+    .optional()
+    .describe('Custom header key required by n8n webhook'),
+  VITE_N8N_WEBHOOK_HEADER_VALUE: z
+    .string()
+    .optional()
+    .describe('Custom header value required by n8n webhook'),
+
   // Node environment
   NODE_ENV: z
     .enum(['development', 'production', 'test'])

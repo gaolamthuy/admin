@@ -17,3 +17,13 @@ export const supabaseClient = createClient(
     },
   }
 );
+
+declare global {
+  interface Window {
+    supabaseClient?: typeof supabaseClient;
+  }
+}
+
+if (typeof window !== 'undefined') {
+  window.supabaseClient = supabaseClient;
+}

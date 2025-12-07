@@ -10,14 +10,30 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { Badge } from '@/components/ui/badge';
 // import { cn } from '@/lib/utils';
-import { Eye, MoreHorizontal, Printer, UploadCloud } from 'lucide-react';
-import React, { useRef, useState, useCallback } from 'react';
+import {
+  Eye,
+  MoreHorizontal,
+  Printer,
+  UploadCloud,
+  TrendingUp,
+  TrendingDown,
+} from 'lucide-react';
+import React, { useRef, useState, useCallback, useMemo } from 'react';
 import { ProductCard as ProductCardType, ProductCardProps } from '@/types';
-// import { useIsAdmin } from '@/hooks/useIsAdmin';
-import { CanAccess } from '@/components/auth/CanAccess';
 import { uploadImageToCloudinary, validateImageFile } from '@/lib/cloudinary';
 import { toast } from 'sonner';
+
+/**
+ * Interface mở rộng cho ProductCard với price difference data
+ */
+interface ProductWithPriceDifference extends ProductCardType {
+  priceDifference?: number | null;
+  priceDifferencePercent?: number | null;
+  inventoryCost?: number | null;
+  latestPurchaseCost?: number | null;
+}
 
 /**
  * Helper function to generate N8N print URL
@@ -185,13 +201,12 @@ const PrintModal: React.FC<PrintModalProps> = ({
 /**
  * ProductCard Component
  * Advanced product card with dark theme, print functionality, and admin features
+ * Optimized với React.memo để tránh re-render không cần thiết
  */
-export const ProductCard: React.FC<ProductCardProps> = ({
-  product: productData,
-  onShow,
-}) => {
+const ProductCardComponent: React.FC<
+  ProductCardProps & { isAdmin?: boolean }
+> = ({ product: productData, onShow, isAdmin = false }) => {
   const product = productData as ProductCardType;
-  // const { isAdmin } = useIsAdmin();
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement | null>(null);
@@ -231,14 +246,29 @@ export const ProductCard: React.FC<ProductCardProps> = ({
         if (fileInputRef.current) fileInputRef.current.value = '';
       }
     },
-    [product.kiotviet_id]
+    [product.kiotviet_id, product.full_name, product.name]
   );
 
-  const imageUrl = product.images?.[0] || '/placeholder-product.png';
-  const formattedPrice = new Intl.NumberFormat('vi-VN', {
-    style: 'currency',
-    currency: 'VND',
-  }).format(product.base_price || 0);
+  // Memoize imageUrl và formattedPrice để tránh recalculate mỗi render
+  const imageUrl = useMemo(
+    () => product.images?.[0] || '/placeholder-product.png',
+    [product.images]
+  );
+  const formattedPrice = useMemo(
+    () =>
+      new Intl.NumberFormat('vi-VN', {
+        style: 'currency',
+        currency: 'VND',
+      }).format(product.base_price || 0),
+    [product.base_price]
+  );
+
+  // Kiểm tra có price difference data không (từ price difference filter)
+  const productWithPrice = product as ProductWithPriceDifference;
+  const priceDifference = productWithPrice.priceDifference;
+  const priceDifferencePercent = productWithPrice.priceDifferencePercent;
+  const hasPriceDifference =
+    priceDifference !== null && priceDifference !== undefined;
 
   const handleQuickPrint = (quantity: number) => {
     if (!product.code) {
@@ -251,15 +281,16 @@ export const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <>
-      <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300">
+      <Card className="group overflow-hidden hover:shadow-lg transition-all duration-300 will-change-[shadow]">
         {/* Image Container with Overlay */}
         <div className="relative aspect-square overflow-hidden">
-          {/* Product Image */}
+          {/* Product Image - Optimized loading */}
           <img
             src={imageUrl}
-            alt={product.full_name}
+            alt={product.full_name || product.name || 'Product'}
             className="w-full h-full object-cover"
             loading="lazy"
+            decoding="async"
             onError={e => {
               (e.target as HTMLImageElement).src = '/placeholder-product.png';
             }}
@@ -269,39 +300,70 @@ export const ProductCard: React.FC<ProductCardProps> = ({
           <div className="absolute inset-0 flex flex-col justify-between p-3">
             {/* Top Label - Rice Type */}
             <div className="flex justify-between items-start">
-              {/* Admin Edit Button */}
-              <CanAccess requireAdmin>
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                  onClick={() => onShow?.(product.id)}
+              {/* Price Difference Badge */}
+              {hasPriceDifference && (
+                <Badge
+                  variant={
+                    priceDifference && priceDifference > 0
+                      ? 'destructive'
+                      : 'secondary'
+                  }
+                  className="gap-1"
                 >
-                  <Eye className="h-4 w-4" />
-                </Button>
-              </CanAccess>
-              {/* Upload test button */}
-              <CanAccess requireAdmin>
-                <div className="flex items-center gap-2">
-                  <input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/*"
-                    className="hidden"
-                    onChange={onFileSelected}
-                  />
+                  {priceDifference && priceDifference > 0 ? (
+                    <TrendingUp className="h-3 w-3" />
+                  ) : (
+                    <TrendingDown className="h-3 w-3" />
+                  )}
+                  <span className="text-xs font-bold">
+                    {priceDifference && priceDifference > 0 ? '+' : ''}
+                    {priceDifference
+                      ? Number(priceDifference).toLocaleString()
+                      : '-'}
+                  </span>
+                  {priceDifferencePercent !== null &&
+                    priceDifferencePercent !== undefined && (
+                      <span className="text-xs">
+                        ({priceDifferencePercent > 0 ? '+' : ''}
+                        {Number(priceDifferencePercent).toFixed(1)}%)
+                      </span>
+                    )}
+                </Badge>
+              )}
+
+              {/* Admin Edit Button - Chỉ render nếu isAdmin để tránh CanAccess check mỗi lần */}
+              {isAdmin && (
+                <>
                   <Button
                     size="sm"
                     variant="secondary"
-                    className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity"
-                    onClick={triggerFileSelect}
-                    disabled={uploading}
-                    title={uploading ? 'Đang upload...' : 'Upload ảnh tạm'}
+                    className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 will-change-[opacity]"
+                    onClick={() => onShow?.(product.id)}
                   >
-                    <UploadCloud className="h-4 w-4" />
+                    <Eye className="h-4 w-4" />
                   </Button>
-                </div>
-              </CanAccess>
+                  {/* Upload test button */}
+                  <div className="flex items-center gap-2">
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={onFileSelected}
+                    />
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 will-change-[opacity]"
+                      onClick={triggerFileSelect}
+                      disabled={uploading}
+                      title={uploading ? 'Đang upload...' : 'Upload ảnh tạm'}
+                    >
+                      <UploadCloud className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </>
+              )}
             </div>
           </div>
         </div>
@@ -317,6 +379,32 @@ export const ProductCard: React.FC<ProductCardProps> = ({
               {formattedPrice}
             </span>
           </div>
+
+          {/* Price Difference Info (nếu có) */}
+          {hasPriceDifference && (
+            <div className="text-xs space-y-1 pt-2 border-t">
+              <div className="flex justify-between text-muted-foreground">
+                <span>Cost:</span>
+                <span className="font-medium">
+                  {productWithPrice.inventoryCost
+                    ? Number(productWithPrice.inventoryCost).toLocaleString()
+                    : '-'}{' '}
+                  VNĐ
+                </span>
+              </div>
+              <div className="flex justify-between text-muted-foreground">
+                <span>Giá nhập:</span>
+                <span className="font-medium">
+                  {productWithPrice.latestPurchaseCost
+                    ? Number(
+                        productWithPrice.latestPurchaseCost
+                      ).toLocaleString()
+                    : '-'}{' '}
+                  VNĐ
+                </span>
+              </div>
+            </div>
+          )}
         </CardContent>
 
         {/* Card Footer */}
@@ -365,5 +453,34 @@ export const ProductCard: React.FC<ProductCardProps> = ({
     </>
   );
 };
+
+/**
+ * Memoized ProductCard để tránh re-render không cần thiết
+ * Chỉ re-render khi product data hoặc onShow callback thay đổi
+ */
+export const ProductCard = React.memo(
+  ProductCardComponent,
+  (prevProps, nextProps) => {
+    // Custom comparison: chỉ re-render nếu product data hoặc isAdmin thay đổi
+    const prevProduct = prevProps.product;
+    const nextProduct = nextProps.product;
+
+    // So sánh các fields quan trọng
+    return (
+      prevProduct.id === nextProduct.id &&
+      prevProduct.kiotviet_id === nextProduct.kiotviet_id &&
+      prevProduct.base_price === nextProduct.base_price &&
+      prevProduct.images?.[0] === nextProduct.images?.[0] &&
+      prevProduct.full_name === nextProduct.full_name &&
+      prevProduct.name === nextProduct.name &&
+      prevProduct.glt_labelprint_favorite ===
+        nextProduct.glt_labelprint_favorite &&
+      prevProps.onShow === nextProps.onShow &&
+      prevProps.isAdmin === nextProps.isAdmin
+    );
+  }
+);
+
+ProductCard.displayName = 'ProductCard';
 
 export default ProductCard;

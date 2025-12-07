@@ -3,6 +3,7 @@ import React from 'react';
 import { ProductListViewProps } from '@/types';
 import { ProductCategoryFilter } from './ProductCategoryFilter';
 import { ProductFavoriteFilter } from './ProductFavoriteFilter';
+import { ProductPriceDifferenceFilter } from './ProductPriceDifferenceFilter';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 
 /**
@@ -17,6 +18,8 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
   onCategoryChange,
   isFavorite,
   onFavoriteChange,
+  showPriceDifference,
+  onPriceDifferenceChange,
   isAdmin = false,
 }) => {
   return (
@@ -44,23 +47,33 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
             size="default"
           />
 
-          {/* View Mode Tabs */}
-          <Tabs value={viewMode} onValueChange={onViewModeChange}>
-            <TabsList
-              className={`grid w-full ${isAdmin ? 'grid-cols-2' : 'grid-cols-1'}`}
-            >
-              <TabsTrigger value="card" className="gap-2">
-                <List className="h-4 w-4" />
-                <div className="hidden sm:block">Thẻ</div>
-              </TabsTrigger>
-              {isAdmin && (
+          {/* Price Difference Filter - Admin only */}
+          {isAdmin &&
+            showPriceDifference !== undefined &&
+            onPriceDifferenceChange && (
+              <ProductPriceDifferenceFilter
+                pressed={showPriceDifference}
+                onPressedChange={onPriceDifferenceChange}
+                aria-label="Toggle price difference filter"
+                size="default"
+              />
+            )}
+
+          {/* View Mode Tabs - Chỉ admin mới thấy */}
+          {isAdmin && (
+            <Tabs value={viewMode} onValueChange={onViewModeChange}>
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="card" className="gap-2">
+                  <List className="h-4 w-4" />
+                  <div className="hidden sm:block">Thẻ</div>
+                </TabsTrigger>
                 <TabsTrigger value="list" className="gap-2">
                   <Grid className="h-4 w-4" />
                   <div className="hidden sm:block">Danh sách</div>
                 </TabsTrigger>
-              )}
-            </TabsList>
-          </Tabs>
+              </TabsList>
+            </Tabs>
+          )}
         </div>
       </div>
 

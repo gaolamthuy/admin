@@ -14,6 +14,8 @@ export const useProductFilters = () => {
   const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isFavorite, setIsFavorite] = useState<boolean>(true); // Auto active favorite filter
   const [isActive, setIsActive] = useState<boolean>(true);
+  const [showPriceDifference, setShowPriceDifference] =
+    useState<boolean>(false);
 
   /**
    * Tạo base filters cho table
@@ -116,11 +118,13 @@ export const useProductFilters = () => {
     selectedCategory,
     isFavorite,
     isActive,
+    showPriceDifference,
 
     // Setters
     setSelectedCategory,
     setIsFavorite,
     setIsActive,
+    setShowPriceDifference,
 
     // Computed
     filters: allFilters,

@@ -1,5 +1,5 @@
 import { Skeleton } from '@/components/ui/skeleton';
-import React from 'react';
+import React, { useMemo } from 'react';
 import { ProductCardGridProps } from '@/types';
 import { ProductCard } from './ProductCard';
 
@@ -7,13 +7,34 @@ import { ProductCard } from './ProductCard';
  * ProductCardGrid Component
  * Hiển thị danh sách sản phẩm dưới dạng grid responsive
  */
-export const ProductCardGrid: React.FC<ProductCardGridProps> = ({
+export const ProductCardGrid: React.FC<
+  ProductCardGridProps & { isAdmin?: boolean }
+> = ({
   products,
   loading = false,
   onEdit: _onEdit, // eslint-disable-line @typescript-eslint/no-unused-vars
   onDelete,
   onShow,
+  isAdmin = false,
 }) => {
+  // Memoize product cards để tránh re-render khi parent re-render
+  // Phải đặt trước các early returns để tuân thủ Rules of Hooks
+  const productCards = useMemo(
+    () =>
+      products && products.length > 0
+        ? products.map(product => (
+            <ProductCard
+              key={product.id}
+              product={product}
+              onShow={onShow}
+              onDelete={onDelete}
+              isAdmin={isAdmin}
+            />
+          ))
+        : null,
+    [products, onShow, onDelete, isAdmin]
+  );
+
   // Loading skeleton
   if (loading) {
     return (
@@ -36,6 +57,10 @@ export const ProductCardGrid: React.FC<ProductCardGridProps> = ({
 
   // Empty state
   if (!products || products.length === 0) {
+    console.log('ProductCardGrid: Empty products', {
+      products,
+      length: products?.length,
+    });
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
@@ -48,17 +73,12 @@ export const ProductCardGrid: React.FC<ProductCardGridProps> = ({
     );
   }
 
+  console.log('ProductCardGrid: Rendering products', products.length);
+
   // Grid layout
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-      {products.map(product => (
-        <ProductCard
-          key={product.id}
-          product={product}
-          onShow={onShow}
-          onDelete={onDelete}
-        />
-      ))}
+      {productCards}
     </div>
   );
 };
