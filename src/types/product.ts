@@ -86,6 +86,20 @@ export interface ProductCard {
 }
 
 /**
+ * Product with extended fields for price difference (used in ProductList)
+ * @interface ProductWithPriceDifference
+ */
+export interface ProductWithPriceDifference extends ProductCard {
+  priceDifference?: number | null;
+  priceDifferencePercent?: number | null;
+  inventoryCost?: number | null;
+  latestPriceDifference?: number | null;
+  latestPriceDifferencePercent?: number | null;
+  latestPurchaseCost?: number | null;
+  costDiffFromLatestPo?: number | null;
+}
+
+/**
  * Category interface
  * @interface Category
  * @property {string} id - Category ID

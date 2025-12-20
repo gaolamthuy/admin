@@ -1,50 +1,79 @@
-import { Button } from '@/components/ui/button';
-import { TrendingUp } from 'lucide-react';
+/**
+ * ProductPriceDifferenceFilter Component
+ * Toggle để sort products theo cost_diff_from_latest_po (admin only)
+ * @module components/products/ProductPriceDifferenceFilter
+ */
+
+import React from 'react';
+import { Bookmark } from 'lucide-react';
+
+import { Toggle } from '@/components/ui/toggle';
+import { cn } from '@/lib/utils';
 
 /**
  * Props cho ProductPriceDifferenceFilter
  */
 interface ProductPriceDifferenceFilterProps {
-  /**
-   * Trạng thái filter có đang active không
-   */
-  pressed: boolean;
-  /**
-   * Callback khi filter thay đổi
-   */
-  onPressedChange: (pressed: boolean) => void;
-  /**
-   * Aria label cho accessibility
-   */
+  pressed?: boolean;
+  onPressedChange?: (pressed: boolean) => void;
   'aria-label'?: string;
-  /**
-   * Size của button
-   */
-  size?: 'default' | 'sm' | 'lg' | 'icon';
+  className?: string;
+  disabled?: boolean;
+  variant?: 'default' | 'outline';
 }
 
 /**
- * Component filter để hiển thị sản phẩm có chênh lệch giá lớn nhất
- * Tương tự ProductFavoriteFilter nhưng cho price difference
+ * ProductPriceDifferenceFilter Component
+ * Toggle button để sort products theo cost_diff_from_latest_po
+ *
+ * @example
+ * ```tsx
+ * <ProductPriceDifferenceFilter
+ *   pressed={sortByPriceDifference}
+ *   onPressedChange={setSortByPriceDifference}
+ *   aria-label="Sort by price difference"
+ * />
+ * ```
  */
-export const ProductPriceDifferenceFilter: React.FC<
-  ProductPriceDifferenceFilterProps
-> = ({
-  pressed,
+export const ProductPriceDifferenceFilter = ({
+  pressed = false,
   onPressedChange,
-  'aria-label': ariaLabel,
-  size = 'default',
-}) => {
+  'aria-label': ariaLabel = 'Sort by price difference',
+  className = '',
+  disabled = false,
+  variant = 'outline',
+}: ProductPriceDifferenceFilterProps) => {
+  /**
+   * Handle toggle state change
+   * @param {boolean} newPressed - New pressed state
+   */
+  const handleToggle = (newPressed: boolean) => {
+    onPressedChange?.(newPressed);
+  };
+
   return (
-    <Button
-      variant={pressed ? 'default' : 'outline'}
-      size={size}
-      onClick={() => onPressedChange(!pressed)}
+    <Toggle
+      pressed={pressed}
+      onPressedChange={handleToggle}
       aria-label={ariaLabel}
-      className="gap-2"
+      disabled={disabled}
+      variant={variant}
+      size="sm"
+      className={cn(
+        'gap-2',
+        'h-10', // Đồng nhất với các filter khác
+        'transition-all',
+        'duration-200',
+        'data-[state=on]:bg-transparent',
+        'data-[state=on]:*:[svg]:fill-primary',
+        'data-[state=on]:*:[svg]:stroke-primary',
+        className
+      )}
     >
-      <TrendingUp className="h-4 w-4" />
-      <span className="hidden sm:inline">Giá chênh lệch</span>
-    </Button>
+      <Bookmark className="h-4 w-4" />
+      <span className="font-medium">Giá chênh lệch</span>
+    </Toggle>
   );
 };
+
+ProductPriceDifferenceFilter.displayName = 'ProductPriceDifferenceFilter';

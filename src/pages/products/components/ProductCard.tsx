@@ -10,20 +10,16 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Badge } from '@/components/ui/badge';
-// import { cn } from '@/lib/utils';
 import {
-  Eye,
-  MoreHorizontal,
-  Printer,
-  UploadCloud,
-  TrendingUp,
-  TrendingDown,
-} from 'lucide-react';
-import React, { useRef, useState, useCallback, useMemo } from 'react';
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
+// import { cn } from '@/lib/utils';
+import { Eye, MoreHorizontal, Printer } from 'lucide-react';
+import React, { useState, useMemo } from 'react';
 import { ProductCard as ProductCardType, ProductCardProps } from '@/types';
-import { uploadImageToCloudinary, validateImageFile } from '@/lib/cloudinary';
-import { toast } from 'sonner';
 
 /**
  * Interface mở rộng cho ProductCard với price difference data
@@ -33,6 +29,9 @@ interface ProductWithPriceDifference extends ProductCardType {
   priceDifferencePercent?: number | null;
   inventoryCost?: number | null;
   latestPurchaseCost?: number | null;
+  latestPriceDifference?: number | null;
+  latestPriceDifferencePercent?: number | null;
+  costDiffFromLatestPo?: number | null; // inventory_cost - latest_total_cost_per_unit
 }
 
 /**
@@ -208,46 +207,6 @@ const ProductCardComponent: React.FC<
 > = ({ product: productData, onShow, isAdmin = false }) => {
   const product = productData as ProductCardType;
   const [isPrintModalOpen, setIsPrintModalOpen] = useState(false);
-  const [uploading, setUploading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement | null>(null);
-
-  const triggerFileSelect = useCallback(() => {
-    fileInputRef.current?.click();
-  }, []);
-
-  const onFileSelected = useCallback(
-    async (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0];
-      if (!file) return;
-      if (!product.kiotviet_id) {
-        console.warn('Thiếu kiotviet_id để tạo public_id cho Cloudinary');
-        return;
-      }
-      try {
-        validateImageFile(file);
-        setUploading(true);
-        const res = await uploadImageToCloudinary({
-          file,
-          kiotvietId: product.kiotviet_id,
-          // Set useCloudflareFunction=true để dùng Cloudflare Function (an toàn hơn)
-          // API_SECRET sẽ không bị expose trong client bundle
-          useCloudflareFunction: import.meta.env.PROD, // Tự động dùng Function ở production
-        });
-        console.log('Cloudinary uploaded:', res);
-        toast.success('Upload ảnh thành công', {
-          description: product.full_name || product.name,
-        });
-      } catch (err) {
-        const msg = err instanceof Error ? err.message : 'Upload thất bại';
-        console.error(msg);
-        toast.error('Upload ảnh thất bại', { description: String(msg) });
-      } finally {
-        setUploading(false);
-        if (fileInputRef.current) fileInputRef.current.value = '';
-      }
-    },
-    [product.kiotviet_id, product.full_name, product.name]
-  );
 
   // Memoize imageUrl và formattedPrice để tránh recalculate mỗi render
   const imageUrl = useMemo(
@@ -263,12 +222,8 @@ const ProductCardComponent: React.FC<
     [product.base_price]
   );
 
-  // Kiểm tra có price difference data không (từ price difference filter)
+  // Product với price difference data
   const productWithPrice = product as ProductWithPriceDifference;
-  const priceDifference = productWithPrice.priceDifference;
-  const priceDifferencePercent = productWithPrice.priceDifferencePercent;
-  const hasPriceDifference =
-    priceDifference !== null && priceDifference !== undefined;
 
   const handleQuickPrint = (quantity: number) => {
     if (!product.code) {
@@ -296,76 +251,7 @@ const ProductCardComponent: React.FC<
             }}
           />
 
-          {/* Overlay Labels */}
-          <div className="absolute inset-0 flex flex-col justify-between p-3">
-            {/* Top Label - Rice Type */}
-            <div className="flex justify-between items-start">
-              {/* Price Difference Badge */}
-              {hasPriceDifference && (
-                <Badge
-                  variant={
-                    priceDifference && priceDifference > 0
-                      ? 'destructive'
-                      : 'secondary'
-                  }
-                  className="gap-1"
-                >
-                  {priceDifference && priceDifference > 0 ? (
-                    <TrendingUp className="h-3 w-3" />
-                  ) : (
-                    <TrendingDown className="h-3 w-3" />
-                  )}
-                  <span className="text-xs font-bold">
-                    {priceDifference && priceDifference > 0 ? '+' : ''}
-                    {priceDifference
-                      ? Number(priceDifference).toLocaleString()
-                      : '-'}
-                  </span>
-                  {priceDifferencePercent !== null &&
-                    priceDifferencePercent !== undefined && (
-                      <span className="text-xs">
-                        ({priceDifferencePercent > 0 ? '+' : ''}
-                        {Number(priceDifferencePercent).toFixed(1)}%)
-                      </span>
-                    )}
-                </Badge>
-              )}
-
-              {/* Admin Edit Button - Chỉ render nếu isAdmin để tránh CanAccess check mỗi lần */}
-              {isAdmin && (
-                <>
-                  <Button
-                    size="sm"
-                    variant="secondary"
-                    className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 will-change-[opacity]"
-                    onClick={() => onShow?.(product.id)}
-                  >
-                    <Eye className="h-4 w-4" />
-                  </Button>
-                  {/* Upload test button */}
-                  <div className="flex items-center gap-2">
-                    <input
-                      ref={fileInputRef}
-                      type="file"
-                      accept="image/*"
-                      className="hidden"
-                      onChange={onFileSelected}
-                    />
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="h-8 w-8 p-0 opacity-0 group-hover:opacity-100 transition-opacity duration-200 will-change-[opacity]"
-                      onClick={triggerFileSelect}
-                      disabled={uploading}
-                      title={uploading ? 'Đang upload...' : 'Upload ảnh tạm'}
-                    >
-                      <UploadCloud className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </>
-              )}
-            </div>
-          </div>
+          {/* Overlay Labels - Đã bỏ badge chênh lệch giá */}
         </div>
 
         {/* Card Content */}
@@ -380,27 +266,48 @@ const ProductCardComponent: React.FC<
             </span>
           </div>
 
-          {/* Price Difference Info (nếu có) */}
-          {hasPriceDifference && (
-            <div className="text-xs space-y-1 pt-2 border-t">
+          {/* Admin Stats - Nằm dưới full_name (cost_diff_from_latest_po) */}
+          {isAdmin && (
+            <div className="text-xs pt-2 border-t">
               <div className="flex justify-between text-muted-foreground">
-                <span>Cost:</span>
-                <span className="font-medium">
-                  {productWithPrice.inventoryCost
-                    ? Number(productWithPrice.inventoryCost).toLocaleString()
-                    : '-'}{' '}
-                  VNĐ
-                </span>
-              </div>
-              <div className="flex justify-between text-muted-foreground">
-                <span>Giá nhập:</span>
-                <span className="font-medium">
-                  {productWithPrice.latestPurchaseCost
-                    ? Number(
-                        productWithPrice.latestPurchaseCost
-                      ).toLocaleString()
-                    : '-'}{' '}
-                  VNĐ
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <span className="cursor-help underline decoration-dotted underline-offset-2">
+                        Chênh lệch giá:
+                      </span>
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Chênh lệch giá với đơn nhập gần nhất</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <span
+                  className={`font-medium ${
+                    productWithPrice.costDiffFromLatestPo === null ||
+                    productWithPrice.costDiffFromLatestPo === undefined
+                      ? 'text-muted-foreground'
+                      : productWithPrice.costDiffFromLatestPo > 0
+                        ? 'text-green-600 dark:text-green-400'
+                        : productWithPrice.costDiffFromLatestPo < 0
+                          ? 'text-destructive'
+                          : 'text-muted-foreground'
+                  }`}
+                >
+                  {productWithPrice.costDiffFromLatestPo === null ||
+                  productWithPrice.costDiffFromLatestPo === undefined
+                    ? '-'
+                    : productWithPrice.costDiffFromLatestPo > 0
+                      ? '+'
+                      : ''}
+                  {productWithPrice.costDiffFromLatestPo !== null &&
+                    productWithPrice.costDiffFromLatestPo !== undefined &&
+                    Number(
+                      productWithPrice.costDiffFromLatestPo
+                    ).toLocaleString()}{' '}
+                  {productWithPrice.costDiffFromLatestPo !== null &&
+                    productWithPrice.costDiffFromLatestPo !== undefined &&
+                    'VNĐ'}
                 </span>
               </div>
             </div>
@@ -408,8 +315,8 @@ const ProductCardComponent: React.FC<
         </CardContent>
 
         {/* Card Footer */}
-        <CardFooter className="p-4 pt-0">
-          {/* Action Buttons */}
+        <CardFooter className="p-4 pt-0 flex flex-col gap-3">
+          {/* Line 1: Print Buttons - Tất cả users (In 10Kg, In 5Kg, ...) */}
           <div className="flex gap-2 justify-end w-full">
             {/* 10Kg Button */}
             <Button
@@ -423,7 +330,7 @@ const ProductCardComponent: React.FC<
             {/* 5Kg Button */}
             <Button
               onClick={() => handleQuickPrint(5)}
-              variant="secondary"
+              variant="outline"
               size="sm"
             >
               In 5Kg
@@ -438,6 +345,21 @@ const ProductCardComponent: React.FC<
               <MoreHorizontal className="h-4 w-4" />
             </Button>
           </div>
+
+          {/* Line 2: Admin Buttons - Chỉ admin thấy (Xem) */}
+          {isAdmin && (
+            <div className="flex gap-2 justify-end w-full pt-2 border-t border-border">
+              {/* View Button */}
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onShow?.(product.id)}
+              >
+                <Eye className="h-4 w-4 mr-2" />
+                Xem
+              </Button>
+            </div>
+          )}
         </CardFooter>
       </Card>
 

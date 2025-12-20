@@ -1,14 +1,11 @@
 import { UserAvatar } from '@/components/refine-ui/layout/user-avatar';
 import { ThemeToggle } from '@/components/refine-ui/theme/theme-toggle';
 import { NavUser } from '@/components/header-nav-user';
-import { useAuthUser } from '@/hooks/useAuthUser';
+import { useAuthUser, useLogout } from '@/hooks/useAuth';
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
-import {
-  useActiveAuthProvider,
-  useLogout,
-  useRefineOptions,
-} from '@refinedev/core';
+import { useNavigate } from 'react-router-dom';
+import { toast } from 'sonner';
 
 export const Header = () => {
   const { isMobile } = useSidebar();
@@ -43,8 +40,6 @@ function DesktopHeader() {
 
 function MobileHeader() {
   const { open, isMobile } = useSidebar();
-
-  const { title } = useRefineOptions();
 
   return (
     <header
@@ -90,7 +85,6 @@ function MobileHeader() {
           }
         )}
       >
-        <div>{title.icon}</div>
         <h2
           className={cn(
             'text-sm',
@@ -103,7 +97,7 @@ function MobileHeader() {
             }
           )}
         >
-          {title.text}
+          Admin Tool
         </h2>
       </div>
 
@@ -116,21 +110,35 @@ function MobileHeader() {
 }
 
 const UserDropdown = () => {
-  const { mutate: logout } = useLogout();
-  const { user, signOut } = useAuthUser();
+  const navigate = useNavigate();
+  const logout = useLogout();
+  const { data: user, isLoading } = useAuthUser();
 
-  const authProvider = useActiveAuthProvider();
+  const handleSignOut = async () => {
+    try {
+      await logout.mutateAsync();
+      toast.success('Đăng xuất thành công');
+      navigate('/login');
+    } catch {
+      toast.error('Đăng xuất thất bại');
+    }
+  };
 
-  if (!authProvider?.getIdentity || !user) {
+  if (isLoading || !user) {
     return <UserAvatar />;
   }
 
-  const handleSignOut = () => {
-    signOut();
-    logout();
-  };
-
-  return <NavUser user={user} onSignOut={handleSignOut} />;
+  return (
+    <NavUser
+      user={{
+        name: user.name || user.email,
+        email: user.email,
+        avatar: user.avatar,
+        role: user.role,
+      }}
+      onSignOut={handleSignOut}
+    />
+  );
 };
 
 Header.displayName = 'Header';

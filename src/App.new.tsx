@@ -14,10 +14,6 @@ import { Login } from '@/pages/auth/Login';
 import { Register } from '@/pages/auth/Register';
 import { ForgotPassword } from '@/pages/auth/ForgotPassword';
 import { ProductList } from '@/pages/products/ProductList';
-import { ProductShowNew as ProductShow } from '@/pages/products/ProductShowNew';
-import { PurchaseOrderList } from '@/pages/purchase-orders/PurchaseOrderList';
-import { PurchaseOrderCreate } from '@/pages/purchase-orders/PurchaseOrderCreate';
-import { PurchaseOrderShow } from '@/pages/purchase-orders/PurchaseOrderShow';
 import { Toaster } from '@/components/ui/sonner';
 import './App.css';
 
@@ -52,7 +48,7 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Layout>
-                    <ProductShow />
+                    <div>Product Show Page (TODO)</div>
                   </Layout>
                 </ProtectedRoute>
               }
@@ -62,7 +58,7 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Layout>
-                    <PurchaseOrderList />
+                    <div>Purchase Order List (TODO)</div>
                   </Layout>
                 </ProtectedRoute>
               }
@@ -72,7 +68,7 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Layout>
-                    <PurchaseOrderCreate />
+                    <div>Purchase Order Create (TODO)</div>
                   </Layout>
                 </ProtectedRoute>
               }
@@ -82,7 +78,7 @@ function App() {
               element={
                 <ProtectedRoute>
                   <Layout>
-                    <PurchaseOrderShow />
+                    <div>Purchase Order Show (TODO)</div>
                   </Layout>
                 </ProtectedRoute>
               }

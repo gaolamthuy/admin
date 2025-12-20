@@ -55,7 +55,6 @@ export const ProductListView: React.FC<ProductListViewProps> = ({
                 pressed={showPriceDifference}
                 onPressedChange={onPriceDifferenceChange}
                 aria-label="Toggle price difference filter"
-                size="default"
               />
             )}
 

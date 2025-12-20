@@ -13,6 +13,8 @@ import {
   useProductActions,
 } from './hooks';
 import { useProductPriceDifference } from './hooks/useProductPriceDifference';
+import { ensureSessionActive } from '@/lib/supabase-session';
+import { supabaseClient } from '@/utility';
 
 /**
  * Component danh sách sản phẩm - Hook-based version
@@ -57,11 +59,38 @@ export const ProductList = () => {
     if (!showPriceDifference) {
       table.refineCore.setFilters(filters, 'replace');
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters, showPriceDifference]); // Chỉ depend on filters, không depend on table.refineCore
 
   // Đảm bảo khi vào trang list, dữ liệu luôn được làm mới để không bị stale UI (icon/ảnh tạm)
   useEffect(() => {
     invalidate({ resource: 'kv_products', invalidates: ['list'] });
+  }, [invalidate]);
+
+  // Refetch khi window focus - đơn giản hóa và dùng window focus event
+  useEffect(() => {
+    const handleFocus = async () => {
+      console.log(
+        '[PRODUCTS PAGE] Window focused, restoring session and refetching...'
+      );
+
+      try {
+        await ensureSessionActive(supabaseClient);
+        invalidate({
+          resource: 'kv_products',
+          invalidates: ['list'],
+        });
+        console.log('[PRODUCTS PAGE] Invalidated and will refetch');
+      } catch (error) {
+        console.error('[PRODUCTS PAGE] Error during focus refetch:', error);
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
   }, [invalidate]);
 
   // Get processed products data - switch giữa normal và price difference mode

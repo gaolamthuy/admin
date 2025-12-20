@@ -62,6 +62,14 @@ export const usePurchaseOrderTable = (
             },
           ],
         },
+        queryOptions: {
+          // Force refetch khi window focus lại
+          refetchOnWindowFocus: true,
+          // Disable stale time để luôn fetch fresh data
+          staleTime: 0,
+          // Cache time ngắn để tránh stale data
+          gcTime: 0,
+        },
       },
     }),
     [columns, filters]
