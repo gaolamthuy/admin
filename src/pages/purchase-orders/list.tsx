@@ -1,5 +1,6 @@
 import React, { useEffect } from 'react';
 import { Link } from 'react-router';
+import { useInvalidate } from '@refinedev/core';
 import { useIsAdmin } from '@/hooks/useIsAdmin';
 import { ListView } from '@/components/refine-ui/views/list-view';
 import { DataTable } from '@/components/refine-ui/data-table/data-table';
@@ -12,6 +13,8 @@ import {
   usePurchaseOrderTable,
   usePurchaseOrderActions,
 } from './hooks';
+import { ensureSessionActive } from '@/lib/supabase-session';
+import { supabaseClient } from '@/utility';
 
 /**
  * Component danh sách đơn mua hàng - Hook-based version
@@ -20,6 +23,7 @@ import {
  */
 export const PurchaseOrderList = () => {
   // Hooks
+  const invalidate = useInvalidate();
   const { viewMode, setViewMode } = usePurchaseOrderView();
   const { isAdmin } = useIsAdmin();
   const {
@@ -42,6 +46,35 @@ export const PurchaseOrderList = () => {
     table.refineCore.setFilters(filters, 'replace');
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [filters]); // Chỉ depend on filters, không depend on table.refineCore
+
+  // Refetch khi window focus - đơn giản hóa và dùng window focus event
+  useEffect(() => {
+    const handleFocus = async () => {
+      console.log(
+        '[PURCHASE ORDERS PAGE] Window focused, restoring session and refetching...'
+      );
+
+      try {
+        await ensureSessionActive(supabaseClient);
+        invalidate({
+          resource: 'kv_purchase_orders',
+          invalidates: ['list'],
+        });
+        console.log('[PURCHASE ORDERS PAGE] Invalidated and will refetch');
+      } catch (error) {
+        console.error(
+          '[PURCHASE ORDERS PAGE] Error during focus refetch:',
+          error
+        );
+      }
+    };
+
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+    };
+  }, [invalidate]);
 
   // Get processed purchase orders data (reserved for future use)
   getProcessedPurchaseOrders(); // Call để đảm bảo data được processed

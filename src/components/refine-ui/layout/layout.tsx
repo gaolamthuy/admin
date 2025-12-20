@@ -5,7 +5,7 @@ import { ThemeProvider } from '@/components/refine-ui/theme/theme-provider';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import type { PropsWithChildren } from 'react';
-import { Sidebar } from './sidebar';
+import { Sidebar } from './sidebar-new';
 
 export function Layout({ children }: PropsWithChildren) {
   return (

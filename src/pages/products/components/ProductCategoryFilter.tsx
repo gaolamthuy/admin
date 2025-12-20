@@ -122,6 +122,7 @@ export const ProductCategoryFilter = ({
   // Fetch categories on mount
   useEffect(() => {
     fetchCategories();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // Empty dependency array - only run once on mount
 
   // Debounce search term for performance
@@ -152,7 +153,7 @@ export const ProductCategoryFilter = ({
     return selected?.name || placeholder;
   }, [value, options, placeholder]);
 
-  // Size classes
+  // Size classes - đồng nhất với ProductFavoriteFilter (size="lg" = h-10)
   const sizeClasses = {
     sm: 'h-8 text-sm',
     md: 'h-9 text-sm',
@@ -201,10 +202,10 @@ export const ProductCategoryFilter = ({
           <Button
             variant={variant}
             disabled={disabled || options.length === 0}
-            className={`${sizeClasses[size]} w-32 justify-between`}
+            className={`${sizeClasses[size]} w-32 justify-between bg-background hover:bg-accent hover:text-accent-foreground border-border`}
           >
             <span className="truncate">{selectedLabel}</span>
-            <ChevronDown className="h-4 w-4 opacity-50" />
+            <ChevronDown className="h-4 w-4 opacity-50 shrink-0" />
           </Button>
         </DropdownMenuTrigger>
 

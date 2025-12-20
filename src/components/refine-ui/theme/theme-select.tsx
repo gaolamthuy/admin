@@ -73,10 +73,22 @@ export function ThemeSelect() {
         {themeOptions.map(option => {
           const isSelected = theme === option.value;
 
+          // Handle 'system' option - convert to 'dark' or 'light' based on device preference
+          const handleClick = () => {
+            if (option.value === 'system') {
+              const prefersDark = window.matchMedia(
+                '(prefers-color-scheme: dark)'
+              ).matches;
+              setTheme(prefersDark ? 'dark' : 'light');
+            } else {
+              setTheme(option.value);
+            }
+          };
+
           return (
             <DropdownMenuItem
               key={option.value}
-              onClick={() => setTheme(option.value)}
+              onClick={handleClick}
               className={cn(
                 'flex items-center gap-2 cursor-pointer relative pr-8',
                 {

@@ -48,23 +48,19 @@ export const ProductFavoriteFilter = ({
       aria-label={ariaLabel}
       disabled={disabled}
       variant={variant}
-      size="default"
+      size="sm"
       className={cn(
         'gap-2',
+        'h-10', // Đồng nhất với ProductCategoryFilter size="lg"
         'transition-all',
         'duration-200',
-        pressed && 'text-red-500 hover:text-red-600',
+        'data-[state=on]:bg-transparent',
+        'data-[state=on]:*:[svg]:fill-primary',
+        'data-[state=on]:*:[svg]:stroke-primary',
         className
       )}
     >
-      <Heart
-        className={cn(
-          'h-4 w-4',
-          'transition-all',
-          'duration-200',
-          pressed && 'fill-current'
-        )}
-      />
+      <Heart className="h-4 w-4" />
       <span className="font-medium">Yêu thích</span>
     </Toggle>
   );

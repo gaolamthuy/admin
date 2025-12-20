@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { supabaseClient } from '@/utility';
+import { supabase } from '@/lib/supabase';
 
 /**
  * Interface cho product với price difference data
@@ -15,6 +15,7 @@ export interface ProductWithPriceDifference {
   inventory_cost: number | null;
   cost_difference: number | null;
   cost_difference_percent: number | null;
+  category_id?: number | null;
   // Thêm fields từ kv_products
   kiotviet_id?: number;
   images?: string[];
@@ -44,11 +45,10 @@ export const useProductPriceDifference = (enabled: boolean = false) => {
 
         // Query view v_product_compare_pod để lấy products có purchase data
         // Lấy thêm thông tin từ kv_products để có đầy đủ data
-        const { data: priceComparisonData, error: priceError } =
-          await supabaseClient
-            .from('v_product_compare_pod')
-            .select(
-              `
+        const { data: priceComparisonData, error: priceError } = await supabase
+          .from('v_product_compare_pod')
+          .select(
+            `
               product_id,
               product_code,
               product_name,
@@ -59,8 +59,8 @@ export const useProductPriceDifference = (enabled: boolean = false) => {
               category_id,
               is_active
             `
-            )
-            .not('latest_purchase_order_id', 'is', null);
+          )
+          .not('latest_purchase_order_id', 'is', null);
 
         if (priceError) {
           throw new Error(
@@ -75,18 +75,16 @@ export const useProductPriceDifference = (enabled: boolean = false) => {
 
         // Query inventory costs cho tất cả products
         const productIds = priceComparisonData.map(p => p.product_id);
-        const { data: inventoryData, error: inventoryError } =
-          await supabaseClient
-            .from('kv_product_inventories')
-            .select('product_id, cost, branch_name')
-            .in('product_id', productIds);
+        const { data: inventoryData, error: inventoryError } = await supabase
+          .from('kv_product_inventories')
+          .select('product_id, cost, branch_name')
+          .in('product_id', productIds);
 
         // Query thêm thông tin products (images, kiotviet_id) để hiển thị đầy đủ
-        const { data: productsData, error: productsError } =
-          await supabaseClient
-            .from('kv_products')
-            .select('id, kiotviet_id, code, images, glt_labelprint_favorite')
-            .in('id', productIds);
+        const { data: productsData, error: productsError } = await supabase
+          .from('kv_products')
+          .select('id, kiotviet_id, code, images, glt_labelprint_favorite')
+          .in('id', productIds);
 
         if (inventoryError) {
           console.warn('Error fetching inventory costs:', inventoryError);
@@ -145,6 +143,7 @@ export const useProductPriceDifference = (enabled: boolean = false) => {
               inventory_cost: cost,
               cost_difference: costDifference,
               cost_difference_percent: costDifferencePercent,
+              category_id: pc.category_id || null,
               // Thêm product data
               kiotviet_id: productData?.kiotviet_id || 0,
               images: productData?.images || [],
