@@ -25,7 +25,7 @@ import { cn } from '@/lib/utils';
  */
 export const PurchaseOrderCreate = () => {
   const navigate = useNavigate();
-
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isOpen] = useState(true);
 
   // Form state management
