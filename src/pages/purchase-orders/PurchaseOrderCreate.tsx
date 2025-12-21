@@ -1,85 +1,146 @@
 /**
  * Purchase Order Create Page
- * Sử dụng TanStack Query và React Hook Form
+ * Sử dụng step-based flow với usePurchaseOrderForm
+ * Step 1: Chọn supplier
+ * Step 2: Chọn products từ templates
  *
  * @module pages/purchase-orders/PurchaseOrderCreate
  */
 
-import { useForm } from 'react-hook-form';
-import { zodResolver } from '@hookform/resolvers/zod';
-import { z } from 'zod';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
-import {
-  useCreatePurchaseOrder,
-  useSuppliers,
-} from '@/hooks/usePurchaseOrders';
+import { usePurchaseOrderForm } from './hooks/usePurchaseOrderForm';
+import { useSuppliers } from './hooks/useSuppliers';
+import { useTemplates } from './hooks/useTemplates';
+import { useCreatePurchaseOrder } from './hooks/useCreatePurchaseOrder';
+import { SupplierSelector } from './components/SupplierSelector';
+import { ProductSelector } from './components/ProductSelector';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { toast } from 'sonner';
-import { Loader2, ArrowLeft } from 'lucide-react';
-
-const createPurchaseOrderSchema = z.object({
-  code: z.string().min(1, 'Mã đơn là bắt buộc'),
-  supplier_id: z.number().optional(),
-  description: z.string().optional(),
-  purchase_date: z.string().optional(),
-});
-
-type CreatePurchaseOrderForm = z.infer<typeof createPurchaseOrderSchema>;
+import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 /**
- * Purchase Order Create Page Component
+ * Purchase Order Create Page Component với step-based flow
  */
 export const PurchaseOrderCreate = () => {
   const navigate = useNavigate();
-  const createPurchaseOrder = useCreatePurchaseOrder();
-  const { data: suppliers = [], isLoading: suppliersLoading } = useSuppliers();
 
-  const form = useForm<CreatePurchaseOrderForm>({
-    resolver: zodResolver(createPurchaseOrderSchema),
-    defaultValues: {
-      code: '',
-      supplier_id: undefined,
-      description: '',
-      purchase_date: new Date().toISOString().split('T')[0],
-    },
-  });
+  const [isOpen] = useState(true);
 
-  const onSubmit = async (data: CreatePurchaseOrderForm) => {
+  // Form state management
+  const form = usePurchaseOrderForm();
+
+  // Hooks cho data fetching
+  const {
+    suppliers,
+    loading: suppliersLoading,
+    error: suppliersError,
+  } = useSuppliers(isOpen);
+
+  const {
+    templates,
+    loading: templatesLoading,
+    error: templatesError,
+  } = useTemplates(
+    isOpen && form.step === 2,
+    form.selectedSupplier?.kiotviet_id
+  );
+
+  // Hook cho create purchase order (webhook với n8n)
+  const {
+    createPurchaseOrder,
+    isSubmitting,
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
+    errorMessage,
+  } = useCreatePurchaseOrder();
+
+  // Auto-select all products khi templates load xong
+  useEffect(() => {
+    if (
+      form.step === 2 &&
+      templates.length > 0 &&
+      Object.keys(form.selectedProducts).length === 0
+    ) {
+      form.autoSelectAll(templates);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [form.step, templates.length]);
+
+  // Tính toán isSelectAll từ selectedProducts và templates
+  const isSelectAll =
+    templates.length > 0 &&
+    templates.every(
+      template =>
+        template.product_id &&
+        form.selectedProducts[template.product_id] !== undefined
+    );
+
+  /**
+   * Xử lý chọn supplier và chuyển sang step 2
+   */
+  const handleSupplierSelect = (supplier: typeof form.selectedSupplier) => {
+    form.setSelectedSupplier(supplier);
+    form.setStep(2);
+  };
+
+  /**
+   * Xử lý quay lại step 1
+   */
+  const handleBackToStep1 = () => {
+    form.setStep(1);
+  };
+
+  /**
+   * Xử lý submit purchase order
+   */
+  const handleSubmit = async () => {
+    // Validate form
+    if (!form.validate()) {
+      if (!form.selectedSupplier) {
+        // Có thể show toast error ở đây nếu cần
+        return;
+      }
+      if (Object.keys(form.selectedProducts).length === 0) {
+        // Có thể show toast error ở đây nếu cần
+        return;
+      }
+      return;
+    }
+
+    if (!form.selectedSupplier) {
+      return;
+    }
+
     try {
-      await createPurchaseOrder.mutateAsync({
-        code: data.code,
-        supplier_id: data.supplier_id || null,
-        description: data.description || null,
-        purchase_date: data.purchase_date
-          ? new Date(data.purchase_date).toISOString()
-          : null,
-        total: 0,
-        total_payment: 0,
-        status: 1,
-      });
-      toast.success('Tạo đơn mua hàng thành công!');
+      // Build payload cho webhook n8n
+      const payload = {
+        branchId: form.selectedSupplier.branch_id || 0, // Fallback to 0 nếu không có
+        supplier: {
+          id: form.selectedSupplier.kiotviet_id,
+          code: form.selectedSupplier.code,
+          name: form.selectedSupplier.name,
+          contactNumber: form.selectedSupplier.contact_number,
+          address: form.selectedSupplier.address,
+        },
+        purchaseOrderDetails: form.selectedProductList.map(product => ({
+          productId: product.product_id,
+          productCode: product.product_code,
+          productName: product.product_name,
+          quantity: product.quantity,
+          price: product.price,
+          discount: null,
+        })),
+        description: '',
+        isDraft: false,
+      };
+
+      await createPurchaseOrder(payload);
+      // Navigate về list sau khi tạo thành công
       navigate('/purchase-orders');
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : 'Tạo đơn mua hàng thất bại';
-      toast.error(message);
+    } catch (error) {
+      // Error đã được handle trong useCreatePurchaseOrder hook
+      console.error('Error creating purchase order:', error);
     }
   };
 
@@ -95,124 +156,137 @@ export const PurchaseOrderCreate = () => {
       <Card>
         <CardHeader>
           <CardTitle>Tạo đơn mua hàng mới</CardTitle>
+          <div className="flex items-center gap-2 mt-4">
+            <div
+              className={cn(
+                'flex items-center gap-2',
+                form.step >= 1 && 'text-primary'
+              )}
+            >
+              <div
+                className={cn(
+                  'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium',
+                  form.step >= 1
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground'
+                )}
+              >
+                1
+              </div>
+              <span>Chọn nhà cung cấp</span>
+            </div>
+            <div className="h-px w-8 bg-border" />
+            <div
+              className={cn(
+                'flex items-center gap-2',
+                form.step >= 2 && 'text-primary'
+              )}
+            >
+              <div
+                className={cn(
+                  'w-8 h-8 rounded-full flex items-center justify-center text-sm font-medium',
+                  form.step >= 2
+                    ? 'bg-primary text-primary-foreground'
+                    : 'bg-muted text-muted-foreground'
+                )}
+              >
+                2
+              </div>
+              <span>Chọn sản phẩm</span>
+            </div>
+          </div>
         </CardHeader>
         <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-              <FormField
-                control={form.control}
-                name="code"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Mã đơn</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="PO-001"
-                        disabled={createPurchaseOrder.isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
+          {/* Step 1: Chọn supplier */}
+          {form.step === 1 && (
+            <div className="space-y-6">
+              <SupplierSelector
+                suppliers={suppliers}
+                loading={suppliersLoading}
+                error={suppliersError}
+                selectedSupplier={form.selectedSupplier}
+                onSelect={handleSupplierSelect}
               />
 
-              <FormField
-                control={form.control}
-                name="supplier_id"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nhà cung cấp</FormLabel>
-                    <Select
-                      value={field.value?.toString() || ''}
-                      onValueChange={value =>
-                        field.onChange(value ? Number(value) : undefined)
-                      }
-                      disabled={
-                        suppliersLoading || createPurchaseOrder.isPending
-                      }
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Chọn nhà cung cấp" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {suppliers.map(
-                          (supplier: { kiotviet_id: number; name: string }) => (
-                            <SelectItem
-                              key={supplier.kiotviet_id}
-                              value={String(supplier.kiotviet_id)}
-                            >
-                              {supplier.name}
-                            </SelectItem>
-                          )
-                        )}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="purchase_date"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Ngày mua</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        type="date"
-                        disabled={createPurchaseOrder.isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <FormField
-                control={form.control}
-                name="description"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Mô tả</FormLabel>
-                    <FormControl>
-                      <Input
-                        {...field}
-                        placeholder="Mô tả đơn mua hàng"
-                        disabled={createPurchaseOrder.isPending}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="flex gap-4">
-                <Button type="submit" disabled={createPurchaseOrder.isPending}>
-                  {createPurchaseOrder.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Đang tạo...
-                    </>
-                  ) : (
-                    'Tạo đơn mua hàng'
-                  )}
-                </Button>
+              <div className="flex justify-end">
                 <Button
-                  type="button"
                   variant="outline"
                   onClick={() => navigate('/purchase-orders')}
-                  disabled={createPurchaseOrder.isPending}
                 >
                   Hủy
                 </Button>
               </div>
-            </form>
-          </Form>
+            </div>
+          )}
+
+          {/* Step 2: Chọn products từ templates */}
+          {form.step === 2 && (
+            <div className="space-y-6">
+              {form.selectedSupplier && (
+                <div className="p-4 bg-muted rounded-md">
+                  <p className="text-sm text-muted-foreground">
+                    Nhà cung cấp đã chọn:
+                  </p>
+                  <p className="font-medium">
+                    {form.selectedSupplier.name ||
+                      form.selectedSupplier.code ||
+                      'Không tên'}
+                  </p>
+                </div>
+              )}
+
+              <ProductSelector
+                templates={templates}
+                loading={templatesLoading}
+                error={templatesError}
+                selectedProducts={form.selectedProducts}
+                isSelectAll={isSelectAll}
+                selectedSupplierId={form.selectedSupplier?.kiotviet_id}
+                onToggleProduct={form.toggleProduct}
+                onSelectAll={checked => form.selectAll(templates, checked)}
+                onQuantityChange={form.updateQuantity}
+              />
+
+              <div className="flex justify-between">
+                <Button
+                  variant="outline"
+                  onClick={handleBackToStep1}
+                  disabled={isSubmitting}
+                >
+                  <ArrowLeft className="mr-2 h-4 w-4" />
+                  Quay lại
+                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    variant="outline"
+                    onClick={() => navigate('/purchase-orders')}
+                    disabled={isSubmitting}
+                  >
+                    Hủy
+                  </Button>
+                  <Button
+                    onClick={handleSubmit}
+                    disabled={
+                      isSubmitting ||
+                      Object.keys(form.selectedProducts).length === 0
+                    }
+                  >
+                    {isSubmitting ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Đang tạo...
+                      </>
+                    ) : (
+                      <>
+                        Tạo đơn mua hàng
+                        <ArrowRight className="ml-2 h-4 w-4" />
+                      </>
+                    )}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>

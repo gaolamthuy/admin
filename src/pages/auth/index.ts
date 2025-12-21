@@ -1,7 +1,7 @@
 // Page components
-export { Login } from './login';
-export { Register } from './register';
-export { ForgotPassword } from './forgot-password';
+export { Login } from './Login';
+export { Register } from './Register';
+export { ForgotPassword } from './ForgotPassword';
 
 // Shared components
 export {

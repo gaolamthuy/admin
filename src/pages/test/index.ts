@@ -1,1 +1,0 @@
-export { TestList } from './list';

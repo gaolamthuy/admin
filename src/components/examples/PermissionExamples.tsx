@@ -1,22 +1,17 @@
 import React from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { useIsAdmin, usePermissions } from '@/hooks/useIsAdmin';
+import { useIsAdmin } from '@/hooks/useAuth';
+// Note: usePermissions không còn available, chỉ dùng useIsAdmin
 import { CanAccess, AdminOnly, StaffOnly } from '@/components/auth/CanAccess';
 
 /**
  * Examples of different permission approaches
  */
 export const PermissionExamples = () => {
-  const { isAdmin, loading: adminLoading } = useIsAdmin();
-  const {
-    canEdit,
-    canDelete,
-    canCreate,
-    loading: permissionsLoading,
-  } = usePermissions();
+  const { isAdmin, isLoading: adminLoading } = useIsAdmin();
 
-  if (adminLoading || permissionsLoading) {
+  if (adminLoading) {
     return <div>Loading permissions...</div>;
   }
 
@@ -40,15 +35,15 @@ export const PermissionExamples = () => {
         </CardContent>
       </Card>
 
-      {/* Method 2: usePermissions */}
+      {/* Method 2: usePermissions - DISABLED (không còn available) */}
       <Card>
         <CardHeader>
-          <CardTitle>Method 2: usePermissions</CardTitle>
+          <CardTitle>Method 2: usePermissions (Disabled)</CardTitle>
         </CardHeader>
         <CardContent className="space-y-2">
-          {canEdit && <Button variant="outline">Edit Product</Button>}
-          {canDelete && <Button variant="destructive">Delete Product</Button>}
-          {canCreate && <Button>Create Product</Button>}
+          <p className="text-sm text-muted-foreground">
+            usePermissions hook đã được xóa. Chỉ dùng useIsAdmin hiện tại.
+          </p>
         </CardContent>
       </Card>
 

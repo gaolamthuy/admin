@@ -1,5 +1,6 @@
 import React from 'react';
-import { useIsAdmin, usePermissions } from '@/hooks/useIsAdmin';
+import { useIsAdmin } from '@/hooks/useAuth';
+// Note: usePermissions không còn available, chỉ dùng useIsAdmin
 
 interface CanAccessProps {
   children: React.ReactNode;
@@ -33,38 +34,25 @@ export const CanAccess: React.FC<CanAccessProps> = ({
   requireDelete = false,
   requireCreate = false,
 }) => {
-  const { isAdmin, loading: adminLoading } = useIsAdmin();
-  const {
-    isStaff,
-    canEdit,
-    canDelete,
-    canCreate,
-    loading: permissionsLoading,
-  } = usePermissions();
+  const { isAdmin, isLoading: adminLoading } = useIsAdmin();
 
   // Show loading state while checking permissions
-  if (adminLoading || permissionsLoading) {
+  if (adminLoading) {
     return null; // or a loading spinner
   }
 
   // Check specific permission requirements
+  // Note: Chỉ support requireAdmin hiện tại, các permission khác cần implement sau
   if (requireAdmin && !isAdmin) {
     return <>{fallback}</>;
   }
 
-  if (requireStaff && !isStaff) {
-    return <>{fallback}</>;
-  }
-
-  if (requireEdit && !canEdit) {
-    return <>{fallback}</>;
-  }
-
-  if (requireDelete && !canDelete) {
-    return <>{fallback}</>;
-  }
-
-  if (requireCreate && !canCreate) {
+  // TODO: Implement staff/edit/delete/create permissions
+  // Hiện tại chỉ support admin check
+  if (requireStaff || requireEdit || requireDelete || requireCreate) {
+    console.warn(
+      'CanAccess: requireStaff/requireEdit/requireDelete/requireCreate chưa được implement, chỉ support requireAdmin'
+    );
     return <>{fallback}</>;
   }
 

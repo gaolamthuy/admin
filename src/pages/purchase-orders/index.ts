@@ -1,8 +1,6 @@
 // Page components
-export * from './create';
-export * from './edit';
-export * from './list';
-export * from './show';
+// create.tsx, edit.tsx, list.tsx, show.tsx đã được xóa
+// Đang dùng: PurchaseOrderList.tsx, PurchaseOrderCreate.tsx, PurchaseOrderShow.tsx
 
 // Shared components
 export { PurchaseOrderListView } from './components';

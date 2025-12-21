@@ -1,5 +1,5 @@
-import { UserAvatar } from '@/components/refine-ui/layout/user-avatar';
-import { ThemeToggle } from '@/components/refine-ui/theme/theme-toggle';
+import { UserAvatar } from '@/components/app-layout/layout/user-avatar';
+import { ThemeToggle } from '@/components/app-layout/theme/theme-toggle';
 import { NavUser } from '@/components/header-nav-user';
 import { useAuthUser, useLogout } from '@/hooks/useAuth';
 import { SidebarTrigger, useSidebar } from '@/components/ui/sidebar';

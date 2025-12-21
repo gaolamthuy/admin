@@ -15,7 +15,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Skeleton } from '@/components/ui/skeleton';
 // import { Input } from '@/components/ui/input';
-import { supabaseClient } from '@/utility';
+import { supabase } from '@/lib/supabase';
 import { ProductCategoryFilterProps, CategoryOption } from '@/types';
 import { AlertCircle, ChevronDown } from 'lucide-react';
 
@@ -70,7 +70,7 @@ export const ProductCategoryFilter = ({
       setLoading(true);
       setError(null);
 
-      const { data, error: fetchError } = await supabaseClient
+      const { data, error: fetchError } = await supabase
         .from('kv_product_categories')
         .select('category_id, category_name, rank')
         .eq('glt_is_active', true)

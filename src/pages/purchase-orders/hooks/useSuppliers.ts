@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { supabaseClient } from '@/utility';
+import { supabase } from '@/lib/supabase';
 import { ensureSessionActive } from '@/lib/supabase-session';
 
 export interface SupplierOption {
@@ -49,7 +49,7 @@ export const useSuppliers = (open: boolean) => {
 
     const executeQuery = async () =>
       await Promise.resolve(
-        supabaseClient
+        supabase
           .from('kv_supplier_stats')
           .select('*')
           .order('total_invoice', { ascending: false })
@@ -74,7 +74,7 @@ export const useSuppliers = (open: boolean) => {
           }
 
           try {
-            await ensureSessionActive(supabaseClient);
+            await ensureSessionActive(supabase);
             const queryStartTime = Date.now();
             const { data, error: queryError } = await executeQuery();
             const queryDuration = Date.now() - queryStartTime;

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { supabaseClient } from '@/utility';
+import { supabase } from '@/lib/supabase';
 
 export interface ChildUnit {
   code: string;
@@ -26,6 +26,20 @@ export interface TemplateProduct {
 export interface SelectedProduct extends TemplateProduct {
   quantity: number;
   price: number | null;
+}
+
+/**
+ * Raw data từ database view
+ */
+interface TemplateProductRaw {
+  product_id: number;
+  product_code: string | null;
+  product_name: string | null;
+  order_count: number;
+  avg_quantity: number | null;
+  avg_price: number | null;
+  last_purchase_date: string | null;
+  child_units: ChildUnit[] | null;
 }
 
 /**
@@ -104,7 +118,7 @@ export const useTemplates = (
           '[useTemplates] Starting query (Supabase will auto-handle session)...'
         );
 
-        const { data, error: queryError } = await supabaseClient
+        const { data, error: queryError } = await supabase
           .from('kv_supplier_product_templates')
           .select('*')
           .eq('supplier_id', currentSupplierId)
@@ -146,7 +160,7 @@ export const useTemplates = (
         // Remove duplicates by product_id (keep first occurrence)
         const seenProductIds = new Set<number>();
         const processed: TemplateProduct[] = (data || [])
-          .filter(item => {
+          .filter((item: TemplateProductRaw) => {
             if (!item.product_id) return false;
             if (seenProductIds.has(item.product_id)) {
               console.warn(
@@ -157,7 +171,7 @@ export const useTemplates = (
             seenProductIds.add(item.product_id);
             return true;
           })
-          .map(item => ({
+          .map((item: TemplateProductRaw) => ({
             product_id: item.product_id,
             product_code: item.product_code,
             product_name: item.product_name,

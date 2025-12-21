@@ -78,23 +78,9 @@ export interface ProductCardGridProps {
 /**
  * Product table configuration
  * @interface ProductTableConfig
+ * @deprecated Không còn dùng Refine, giữ lại để tương thích nếu cần
  */
 export interface ProductTableConfig {
   columns: unknown[];
-  refineCoreProps: {
-    syncWithLocation: boolean;
-    meta: {
-      select: string;
-      count: string;
-    };
-    filters: {
-      initial: ProductFilter[];
-    };
-    sorters: {
-      initial: Array<{
-        field: string;
-        order: 'asc' | 'desc';
-      }>;
-    };
-  };
+  // refineCoreProps đã được remove vì không còn dùng Refine
 }

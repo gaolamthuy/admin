@@ -1,8 +1,8 @@
 /**
- * Sidebar Component (New version without Refine)
+ * Sidebar Component
  * Sử dụng hooks mới từ useAuth
  *
- * @module components/refine-ui/layout/sidebar
+ * @module components/app-layout/layout/sidebar
  */
 
 'use client';

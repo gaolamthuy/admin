@@ -114,23 +114,9 @@ export interface PurchaseOrderDataTableProps {
 /**
  * Purchase Order table configuration
  * @interface PurchaseOrderTableConfig
+ * @deprecated Không còn dùng Refine, giữ lại để tương thích nếu cần
  */
 export interface PurchaseOrderTableConfig {
   columns: unknown[];
-  refineCoreProps: {
-    syncWithLocation: boolean;
-    meta: {
-      select: string;
-      count: string;
-    };
-    filters: {
-      initial: PurchaseOrderFilter[];
-    };
-    sorters: {
-      initial: Array<{
-        field: string;
-        order: 'asc' | 'desc';
-      }>;
-    };
-  };
+  // refineCoreProps đã được remove vì không còn dùng Refine
 }

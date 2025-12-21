@@ -1,5 +1,4 @@
 import { useMemo, useState, useCallback } from 'react';
-import { useForm } from '@refinedev/react-hook-form';
 import { SupplierOption } from './useSuppliers';
 import { TemplateProduct, SelectedProduct } from './useTemplates';
 
@@ -11,7 +10,7 @@ export interface PurchaseOrderFormData {
 
 /**
  * Hook quản lý form state và validation cho purchase order
- * Sử dụng Refine useForm để có validation và error handling
+ * Đã migrate từ Refine sang useState (không còn Refine dependency)
  */
 export const usePurchaseOrderForm = () => {
   const [step, setStep] = useState<1 | 2>(1);
@@ -21,16 +20,12 @@ export const usePurchaseOrderForm = () => {
     Record<number, SelectedProduct>
   >({});
 
-  // Sử dụng Refine form để có validation (mặc dù không submit trực tiếp qua Refine)
-  const {
-    refineCore: { formLoading },
-    formState: { errors },
-  } = useForm({
-    refineCoreProps: {
-      resource: 'kv_purchase_orders',
-      action: 'create',
-    },
-  });
+  // State cho form loading và errors (thay thế Refine form)
+  // Note: setFormLoading và setErrors không được dùng nhưng giữ lại để tương thích với interface
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [formLoading, _setFormLoading] = useState(false);
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  const [errors, _setErrors] = useState<Record<string, string>>({});
 
   /**
    * Validate form trước khi submit

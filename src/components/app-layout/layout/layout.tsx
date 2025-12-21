@@ -1,11 +1,11 @@
 'use client';
 
-import { Header } from '@/components/refine-ui/layout/header';
-import { ThemeProvider } from '@/components/refine-ui/theme/theme-provider';
+import { Header } from '@/components/app-layout/layout/header';
+import { ThemeProvider } from '@/components/app-layout/theme/theme-provider';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import type { PropsWithChildren } from 'react';
-import { Sidebar } from './sidebar-new';
+import { Sidebar } from './sidebar';
 
 export function Layout({ children }: PropsWithChildren) {
   return (

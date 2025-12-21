@@ -1,5 +1,5 @@
 import { useCallback, useMemo, useState } from 'react';
-import { useNotification } from '@refinedev/core';
+import { toast } from 'sonner';
 
 export interface PurchaseOrderDetailPayload {
   productId: number;
@@ -42,7 +42,6 @@ const encodeBasicAuth = (value?: string) => {
 };
 
 export const useCreatePurchaseOrder = () => {
-  const { open } = useNotification();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
 
@@ -99,18 +98,14 @@ export const useCreatePurchaseOrder = () => {
           throw new Error(text || DEFAULT_ERROR_MESSAGE);
         }
 
-        open?.({
-          type: 'success',
-          message: 'Đơn mua hàng đã được tạo',
+        toast.success('Đơn mua hàng đã được tạo', {
           description: 'KiotViet đang xử lý đơn nháp mới.',
         });
       } catch (error) {
         const message =
           error instanceof Error ? error.message : DEFAULT_ERROR_MESSAGE;
         setErrorMessage(message);
-        open?.({
-          type: 'error',
-          message: 'Tạo đơn mua hàng thất bại',
+        toast.error('Tạo đơn mua hàng thất bại', {
           description: message,
         });
         throw error;
@@ -118,7 +113,7 @@ export const useCreatePurchaseOrder = () => {
         setIsSubmitting(false);
       }
     },
-    [authHeaders, open, webhookUrl]
+    [authHeaders, webhookUrl]
   );
 
   const resetError = useCallback(() => setErrorMessage(null), []);
