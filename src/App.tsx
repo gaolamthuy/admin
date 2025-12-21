@@ -18,6 +18,7 @@ import { ProductShow } from '@/pages/products/ProductShow';
 import { PurchaseOrderList } from '@/pages/purchase-orders/PurchaseOrderList';
 import { PurchaseOrderCreate } from '@/pages/purchase-orders/PurchaseOrderCreate';
 import { PurchaseOrderShow } from '@/pages/purchase-orders/PurchaseOrderShow';
+import { CustomersList } from '@/pages/customers/CustomersList';
 import { Toaster } from '@/components/ui/sonner';
 import './App.css';
 
@@ -83,6 +84,16 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <PurchaseOrderShow />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/customers"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <CustomersList />
                   </Layout>
                 </ProtectedRoute>
               }
