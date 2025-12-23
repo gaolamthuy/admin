@@ -45,6 +45,12 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { formatDaysAgo, formatDate } from '@/utils/date';
 import { toast } from 'sonner';
 
@@ -211,14 +217,22 @@ export const ProductShow = () => {
           {showUploadIcon && (
             <>
               <span className="w-2" /> {/* Blank space */}
-              <Upload 
-                className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground cursor-pointer" 
-                title="Upload image"
-                onClick={(e) => {
-                  e.stopPropagation(); // Prevent parent onClick
-                  // TODO: Implement upload functionality
-                }}
-              />
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Upload 
+                      className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground cursor-pointer" 
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent parent onClick
+                        // TODO: Implement upload functionality
+                      }}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Upload image</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
             </>
           )}
         </div>
