@@ -29,7 +29,7 @@ export interface ProductImage {
 }
 
 /**
- * Interface cho dữ liệu từ view v_product_compare_pod
+ * Interface cho dữ liệu từ view v_products_admin
  */
 export interface PurchaseOrderDetail {
   purchase_order_id: number;
@@ -154,7 +154,7 @@ export const useProductImages = (kiotvietId: number | null | undefined) => {
 };
 
 /**
- * Hook để fetch price comparison từ v_product_compare_pod
+ * Hook để fetch price comparison từ v_products_admin
  */
 export const useProductPriceComparison = (
   productCode: string | null | undefined
@@ -169,7 +169,7 @@ export const useProductPriceComparison = (
       }
 
       const { data, error } = await supabase
-        .from('v_product_compare_pod')
+        .from('v_products_admin')
         .select('*')
         .eq('product_code', productCode)
         .single();

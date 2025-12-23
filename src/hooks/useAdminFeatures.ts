@@ -48,7 +48,7 @@ export const ADMIN_FEATURES = {
     latestPriceDifference: {
       key: 'latestPriceDifference',
       label: 'Latest price difference',
-      description: 'Hiển thị latest_price_difference từ v_product_compare_pod',
+      description: 'Hiển thị latest_price_difference từ v_products_admin',
     },
     cost: {
       key: 'cost',

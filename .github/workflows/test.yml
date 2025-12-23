@@ -49,39 +49,41 @@ jobs:
           name: codecov-umbrella
           fail_ci_if_error: false
 
-  e2e:
-    runs-on: ubuntu-latest
-    if: github.event_name == 'pull_request'
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 20.x
-          cache: 'npm'
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Install Playwright browsers
-        run: npx playwright install --with-deps
-        continue-on-error: true
-
-      - name: Run E2E tests
-        run: npm run test:e2e --if-present
-        continue-on-error: true
-
-      - name: Upload Playwright report
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: playwright-report
-          path: playwright-report/
-          retention-days: 30
-          compression-level: 6
+  # E2E tests disabled - Playwright tests are not implemented yet
+  # Uncomment when E2E tests are ready
+  # e2e:
+  #   runs-on: ubuntu-latest
+  #   if: github.event_name == 'pull_request'
+  #
+  #   steps:
+  #     - name: Checkout code
+  #       uses: actions/checkout@v4
+  #
+  #     - name: Setup Node.js
+  #       uses: actions/setup-node@v4
+  #       with:
+  #         node-version: 20.x
+  #         cache: 'npm'
+  #
+  #     - name: Install dependencies
+  #       run: npm ci
+  #
+  #     - name: Install Playwright browsers
+  #       run: npx playwright install --with-deps
+  #       continue-on-error: true
+  #
+  #     - name: Run E2E tests
+  #       run: npm run test:e2e --if-present
+  #       continue-on-error: true
+  #
+  #     - name: Upload Playwright report
+  #       uses: actions/upload-artifact@v4
+  #       if: always()
+  #       with:
+  #         name: playwright-report
+  #         path: playwright-report/
+  #         retention-days: 30
+  #         compression-level: 6
 
   build:
     runs-on: ubuntu-latest
