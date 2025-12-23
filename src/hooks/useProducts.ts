@@ -1,7 +1,7 @@
 /**
  * useProducts hook với TanStack Query
  * Fetch products từ Supabase với filters
- * Sử dụng v_product_compare_pod view cho cả 2 tabs (Cơ bản và Nâng cao)
+ * Sử dụng v_products_admin view cho cả 2 tabs (Cơ bản và Nâng cao)
  *
  * @module hooks/useProducts
  */
@@ -26,7 +26,7 @@ export interface ProductFilters {
 }
 
 /**
- * Hook fetch products với filters từ v_product_compare_pod
+ * Hook fetch products với filters từ v_products_admin
  * View này có đầy đủ thông tin products và purchase data
  *
  * @param filters - Product filters (category, isFavorite, requirePurchaseData)
@@ -43,9 +43,9 @@ export const useProducts = (filters: ProductFilters = {}) => {
         throw new Error('Not authenticated');
       }
 
-      // Query từ v_product_compare_pod view (có đầy đủ thông tin)
+      // Query từ v_products_admin view (có đầy đủ thông tin)
       let query = supabase
-        .from('v_product_compare_pod')
+        .from('v_products_admin')
         .select(
           `
             product_id,
@@ -93,8 +93,8 @@ export const useProducts = (filters: ProductFilters = {}) => {
         .select(
           'id, kiotviet_id, code, images, glt_labelprint_favorite, master_unit_id, category_name, weight, unit, allows_sale, type, has_variants, description, glt_visible, glt_retail_promotion, glt_created_at, glt_updated_at, created_date, modified_date'
         )
-        .in('id', productIds)
-        .is('master_unit_id', null); // Chỉ lấy master products
+        .in('id', productIds);
+      // Note: v_products_admin đã filter master_unit_id = null rồi, không cần filter lại
 
       if (productsError) {
         console.warn('Error fetching products details:', productsError);

@@ -158,7 +158,7 @@ export const ProductList = () => {
           p => p.product_id === Number(product.id)
         );
 
-        // Lưu latest_price_difference gốc từ v_product_compare_pod (trước khi override)
+        // Lưu latest_price_difference gốc từ v_products_admin (trước khi override)
         const productWithExt = product as unknown as ProductWithExtendedFields;
         const originalLatestPriceDifference =
           productWithExt.priceDifference || null;
@@ -180,11 +180,11 @@ export const ProductList = () => {
               ? priceDiffData.cost_difference_percent
               : originalLatestPriceDifferencePercent,
           inventoryCost: priceDiffData?.inventory_cost || null,
-          // latest_price_difference từ v_product_compare_pod (giữ nguyên giá trị gốc)
+          // latest_price_difference từ v_products_admin (giữ nguyên giá trị gốc)
           latestPriceDifference: originalLatestPriceDifference,
           latestPriceDifferencePercent: originalLatestPriceDifferencePercent,
           latestPurchaseCost: productWithExt.latestPurchaseCost || null,
-          // cost_diff_from_latest_po từ v_product_compare_pod (inventory_cost - latest_total_cost_per_unit)
+          // cost_diff_from_latest_po từ v_products_admin (inventory_cost - latest_total_cost_per_unit)
           costDiffFromLatestPo: productWithExt.costDiffFromLatestPo || null,
         } as ProductWithExtendedFields;
       });

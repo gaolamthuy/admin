@@ -43,10 +43,10 @@ export const useProductPriceDifference = (enabled: boolean = false) => {
         setLoading(true);
         setError(null);
 
-        // Query view v_product_compare_pod để lấy products có purchase data
+        // Query view v_products_admin để lấy products có purchase data
         // Lấy thêm thông tin từ kv_products để có đầy đủ data
         const { data: priceComparisonData, error: priceError } = await supabase
-          .from('v_product_compare_pod')
+          .from('v_products_admin')
           .select(
             `
               product_id,
