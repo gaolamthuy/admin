@@ -6,7 +6,7 @@
  */
 
 import { useParams, useNavigate } from 'react-router-dom';
-import { useMemo, useRef, useEffect } from 'react';
+import { useMemo, useRef, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import {
   useProductShow,
@@ -28,7 +28,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Upload } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -45,6 +45,12 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { formatDaysAgo, formatDate } from '@/utils/date';
 import { toast } from 'sonner';
 
@@ -56,6 +62,9 @@ export const ProductShow = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const hasResetForm = useRef(false);
+  
+  // Track image load errors để tránh infinite retry
+  const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
 
   // Query product data
   const {
@@ -102,6 +111,12 @@ export const ProductShow = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [record]);
 
+  // Reset image errors khi product thay đổi
+  useEffect(() => {
+    setImageErrors(new Set());
+    hasResetForm.current = false;
+  }, [id]);
+
   /**
    * Phân loại ảnh theo role để hiển thị nhóm main/package
    */
@@ -126,16 +141,51 @@ export const ProductShow = () => {
   const packageOriginal = imagesByRole['package-original'];
 
   /**
+   * Validate URL và check xem có bị error không
+   */
+  const getImageUrl = (image?: ProductImage | null): string | null => {
+    if (!image) return null;
+    const url = image.url || image.path;
+    if (!url) return null;
+    
+    // Check nếu URL đã bị error trước đó
+    if (imageErrors.has(url)) {
+      return null;
+    }
+    
+    // Validate URL format
+    try {
+      new URL(url);
+      return url;
+    } catch {
+      // Invalid URL format
+      return null;
+    }
+  };
+
+  /**
+   * Handle image error - prevent infinite retry
+   */
+  const handleImageError = (url: string | null) => {
+    if (url && !imageErrors.has(url)) {
+      setImageErrors(prev => new Set(prev).add(url));
+    }
+  };
+
+  /**
    * Render helper hiển thị metadata badge cho các role con
    */
   const renderRoleMetadataBadge = (
     roleName: string,
     image?: ProductImage | null
   ) => {
-    const hasImage = Boolean(image?.url || image?.path);
-    const url = image?.url || image?.path;
+    const imageUrl = getImageUrl(image);
+    const hasImage = Boolean(imageUrl);
     const rev = image?.rev;
     const updatedAt = image?.updated_at;
+    
+    // Check nếu role cần icon upload
+    const showUploadIcon = roleName === 'main-original' || roleName === 'package-original';
 
     return (
       <div
@@ -146,8 +196,8 @@ export const ProductShow = () => {
             : 'bg-muted/10 border-dashed'
         } transition-colors`}
         onClick={() => {
-          if (hasImage && url) {
-            window.open(url, '_blank');
+          if (hasImage && imageUrl) {
+            window.open(imageUrl, '_blank');
           }
         }}
       >
@@ -163,6 +213,27 @@ export const ProductShow = () => {
             <span className="text-muted-foreground" title="Missing">
               ⚠️
             </span>
+          )}
+          {showUploadIcon && (
+            <>
+              <span className="w-2" /> {/* Blank space */}
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Upload 
+                      className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground cursor-pointer" 
+                      onClick={(e) => {
+                        e.stopPropagation(); // Prevent parent onClick
+                        // TODO: Implement upload functionality
+                      }}
+                    />
+                  </TooltipTrigger>
+                  <TooltipContent>
+                    <p>Upload image</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </>
           )}
         </div>
         <div className="flex items-center gap-3 text-xs text-muted-foreground">
@@ -335,25 +406,35 @@ export const ProductShow = () => {
                   {/* Hiển thị ảnh main chính */}
                   {mainImage ? (
                     <div className="relative rounded-lg border overflow-hidden group">
-                      <img
-                        src={
-                          mainImage.url ||
-                          mainImage.path ||
-                          '/placeholder-product.png'
-                        }
-                        alt={mainImage.alt || 'Main image'}
-                        className="w-full h-64 object-cover transition-transform group-hover:scale-105 cursor-pointer"
-                        onError={e => {
-                          (e.target as HTMLImageElement).src =
-                            '/placeholder-product.png';
-                        }}
-                        onClick={() => {
-                          const url = mainImage.url || mainImage.path;
-                          if (url) {
-                            window.open(url, '_blank');
-                          }
-                        }}
-                      />
+                      {(() => {
+                        const imageUrl = getImageUrl(mainImage);
+                        const hasError = imageUrl === null;
+                        
+                        return hasError ? (
+                          <div className="relative rounded-lg border border-dashed overflow-hidden bg-muted/20 h-64 flex items-center justify-center">
+                            <div className="text-center text-muted-foreground">
+                              <p className="text-sm">Không thể tải ảnh</p>
+                              <p className="text-xs mt-1">URL không hợp lệ hoặc không tồn tại</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <img
+                            src={imageUrl}
+                            alt={mainImage.alt || 'Main image'}
+                            className="w-full h-64 object-cover transition-transform group-hover:scale-105 cursor-pointer"
+                            loading="lazy"
+                            decoding="async"
+                            onError={() => {
+                              handleImageError(imageUrl);
+                            }}
+                            onClick={() => {
+                              if (imageUrl) {
+                                window.open(imageUrl, '_blank');
+                              }
+                            }}
+                          />
+                        );
+                      })()}
                       <Badge
                         variant="default"
                         className="absolute top-2 left-2 text-xs"
@@ -408,25 +489,35 @@ export const ProductShow = () => {
                   {/* Hiển thị ảnh package chính */}
                   {packageImage ? (
                     <div className="relative rounded-lg border overflow-hidden group">
-                      <img
-                        src={
-                          packageImage.url ||
-                          packageImage.path ||
-                          '/placeholder-product.png'
-                        }
-                        alt={packageImage.alt || 'Package image'}
-                        className="w-full h-64 object-cover transition-transform group-hover:scale-105 cursor-pointer"
-                        onError={e => {
-                          (e.target as HTMLImageElement).src =
-                            '/placeholder-product.png';
-                        }}
-                        onClick={() => {
-                          const url = packageImage.url || packageImage.path;
-                          if (url) {
-                            window.open(url, '_blank');
-                          }
-                        }}
-                      />
+                      {(() => {
+                        const imageUrl = getImageUrl(packageImage);
+                        const hasError = imageUrl === null;
+                        
+                        return hasError ? (
+                          <div className="relative rounded-lg border border-dashed overflow-hidden bg-muted/20 h-64 flex items-center justify-center">
+                            <div className="text-center text-muted-foreground">
+                              <p className="text-sm">Không thể tải ảnh</p>
+                              <p className="text-xs mt-1">URL không hợp lệ hoặc không tồn tại</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <img
+                            src={imageUrl}
+                            alt={packageImage.alt || 'Package image'}
+                            className="w-full h-64 object-cover transition-transform group-hover:scale-105 cursor-pointer"
+                            loading="lazy"
+                            decoding="async"
+                            onError={() => {
+                              handleImageError(imageUrl);
+                            }}
+                            onClick={() => {
+                              if (imageUrl) {
+                                window.open(imageUrl, '_blank');
+                              }
+                            }}
+                          />
+                        );
+                      })()}
                       <Badge
                         variant="default"
                         className="absolute top-2 left-2 text-xs"
