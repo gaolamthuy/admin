@@ -29,6 +29,7 @@ import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
 import { Loader2, Upload } from 'lucide-react';
+import { ProductImageUploadDialog } from './components/ProductImageUploadDialog';
 import {
   Table,
   TableBody,
@@ -65,6 +66,10 @@ export const ProductShow = () => {
   
   // Track image load errors để tránh infinite retry
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
+
+  // Upload dialog state
+  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
+  const [uploadDialogRole, setUploadDialogRole] = useState<string | null>(null);
 
   // Query product data
   const {
@@ -224,7 +229,10 @@ export const ProductShow = () => {
                       className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground cursor-pointer" 
                       onClick={(e) => {
                         e.stopPropagation(); // Prevent parent onClick
-                        // TODO: Implement upload functionality
+                        if (record?.kiotviet_id) {
+                          setUploadDialogRole(roleName);
+                          setUploadDialogOpen(true);
+                        }
                       }}
                     />
                   </TooltipTrigger>
@@ -946,6 +954,17 @@ export const ProductShow = () => {
           Quay lại
         </Button>
       </div>
+
+      {/* Upload Dialog */}
+      {record?.kiotviet_id && uploadDialogRole && (
+        <ProductImageUploadDialog
+          open={uploadDialogOpen}
+          onOpenChange={setUploadDialogOpen}
+          kiotvietId={record.kiotviet_id}
+          role={uploadDialogRole}
+          productName={record.full_name || record.name || undefined}
+        />
+      )}
     </div>
   );
 };
