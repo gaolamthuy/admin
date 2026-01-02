@@ -112,7 +112,7 @@ temp/
 
 # Project specific
 # docs/ - Allow specific docs files
-!docs/CLOUDFLARE_PAGES_DEPLOYMENT.md
+docs/
 instruction/
 
 n8n/
