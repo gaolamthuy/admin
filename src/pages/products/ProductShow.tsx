@@ -14,6 +14,8 @@ import {
   useProductPriceComparison,
   useProductInventory,
   useUpdateProduct,
+  useRegenerateProductImages,
+  useUploadProductImage,
   type ProductImage,
 } from './hooks/useProductShow';
 import {
@@ -28,8 +30,7 @@ import { Button } from '@/components/ui/button';
 import { Separator } from '@/components/ui/separator';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
-import { Loader2, Upload } from 'lucide-react';
-import { ProductImageUploadDialog } from './components/ProductImageUploadDialog';
+import { Loader2, Upload, RefreshCw } from 'lucide-react';
 import {
   Table,
   TableBody,
@@ -52,7 +53,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { formatDaysAgo, formatDate } from '@/utils/date';
+import { formatDaysAgo, formatDate, formatDateTime } from '@/utils/date';
 import { toast } from 'sonner';
 
 /**
@@ -67,10 +68,6 @@ export const ProductShow = () => {
   // Track image load errors để tránh infinite retry
   const [imageErrors, setImageErrors] = useState<Set<string>>(new Set());
 
-  // Upload dialog state
-  const [uploadDialogOpen, setUploadDialogOpen] = useState(false);
-  const [uploadDialogRole, setUploadDialogRole] = useState<string | null>(null);
-
   // Query product data
   const {
     data: record,
@@ -78,9 +75,9 @@ export const ProductShow = () => {
     error: recordError,
   } = useProductShow(id || '');
 
-  // Query product images
+  // Query product images (sử dụng product_id thay vì kiotviet_id)
   const { data: productImages = [], isLoading: imagesLoading } =
-    useProductImages(record?.kiotviet_id);
+    useProductImages(record?.id);
 
   // Query price comparison
   const { data: priceComparison, isLoading: priceComparisonLoading } =
@@ -93,6 +90,10 @@ export const ProductShow = () => {
 
   // Mutation để update product
   const updateProduct = useUpdateProduct();
+  
+  // Mutations cho images
+  const regenerateImages = useRegenerateProductImages();
+  const uploadImage = useUploadProductImage();
 
   // Form cho inline editing
   const form = useForm({
@@ -123,7 +124,7 @@ export const ProductShow = () => {
   }, [id]);
 
   /**
-   * Phân loại ảnh theo role để hiển thị nhóm main/package
+   * Phân loại ảnh theo role để hiển thị theo nhóm
    */
   const imagesByRole = useMemo(() => {
     const map: Record<string, ProductImage> = {};
@@ -135,15 +136,23 @@ export const ProductShow = () => {
     return map;
   }, [productImages]);
 
-  const mainImage = imagesByRole['main'];
-  const mainThumbnail = imagesByRole['main-thumbnail'];
-  const mainOriginal = imagesByRole['main-original'];
-  const mainResized = imagesByRole['main-resized'];
-  const mainInfocard = imagesByRole['main-infoCard'];
+  // Feature images
+  const featureMain = imagesByRole['feature-main'];
+  const featureThumbnail = imagesByRole['feature-thumbnail'];
 
-  const packageImage = imagesByRole['package'];
+  // Closeup images
+  const closeupMain = imagesByRole['closeup-main'];
+  const closeupThumbnail = imagesByRole['closeup-thumbnail'];
+  const closeupOriginal = imagesByRole['closeup-original'];
+
+  // Package images
+  const packageMain = imagesByRole['package-main'];
   const packageThumbnail = imagesByRole['package-thumbnail'];
   const packageOriginal = imagesByRole['package-original'];
+
+  // Infocard images
+  const infocardMain = imagesByRole['infocard-main'];
+  const infocardThumbnail = imagesByRole['infocard-thumbnail'];
 
   /**
    * Validate URL và check xem có bị error không
@@ -178,9 +187,65 @@ export const ProductShow = () => {
   };
 
   /**
-   * Render helper hiển thị metadata badge cho các role con
+   * Handle upload image cho closeup hoặc package
    */
-  const renderRoleMetadataBadge = (
+  const handleUploadImage = async (
+    role: 'closeup' | 'package',
+    event: React.ChangeEvent<HTMLInputElement>
+  ) => {
+    if (!record?.kiotviet_id) return;
+
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    try {
+      await toast.promise(
+        uploadImage.mutateAsync({
+          file,
+          kiotvietId: record.kiotviet_id,
+          role,
+        }),
+        {
+          loading: `Đang upload ảnh ${role}...`,
+          success: `Đã upload ảnh ${role} thành công. Đang xử lý...`,
+          error: `Upload ảnh ${role} thất bại. Vui lòng thử lại.`,
+        }
+      );
+    } catch (error) {
+      console.error('Upload error:', error);
+    } finally {
+      // Reset input để có thể chọn lại file cùng tên
+      event.target.value = '';
+    }
+  };
+
+  /**
+   * Handle regenerate images
+   */
+  const handleRegenerate = async (role: 'feature' | 'closeup' | 'package' | 'infocard') => {
+    if (!record?.kiotviet_id) return;
+
+    try {
+      await toast.promise(
+        regenerateImages.mutateAsync({
+          kiotvietId: record.kiotviet_id,
+          role,
+        }),
+        {
+          loading: `Đang regenerate ảnh ${role}...`,
+          success: `Đã regenerate ảnh ${role} thành công`,
+          error: `Regenerate ảnh ${role} thất bại. Vui lòng thử lại.`,
+        }
+      );
+    } catch (error) {
+      console.error('Regenerate error:', error);
+    }
+  };
+
+  /**
+   * Render image item text (không dùng card)
+   */
+  const renderImageItem = (
     roleName: string,
     image?: ProductImage | null
   ) => {
@@ -188,18 +253,21 @@ export const ProductShow = () => {
     const hasImage = Boolean(imageUrl);
     const rev = image?.rev;
     const updatedAt = image?.updated_at;
-    
-    // Check nếu role cần icon upload
-    const showUploadIcon = roleName === 'main-original' || roleName === 'package-original';
+
+    // Convert rev (timestamp) sang date format
+    const revDate = rev
+      ? (() => {
+          // Rev có thể là milliseconds (>= 1000000000000) hoặc seconds
+          const timestamp =
+            rev >= 1000000000000 ? rev : rev * 1000;
+          return formatDateTime(new Date(timestamp));
+        })()
+      : null;
 
     return (
       <div
         key={roleName}
-        className={`flex items-center justify-between p-3 rounded-lg border ${
-          hasImage
-            ? 'bg-muted/30 border-border hover:bg-muted/50 cursor-pointer'
-            : 'bg-muted/10 border-dashed'
-        } transition-colors`}
+        className="flex items-center justify-between text-xs py-1.5 px-2 rounded hover:bg-muted/30 transition-colors"
         onClick={() => {
           if (hasImage && imageUrl) {
             window.open(imageUrl, '_blank');
@@ -207,48 +275,22 @@ export const ProductShow = () => {
         }}
       >
         <div className="flex items-center gap-2">
-          <span className="text-xs font-medium text-foreground">
-            {roleName}
-          </span>
+          <span className="text-muted-foreground">{roleName}</span>
           {hasImage ? (
-            <span className="text-green-600" title="Available">
-              ✅
-            </span>
+            <span className="text-green-600" title="Available">✅</span>
           ) : (
-            <span className="text-muted-foreground" title="Missing">
-              ⚠️
-            </span>
-          )}
-          {showUploadIcon && (
-            <>
-              <span className="w-2" /> {/* Blank space */}
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <Upload 
-                      className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground cursor-pointer" 
-                      onClick={(e) => {
-                        e.stopPropagation(); // Prevent parent onClick
-                        if (record?.kiotviet_id) {
-                          setUploadDialogRole(roleName);
-                          setUploadDialogOpen(true);
-                        }
-                      }}
-                    />
-                  </TooltipTrigger>
-                  <TooltipContent>
-                    <p>Upload image</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
-            </>
+            <span className="text-muted-foreground" title="Missing">⚠️</span>
           )}
         </div>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          {rev && (
-            <span className="font-mono">Rev: {rev.toString().slice(-8)}</span>
+        <div className="flex items-center gap-2 text-muted-foreground">
+          {revDate && (
+            <span className="text-[10px]">
+              {revDate}
+            </span>
+          )}-
+          {updatedAt && (
+            <span className="text-[10px]">{formatDaysAgo(updatedAt)}</span>
           )}
-          {updatedAt && <span>{formatDaysAgo(updatedAt)}</span>}
         </div>
       </div>
     );
@@ -394,176 +436,370 @@ export const ProductShow = () => {
 
           <Separator />
 
-          {/* Hiển thị hình ảnh sản phẩm theo nhóm main/package */}
+          {/* Hiển thị hình ảnh sản phẩm theo 4 nhóm: feature, closeup, package, infocard */}
           <div>
             <h4 className="text-sm font-medium mb-4">Hình ảnh sản phẩm</h4>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Main Image Card */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+              {/* Feature Card */}
               <Card>
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">Main Image</CardTitle>
-                    {imagesLoading && (
-                      <span className="text-xs text-muted-foreground">
-                        Đang tải...
-                      </span>
-                    )}
+                    <CardTitle className="text-base">Feature</CardTitle>
+                    <div className="flex items-center gap-2">
+                      {imagesLoading && (
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      )}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => handleRegenerate('feature')}
+                              disabled={regenerateImages.isPending || !record?.kiotviet_id}
+                            >
+                              <RefreshCw className="h-3.5 w-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Regenerate feature images</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Hiển thị ảnh main chính */}
-                  {mainImage ? (
+                <CardContent className="space-y-3">
+                  {/* Feature Main Image */}
+                  {featureMain ? (
                     <div className="relative rounded-lg border overflow-hidden group">
                       {(() => {
-                        const imageUrl = getImageUrl(mainImage);
+                        const imageUrl = getImageUrl(featureMain);
                         const hasError = imageUrl === null;
                         
                         return hasError ? (
-                          <div className="relative rounded-lg border border-dashed overflow-hidden bg-muted/20 h-64 flex items-center justify-center">
-                            <div className="text-center text-muted-foreground">
-                              <p className="text-sm">Không thể tải ảnh</p>
-                              <p className="text-xs mt-1">URL không hợp lệ hoặc không tồn tại</p>
+                          <div className="relative rounded-lg border border-dashed overflow-hidden bg-muted/20 w-[300px] h-[400px] flex items-center justify-center">
+                            <div className="text-center text-muted-foreground text-xs">
+                              <p>Không thể tải ảnh</p>
                             </div>
                           </div>
                         ) : (
                           <img
                             src={imageUrl}
-                            alt={mainImage.alt || 'Main image'}
-                            className="w-full h-64 object-cover transition-transform group-hover:scale-105 cursor-pointer"
+                            alt="Feature main"
+                            className="w-[300px] h-[400px] object-cover transition-transform group-hover:scale-105 cursor-pointer"
                             loading="lazy"
                             decoding="async"
-                            onError={() => {
-                              handleImageError(imageUrl);
-                            }}
-                            onClick={() => {
-                              if (imageUrl) {
-                                window.open(imageUrl, '_blank');
-                              }
-                            }}
+                            onError={() => handleImageError(imageUrl)}
+                            onClick={() => imageUrl && window.open(imageUrl, '_blank')}
                           />
                         );
                       })()}
-                      <Badge
-                        variant="default"
-                        className="absolute top-2 left-2 text-xs"
-                      >
-                        Main
-                      </Badge>
-                      {mainImage.width && mainImage.height && (
-                        <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                          {mainImage.width} × {mainImage.height}px
-                          {mainImage.format &&
-                            ` • ${mainImage.format.toUpperCase()}`}
-                        </div>
-                      )}
                     </div>
                   ) : (
-                    <div className="relative rounded-lg border border-dashed overflow-hidden bg-muted/20 h-64 flex items-center justify-center">
-                      <div className="text-center text-muted-foreground">
-                        <p className="text-sm">Chưa có ảnh main</p>
-                        <p className="text-xs mt-1">Placeholder</p>
+                    <div className="relative rounded-lg border border-dashed overflow-hidden bg-muted/20 w-[300px] h-[400px] flex items-center justify-center">
+                      <div className="text-center text-muted-foreground text-xs">
+                        <p>Chưa có ảnh</p>
                       </div>
                     </div>
                   )}
 
-                  {/* Metadata section cho các role con */}
-                  <div className="space-y-2">
-                    <h5 className="text-xs font-medium text-muted-foreground uppercase">
-                      Metadata
-                    </h5>
-                    <div className="space-y-2">
-                      {renderRoleMetadataBadge('main-original', mainOriginal)}
-                      {renderRoleMetadataBadge('main-resized', mainResized)}
-                      {renderRoleMetadataBadge('main-thumbnail', mainThumbnail)}
-                      {renderRoleMetadataBadge('main-infoCard', mainInfocard)}
-                    </div>
+                  {/* Feature Items */}
+                  <div className="space-y-1">
+                    {renderImageItem('feature-main', featureMain)}
+                    {renderImageItem('feature-thumbnail', featureThumbnail)}
                   </div>
                 </CardContent>
               </Card>
 
-              {/* Package Image Card */}
+              {/* Closeup Card */}
               <Card>
                 <CardHeader>
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-base">Package Image</CardTitle>
-                    {imagesLoading && (
-                      <span className="text-xs text-muted-foreground">
-                        Đang tải...
-                      </span>
-                    )}
+                    <CardTitle className="text-base">Closeup</CardTitle>
+                    <div className="flex items-center gap-2">
+                      {imagesLoading && (
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      )}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => handleRegenerate('closeup')}
+                              disabled={regenerateImages.isPending || !record?.kiotviet_id}
+                            >
+                              <RefreshCw className="h-3.5 w-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Regenerate closeup images</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
                   </div>
                 </CardHeader>
-                <CardContent className="space-y-4">
-                  {/* Hiển thị ảnh package chính */}
-                  {packageImage ? (
+                <CardContent className="space-y-3">
+                  {/* Closeup Main Image với Upload Icon */}
+                  {closeupMain ? (
                     <div className="relative rounded-lg border overflow-hidden group">
                       {(() => {
-                        const imageUrl = getImageUrl(packageImage);
+                        const imageUrl = getImageUrl(closeupMain);
                         const hasError = imageUrl === null;
                         
                         return hasError ? (
-                          <div className="relative rounded-lg border border-dashed overflow-hidden bg-muted/20 h-64 flex items-center justify-center">
-                            <div className="text-center text-muted-foreground">
-                              <p className="text-sm">Không thể tải ảnh</p>
-                              <p className="text-xs mt-1">URL không hợp lệ hoặc không tồn tại</p>
+                          <div className="relative rounded-lg border border-dashed overflow-hidden bg-muted/20 w-[300px] h-[400px] flex items-center justify-center">
+                            <div className="text-center text-muted-foreground text-xs">
+                              <p>Không thể tải ảnh</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <img
+                              src={imageUrl}
+                              alt="Closeup main"
+                              className="w-[300px] h-[400px] object-cover transition-transform group-hover:scale-105 cursor-pointer"
+                              loading="lazy"
+                              decoding="async"
+                              onError={() => handleImageError(imageUrl)}
+                              onClick={() => imageUrl && window.open(imageUrl, '_blank')}
+                            />
+                            <div className="absolute top-2 right-2">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <label className="cursor-pointer">
+                                      <input
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        className="hidden"
+                                        onChange={(e) => handleUploadImage('closeup', e)}
+                                        disabled={uploadImage.isPending}
+                                      />
+                                      <div className="bg-black/70 hover:bg-black/90 rounded p-1.5 transition-colors">
+                                        <Upload className="h-3.5 w-3.5 text-white" />
+                                      </div>
+                                    </label>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Upload closeup image</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    <div className="relative rounded-lg border border-dashed overflow-hidden bg-muted/20 w-[300px] h-[400px] flex items-center justify-center">
+                      <label className="cursor-pointer w-full h-full flex items-center justify-center">
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          onChange={(e) => handleUploadImage('closeup', e)}
+                          disabled={uploadImage.isPending}
+                        />
+                        <div className="text-center text-muted-foreground text-xs">
+                          <Upload className="h-6 w-6 mx-auto mb-1" />
+                          <p>Upload closeup</p>
+                        </div>
+                      </label>
+                    </div>
+                  )}
+
+                  {/* Closeup Items */}
+                  <div className="space-y-1">
+                    {renderImageItem('closeup-main', closeupMain)}
+                    {renderImageItem('closeup-thumbnail', closeupThumbnail)}
+                    {renderImageItem('closeup-original', closeupOriginal)}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Package Card */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">Package</CardTitle>
+                    <div className="flex items-center gap-2">
+                      {imagesLoading && (
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      )}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => handleRegenerate('package')}
+                              disabled={regenerateImages.isPending || !record?.kiotviet_id}
+                            >
+                              <RefreshCw className="h-3.5 w-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Regenerate package images</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {/* Package Main Image với Upload Icon */}
+                  {packageMain ? (
+                    <div className="relative rounded-lg border overflow-hidden group">
+                      {(() => {
+                        const imageUrl = getImageUrl(packageMain);
+                        const hasError = imageUrl === null;
+                        
+                        return hasError ? (
+                          <div className="relative rounded-lg border border-dashed overflow-hidden bg-muted/20 w-[300px] h-[400px] flex items-center justify-center">
+                            <div className="text-center text-muted-foreground text-xs">
+                              <p>Không thể tải ảnh</p>
+                            </div>
+                          </div>
+                        ) : (
+                          <>
+                            <img
+                              src={imageUrl}
+                              alt="Package main"
+                              className="w-[300px] h-[400px] object-cover transition-transform group-hover:scale-105 cursor-pointer"
+                              loading="lazy"
+                              decoding="async"
+                              onError={() => handleImageError(imageUrl)}
+                              onClick={() => imageUrl && window.open(imageUrl, '_blank')}
+                            />
+                            <div className="absolute top-2 right-2">
+                              <TooltipProvider>
+                                <Tooltip>
+                                  <TooltipTrigger asChild>
+                                    <label className="cursor-pointer">
+                                      <input
+                                        type="file"
+                                        accept="image/jpeg,image/png,image/webp"
+                                        className="hidden"
+                                        onChange={(e) => handleUploadImage('package', e)}
+                                        disabled={uploadImage.isPending}
+                                      />
+                                      <div className="bg-black/70 hover:bg-black/90 rounded p-1.5 transition-colors">
+                                        <Upload className="h-3.5 w-3.5 text-white" />
+                                      </div>
+                                    </label>
+                                  </TooltipTrigger>
+                                  <TooltipContent>
+                                    <p>Upload package image</p>
+                                  </TooltipContent>
+                                </Tooltip>
+                              </TooltipProvider>
+                            </div>
+                          </>
+                        );
+                      })()}
+                    </div>
+                  ) : (
+                    <div className="relative rounded-lg border border-dashed overflow-hidden bg-muted/20 w-[300px] h-[400px] flex items-center justify-center">
+                      <label className="cursor-pointer w-full h-full flex items-center justify-center">
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          className="hidden"
+                          onChange={(e) => handleUploadImage('package', e)}
+                          disabled={uploadImage.isPending}
+                        />
+                        <div className="text-center text-muted-foreground text-xs">
+                          <Upload className="h-6 w-6 mx-auto mb-1" />
+                          <p>Upload package</p>
+                        </div>
+                      </label>
+                    </div>
+                  )}
+
+                  {/* Package Items */}
+                  <div className="space-y-1">
+                    {renderImageItem('package-main', packageMain)}
+                    {renderImageItem('package-thumbnail', packageThumbnail)}
+                    {renderImageItem('package-original', packageOriginal)}
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Infocard Card */}
+              <Card>
+                <CardHeader>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-base">Infocard</CardTitle>
+                    <div className="flex items-center gap-2">
+                      {imagesLoading && (
+                        <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                      )}
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-6 w-6"
+                              onClick={() => handleRegenerate('infocard')}
+                              disabled={regenerateImages.isPending || !record?.kiotviet_id}
+                            >
+                              <RefreshCw className="h-3.5 w-3.5" />
+                            </Button>
+                          </TooltipTrigger>
+                          <TooltipContent>
+                            <p>Regenerate infocard images</p>
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {/* Infocard Main Image */}
+                  {infocardMain ? (
+                    <div className="relative rounded-lg border overflow-hidden group">
+                      {(() => {
+                        const imageUrl = getImageUrl(infocardMain);
+                        const hasError = imageUrl === null;
+                        
+                        return hasError ? (
+                          <div className="relative rounded-lg border border-dashed overflow-hidden bg-muted/20 w-[300px] h-[400px] flex items-center justify-center">
+                            <div className="text-center text-muted-foreground text-xs">
+                              <p>Không thể tải ảnh</p>
                             </div>
                           </div>
                         ) : (
                           <img
                             src={imageUrl}
-                            alt={packageImage.alt || 'Package image'}
-                            className="w-full h-64 object-cover transition-transform group-hover:scale-105 cursor-pointer"
+                            alt="Infocard main"
+                            className="w-[300px] h-[400px] object-cover transition-transform group-hover:scale-105 cursor-pointer"
                             loading="lazy"
                             decoding="async"
-                            onError={() => {
-                              handleImageError(imageUrl);
-                            }}
-                            onClick={() => {
-                              if (imageUrl) {
-                                window.open(imageUrl, '_blank');
-                              }
-                            }}
+                            onError={() => handleImageError(imageUrl)}
+                            onClick={() => imageUrl && window.open(imageUrl, '_blank')}
                           />
                         );
                       })()}
-                      <Badge
-                        variant="default"
-                        className="absolute top-2 left-2 text-xs"
-                      >
-                        Package
-                      </Badge>
-                      {packageImage.width && packageImage.height && (
-                        <div className="absolute bottom-2 right-2 bg-black/70 text-white text-xs px-2 py-1 rounded">
-                          {packageImage.width} × {packageImage.height}px
-                          {packageImage.format &&
-                            ` • ${packageImage.format.toUpperCase()}`}
-                        </div>
-                      )}
                     </div>
                   ) : (
-                    <div className="relative rounded-lg border border-dashed overflow-hidden bg-muted/20 h-64 flex items-center justify-center">
-                      <div className="text-center text-muted-foreground">
-                        <p className="text-sm">Chưa có ảnh package</p>
-                        <p className="text-xs mt-1">Placeholder</p>
+                    <div className="relative rounded-lg border border-dashed overflow-hidden bg-muted/20 w-[300px] h-[400px] flex items-center justify-center">
+                      <div className="text-center text-muted-foreground text-xs">
+                        <p>Chưa có ảnh</p>
                       </div>
                     </div>
                   )}
 
-                  {/* Metadata section cho các role con của package */}
-                  <div className="space-y-2">
-                    <h5 className="text-xs font-medium text-muted-foreground uppercase">
-                      Metadata
-                    </h5>
-                    <div className="space-y-2">
-                      {renderRoleMetadataBadge(
-                        'package-thumbnail',
-                        packageThumbnail
-                      )}
-                      {renderRoleMetadataBadge(
-                        'package-original',
-                        packageOriginal
-                      )}
-                    </div>
+                  {/* Infocard Items */}
+                  <div className="space-y-1">
+                    {renderImageItem('infocard-main', infocardMain)}
+                    {renderImageItem('infocard-thumbnail', infocardThumbnail)}
                   </div>
                 </CardContent>
               </Card>
@@ -954,17 +1190,6 @@ export const ProductShow = () => {
           Quay lại
         </Button>
       </div>
-
-      {/* Upload Dialog */}
-      {record?.kiotviet_id && uploadDialogRole && (
-        <ProductImageUploadDialog
-          open={uploadDialogOpen}
-          onOpenChange={setUploadDialogOpen}
-          kiotvietId={record.kiotviet_id}
-          role={uploadDialogRole}
-          productName={record.full_name || record.name || undefined}
-        />
-      )}
     </div>
   );
 };

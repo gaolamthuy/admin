@@ -20,6 +20,6 @@ export default defineConfig({
     // Disable UI for run mode
     ui: false,
     // Simple reporter
-    reporter: ['verbose'],
+    reporters: ['verbose'],
   },
 });

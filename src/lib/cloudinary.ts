@@ -17,6 +17,11 @@ export interface UploadImageParams {
   folderOverride?: string;
   useSignedUpload?: boolean; // Mặc định true để overwrite được
   useCloudflareFunction?: boolean; // Mặc định false, set true để dùng Cloudflare Function (an toàn hơn)
+  context?: {
+    product_id?: number | string;
+    role?: string;
+    [key: string]: string | number | undefined;
+  }; // Context.custom để gửi đến Cloudinary webhook
 }
 
 /**
@@ -89,7 +94,7 @@ async function generateCloudinarySignature(
 export async function uploadImageToCloudinary(
   params: UploadImageParams
 ): Promise<CloudinaryUploadResult> {
-  const { file, kiotvietId, folderOverride, useSignedUpload = true } = params;
+  const { file, kiotvietId, folderOverride, useSignedUpload = true, context } = params;
 
   // Đọc cấu hình từ env
   const cloudName = env.VITE_CLOUDINARY_CLOUD_NAME;
@@ -188,6 +193,19 @@ export async function uploadImageToCloudinary(
     form.append('api_key', apiKey);
     form.append('timestamp', timestamp);
     form.append('signature', signature);
+    
+    // Thêm context.custom nếu có (để gửi đến webhook)
+    if (context) {
+      const contextCustom: Record<string, string> = {};
+      Object.entries(context).forEach(([key, value]) => {
+        if (value !== undefined) {
+          contextCustom[key] = String(value);
+        }
+      });
+      if (Object.keys(contextCustom).length > 0) {
+        form.append('context', JSON.stringify({ custom: contextCustom }));
+      }
+    }
   } else {
     // Fallback: unsigned upload với preset (không overwrite được)
     const uploadPreset = env.VITE_CLOUDINARY_UPLOAD_PRESET;

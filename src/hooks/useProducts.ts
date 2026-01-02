@@ -44,11 +44,13 @@ export const useProducts = (filters: ProductFilters = {}) => {
       }
 
       // Query từ v_products_admin view (có đầy đủ thông tin)
+      // Tối ưu: Sử dụng kiotviet_id và images từ view thay vì query thêm
       let query = supabase
         .from('v_products_admin')
         .select(
           `
             product_id,
+            kiotviet_id,
             product_code,
             product_name,
             base_price,
@@ -59,7 +61,8 @@ export const useProducts = (filters: ProductFilters = {}) => {
             latest_total_cost_per_unit,
             latest_price_difference,
             latest_price_difference_percent,
-            cost_diff_from_latest_po
+            cost_diff_from_latest_po,
+            images
           `
         )
         .eq('is_active', true);
@@ -82,7 +85,8 @@ export const useProducts = (filters: ProductFilters = {}) => {
       if (error) throw error;
 
       // Map data từ view sang Product format
-      // Cần query thêm từ kv_products để lấy images, kiotviet_id, glt_labelprint_favorite
+      // Tối ưu: Chỉ query kv_products cho các fields không có trong view
+      // View đã có: kiotviet_id, images (JSONB), category_name
       const productIds = (data || []).map(p => p.product_id);
       if (productIds.length === 0) {
         return [];
@@ -91,10 +95,11 @@ export const useProducts = (filters: ProductFilters = {}) => {
       const { data: productsData, error: productsError } = await supabase
         .from('kv_products')
         .select(
-          'id, kiotviet_id, code, images, glt_labelprint_favorite, master_unit_id, category_name, weight, unit, allows_sale, type, has_variants, description, glt_visible, glt_retail_promotion, glt_created_at, glt_updated_at, created_date, modified_date'
+          'id, code, glt_labelprint_favorite, master_unit_id, category_name, weight, unit, allows_sale, type, has_variants, description, glt_visible, glt_retail_promotion, glt_created_at, glt_updated_at, created_date, modified_date'
         )
         .in('id', productIds);
       // Note: v_products_admin đã filter master_unit_id = null rồi, không cần filter lại
+      // Note: kiotviet_id và images đã có trong view, không cần query thêm
 
       if (productsError) {
         console.warn('Error fetching products details:', productsError);
@@ -104,8 +109,6 @@ export const useProducts = (filters: ProductFilters = {}) => {
       const productMap = new Map<
         number,
         {
-          kiotviet_id: number;
-          images: string[];
           glt_labelprint_favorite: boolean;
           category_name?: string | null;
           weight?: number | null;
@@ -124,8 +127,6 @@ export const useProducts = (filters: ProductFilters = {}) => {
       >();
       (productsData || []).forEach(p => {
         productMap.set(p.id, {
-          kiotviet_id: p.kiotviet_id || 0,
-          images: (p.images as string[]) || [],
           glt_labelprint_favorite: p.glt_labelprint_favorite || false,
           category_name: p.category_name || null,
           weight: p.weight || null,
@@ -144,17 +145,28 @@ export const useProducts = (filters: ProductFilters = {}) => {
       });
 
       // Combine data và map sang Product format
+      // Tối ưu: Sử dụng kiotviet_id và images từ view
       const products: Product[] = (data || [])
         .map(p => {
           const productDetails = productMap.get(p.product_id);
+          
+          // Parse images từ JSONB (nếu có)
+          // View trả về images dưới dạng JSONB array với structure:
+          // [{ id, role, url, url_with_rev, path, width, height, format, rev, ... }]
+          // Chúng ta chỉ cần extract URL cho Product.images (string[])
+          const imagesFromView = (p.images as Array<{ url?: string; url_with_rev?: string }> | null) || [];
+          const imageUrls = imagesFromView
+            .map(img => img.url_with_rev || img.url)
+            .filter((url): url is string => Boolean(url));
+          
           return {
             id: Number(p.product_id),
             code: p.product_code || '',
-            kiotviet_id: productDetails?.kiotviet_id || 0,
+            kiotviet_id: p.kiotviet_id || 0, // ⭐ Sử dụng từ view
             name: p.product_name || '',
             full_name: p.product_name || '',
             category_id: p.category_id || 0,
-            category_name: productDetails?.category_name || '',
+            category_name: productDetails?.category_name || p.category_name || '',
             base_price: p.base_price || 0,
             weight: productDetails?.weight || 0,
             unit: productDetails?.unit || '',
@@ -163,7 +175,7 @@ export const useProducts = (filters: ProductFilters = {}) => {
             type: productDetails?.type || 1,
             has_variants: productDetails?.has_variants ?? false,
             description: productDetails?.description || '',
-            images: productDetails?.images || [],
+            images: imageUrls, // ⭐ Sử dụng từ view
             glt_visible: productDetails?.glt_visible ?? true,
             glt_retail_promotion: productDetails?.glt_retail_promotion ?? false,
             glt_labelprint_favorite:
