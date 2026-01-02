@@ -139,7 +139,7 @@ export const useUploadProductImage = () => {
         supabaseRecord: supabaseRecord as UploadProductImageResult['supabaseRecord'],
       };
     },
-    onSuccess: (data, variables) => {
+    onSuccess: (_data, variables) => {
       // Invalidate query cache để refresh UI
       queryClient.invalidateQueries({
         queryKey: ['product-images', variables.kiotvietId],
