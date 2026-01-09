@@ -16,11 +16,11 @@ export interface TemplateProduct {
   product_id: number;
   product_code: string | null;
   product_name: string | null;
-  order_count: number;
-  avg_quantity: number;
-  avg_price: number | null;
   last_purchase_date: string | null;
+  order_template: string | null; // ⭐ Mới: order_template từ kv_products (master unit)
+  images: string[] | null; // Images từ kv_products
   child_units: ChildUnit[] | null;
+  master_unit: string | null; // ⭐ Mới: unit của master unit (ví dụ: "kg")
 }
 
 export interface SelectedProduct extends TemplateProduct {
@@ -35,22 +35,35 @@ interface TemplateProductRaw {
   product_id: number;
   product_code: string | null;
   product_name: string | null;
-  order_count: number;
-  avg_quantity: number | null;
-  avg_price: number | null;
   last_purchase_date: string | null;
+  order_template?: string | null; // ⭐ Mới: order_template (chỉ có khi dùng po_template_products)
+  images?: string[] | null; // Images (chỉ có khi dùng po_template_products)
   child_units: ChildUnit[] | null;
 }
 
 /**
  * Hook quản lý việc fetch templates cho supplier đã chọn
+ * ⭐ Ưu tiên: Parse po_template_products từ supplierData (nếu có từ v_suppliers_admin)
+ * ⚠️ Fallback: Query từ kv_supplier_product_templates nếu không có po_template_products
  * @param open - Dialog có đang mở không
  * @param supplierId - ID của supplier đã chọn
+ * @param supplierData - Supplier data từ useSuppliers (có po_template_products từ v_suppliers_admin)
  * @returns Object chứa templates, loading state, error
  */
 export const useTemplates = (
   open: boolean,
-  supplierId: number | null | undefined
+  supplierId: number | null | undefined,
+      supplierData?: {
+        po_template_products?: Array<{
+          product_id: number;
+          product_code: string | null;
+          product_name: string | null;
+          last_purchase_date: string | null;
+          order_template?: string | null; // ⭐ Mới: order_template từ kv_products
+          images?: string[] | null; // Images từ kv_products
+          child_units: ChildUnit[] | null;
+        }> | null;
+      } | null
 ) => {
   const [templates, setTemplates] = useState<TemplateProduct[]>([]);
   const [loading, setLoading] = useState(false);
@@ -73,21 +86,101 @@ export const useTemplates = (
     if (!supplierId) {
       setTemplates([]);
       setError(null);
+      setLoading(false);
       return;
     }
 
-    // Always fetch templates for selected supplier (force fresh data)
+    // ⭐ Ưu tiên: Parse po_template_products từ supplierData (nếu có từ v_suppliers_admin)
+    // Fallback: Query từ kv_supplier_product_templates nếu không có
     const currentSupplierId = supplierId;
+    const templateProductsFromSupplier = supplierData?.po_template_products;
+
+    // Nếu có po_template_products từ supplier data, dùng luôn (không cần query)
+    if (templateProductsFromSupplier && templateProductsFromSupplier.length > 0) {
+      console.log(
+        '[useTemplates] Using po_template_products from supplier data:',
+        templateProductsFromSupplier.length,
+        'items'
+      );
+
+      setLoading(true);
+      setError(null);
+
+      (async () => {
+        try {
+          const seenProductIds = new Set<number>();
+          const processed: TemplateProduct[] = templateProductsFromSupplier
+            .filter(item => {
+              if (!item.product_id) return false;
+              if (seenProductIds.has(item.product_id)) {
+                console.warn(
+                  `[useTemplates] Duplicate product_id ${item.product_id} found in templates, skipping`
+                );
+                return false;
+              }
+              seenProductIds.add(item.product_id);
+              return true;
+            })
+            .map(item => ({
+              product_id: item.product_id,
+              product_code: item.product_code,
+              product_name: item.product_name,
+              last_purchase_date: item.last_purchase_date,
+              order_template: item.order_template || null, // ⭐ Mới: Parse order_template
+              images: item.images || null, // Parse images
+              child_units: item.child_units || null,
+              master_unit: null, // Sẽ query sau
+            }));
+
+          // Query master_unit từ kv_products
+          const productIds = processed.map(p => p.product_id);
+          if (productIds.length > 0) {
+            const { data: productsData, error: productsError } = await supabase
+              .from('kv_products')
+              .select('kiotviet_id, unit')
+              .in('kiotviet_id', productIds);
+
+            if (productsError) {
+              console.warn('[useTemplates] Error fetching master units:', productsError);
+            } else {
+              // Tạo map để lookup unit nhanh
+              const unitMap = new Map<number, string>();
+              (productsData || []).forEach(p => {
+                if (p.kiotviet_id && p.unit) {
+                  unitMap.set(p.kiotviet_id, p.unit);
+                }
+              });
+
+              // Update master_unit cho từng template
+              processed.forEach(template => {
+                template.master_unit = unitMap.get(template.product_id) || null;
+              });
+            }
+          }
+
+          console.log('[useTemplates] Processed templates:', processed.length);
+          setTemplates(processed);
+          setError(null);
+          fetchedRef.current = currentSupplierId;
+          setLoading(false);
+        } catch (error: unknown) {
+          console.error('[useTemplates] Parse error:', error);
+          setError('Không thể parse template sản phẩm. Vui lòng thử lại.');
+          setLoading(false);
+        }
+      })();
+      return;
+    }
+
+    // Fallback: Query từ kv_supplier_product_templates
     console.log(
-      '[useTemplates] Starting templates fetch for supplier:',
+      '[useTemplates] No po_template_products in supplier data, querying from kv_supplier_product_templates for supplier:',
       currentSupplierId
     );
 
-    // Create new abort controller for this request
     const abortController = new AbortController();
     abortControllerRef.current = abortController;
 
-    // Local flag trong closure để track completion của request này
     let requestCompleted = false;
 
     setLoading(true);
@@ -95,7 +188,6 @@ export const useTemplates = (
 
     const fetchStartTime = Date.now();
 
-    // Add timeout to prevent hanging requests
     const timeoutId = setTimeout(() => {
       if (!abortController.signal.aborted) {
         console.warn('[useTemplates] Query timeout after 10s, aborting...');
@@ -105,41 +197,32 @@ export const useTemplates = (
           setLoading(false);
         }
       }
-    }, 10000); // 10 second timeout
+    }, 10000);
 
-    // Note: ensureActiveSession removed - Supabase client auto-handles session refresh
-
-    // Sử dụng async/await để xử lý error tốt hơn
     (async () => {
       try {
-        // Bỏ qua ensureActiveSession vì Supabase client tự động handle session refresh
-        // Nếu query fail vì auth, Supabase sẽ trả về error và ta handle error đó
-        console.log(
-          '[useTemplates] Starting query (Supabase will auto-handle session)...'
-        );
+        console.log('[useTemplates] Starting query from kv_supplier_product_templates...');
 
         const { data, error: queryError } = await supabase
           .from('kv_supplier_product_templates')
-          .select('*')
+          .select('product_id, product_code, product_name, last_purchase_date, child_units')
           .eq('supplier_id', currentSupplierId)
-          .order('order_count', { ascending: false })
           .order('last_purchase_date', { ascending: false });
+        
+        // ⚠️ Note: kv_supplier_product_templates không có images field
+        // Nếu dùng fallback này, images sẽ là null
 
-        clearTimeout(timeoutId); // Clear timeout on success
+        clearTimeout(timeoutId);
         const fetchDuration = Date.now() - fetchStartTime;
         console.log(`[useTemplates] Query completed in ${fetchDuration}ms`);
 
-        // Check if request was aborted
         if (abortController.signal.aborted) {
           console.log('[useTemplates] Request was aborted, ignoring response');
           return;
         }
 
-        // Check if component is still mounted
         if (!isMountedRef.current) {
-          console.log(
-            '[useTemplates] Component unmounted, skipping state update'
-          );
+          console.log('[useTemplates] Component unmounted, skipping state update');
           return;
         }
 
@@ -147,17 +230,12 @@ export const useTemplates = (
           console.error('[useTemplates] Query error:', queryError);
           setError('Không thể tải template sản phẩm. Vui lòng thử lại.');
           setLoading(false);
-          requestCompleted = true; // Đánh dấu request đã complete (với error) trong closure
+          requestCompleted = true;
           return;
         }
 
-        console.log(
-          '[useTemplates] Raw data received:',
-          data?.length || 0,
-          'items'
-        );
-        // Transform view data to TemplateProduct format
-        // Remove duplicates by product_id (keep first occurrence)
+        console.log('[useTemplates] Raw data received:', data?.length || 0, 'items');
+
         const seenProductIds = new Set<number>();
         const processed: TemplateProduct[] = (data || [])
           .filter((item: TemplateProductRaw) => {
@@ -175,22 +253,47 @@ export const useTemplates = (
             product_id: item.product_id,
             product_code: item.product_code,
             product_name: item.product_name,
-            order_count: item.order_count,
-            avg_quantity: item.avg_quantity || 1,
-            avg_price: item.avg_price || null,
             last_purchase_date: item.last_purchase_date,
+            order_template: null, // ⚠️ kv_supplier_product_templates không có order_template
+            images: null, // ⚠️ kv_supplier_product_templates không có images
             child_units: (item.child_units as ChildUnit[]) || null,
+            master_unit: null, // Sẽ query sau
           }));
+
+        // Query master_unit từ kv_products
+        const productIds = processed.map(p => p.product_id);
+        if (productIds.length > 0) {
+          const { data: productsData, error: productsError } = await supabase
+            .from('kv_products')
+            .select('kiotviet_id, unit')
+            .in('kiotviet_id', productIds);
+
+          if (productsError) {
+            console.warn('[useTemplates] Error fetching master units:', productsError);
+          } else {
+            // Tạo map để lookup unit nhanh
+            const unitMap = new Map<number, string>();
+            (productsData || []).forEach(p => {
+              if (p.kiotviet_id && p.unit) {
+                unitMap.set(p.kiotviet_id, p.unit);
+              }
+            });
+
+            // Update master_unit cho từng template
+            processed.forEach(template => {
+              template.master_unit = unitMap.get(template.product_id) || null;
+            });
+          }
+        }
 
         console.log('[useTemplates] Processed templates:', processed.length);
         setTemplates(processed);
         setError(null);
-        fetchedRef.current = currentSupplierId; // Mark as fetched for this supplier
-        requestCompleted = true; // Đánh dấu request đã complete trong closure
+        fetchedRef.current = currentSupplierId;
+        requestCompleted = true;
         setLoading(false);
-        console.log('[useTemplates] State updated successfully');
       } catch (error: unknown) {
-        clearTimeout(timeoutId); // Clear timeout on error
+        clearTimeout(timeoutId);
         if (error instanceof DOMException && error.name === 'AbortError') {
           console.log('[useTemplates] Request was aborted');
           return;
@@ -199,15 +302,13 @@ export const useTemplates = (
           console.error('[useTemplates] Query error:', error);
           setError('Không thể tải template sản phẩm. Vui lòng thử lại.');
           setLoading(false);
-          requestCompleted = true; // Đánh dấu request đã complete (với error) trong closure
+          requestCompleted = true;
         }
       }
     })();
 
     return () => {
-      clearTimeout(timeoutId); // Clear timeout on cleanup
-      // Chỉ abort nếu request chưa complete và controller vẫn là controller hiện tại
-      // Sử dụng closure variable requestCompleted thay vì ref để tránh race condition
+      clearTimeout(timeoutId);
       if (
         !requestCompleted &&
         abortControllerRef.current === abortController &&
@@ -215,17 +316,12 @@ export const useTemplates = (
       ) {
         console.log('[useTemplates] Cleanup: aborting pending request');
         abortController.abort();
-      } else {
-        console.log(
-          `[useTemplates] Cleanup: requestCompleted=${requestCompleted}, controllerMatch=${abortControllerRef.current === abortController}, alreadyAborted=${abortController.signal.aborted}`
-        );
       }
-      // Chỉ clear ref nếu vẫn là controller hiện tại
       if (abortControllerRef.current === abortController) {
         abortControllerRef.current = null;
       }
     };
-  }, [open, supplierId]);
+  }, [open, supplierId, supplierData]);
 
   return {
     templates,

@@ -30,7 +30,7 @@ const DEFAULT_ERROR_MESSAGE =
 
 const buildWebhookUrl = (baseUrl?: string) => {
   if (!baseUrl) return null;
-  return `${baseUrl.replace(/\/$/, '')}/handle-frontend`;
+  return `${baseUrl.replace(/\/$/, '')}/handle-purchase-order`;
 };
 
 const encodeBasicAuth = (value?: string) => {

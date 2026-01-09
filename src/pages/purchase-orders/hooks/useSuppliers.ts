@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { supabase } from '@/lib/supabase';
 import { ensureSessionActive } from '@/lib/supabase-session';
+import { ChildUnit } from './useTemplates';
 
 export interface SupplierOption {
   kiotviet_id: number;
@@ -11,6 +12,22 @@ export interface SupplierOption {
   branch_id: number | null;
   total_invoice: number;
   last_purchase_date: string | null;
+  last_master_unit_quantity: number | null; // ⭐ Mới: Tổng kg từ PO gần nhất
+  po_template_products?: PoTemplateProduct[] | null; // Field mới từ v_suppliers_admin
+}
+
+/**
+ * Purchase Order Template Product interface
+ * Được lấy từ po_template_products JSONB trong v_suppliers_admin
+ */
+export interface PoTemplateProduct {
+  product_id: number;
+  product_code: string | null;
+  product_name: string | null;
+  last_purchase_date: string | null;
+  order_template: string | null; // ⭐ Mới: order_template từ kv_products (master unit)
+  images: string[] | null; // Images từ kv_products
+  child_units: ChildUnit[] | null;
 }
 
 /**
@@ -47,9 +64,23 @@ export const useSuppliers = (open: boolean) => {
     const delay = (ms: number) =>
       new Promise(resolve => setTimeout(resolve, ms));
 
-    const executeQuery = async () =>
-      await Promise.resolve(
-        supabase
+    // ⭐ Ưu tiên query từ v_suppliers_admin, fallback về kv_supplier_stats nếu view chưa tồn tại
+    const executeQuery = async () => {
+      // Thử query từ v_suppliers_admin trước
+      const { data, error } = await supabase
+        .from('v_suppliers_admin')
+        .select('*')
+        .order('total_invoice', { ascending: false })
+        .order('last_purchase_date', {
+          ascending: false,
+          nullsFirst: false,
+        })
+        .limit(100);
+
+      // Nếu view chưa tồn tại (PGRST205), fallback về kv_supplier_stats
+      if (error && error.code === 'PGRST205') {
+        console.log('[useSuppliers] v_suppliers_admin not found, falling back to kv_supplier_stats');
+        return await supabase
           .from('kv_supplier_stats')
           .select('*')
           .order('total_invoice', { ascending: false })
@@ -57,8 +88,11 @@ export const useSuppliers = (open: boolean) => {
             ascending: false,
             nullsFirst: false,
           })
-          .limit(100)
-      );
+          .limit(100);
+      }
+
+      return { data, error };
+    };
 
     const fetchSuppliers = async () => {
       try {
@@ -90,7 +124,8 @@ export const useSuppliers = (open: boolean) => {
               throw new Error('No data returned from query');
             }
 
-            const mapped = data.map((item: SupplierOption) => ({
+            // Map data, bao gồm po_template_products nếu có (từ v_suppliers_admin)
+            const mapped = data.map((item: SupplierOption & { po_template_products?: any; last_master_unit_quantity?: number | string | null }) => ({
               kiotviet_id: item.kiotviet_id,
               name: item.name,
               code: item.code,
@@ -99,6 +134,11 @@ export const useSuppliers = (open: boolean) => {
               branch_id: item.branch_id,
               total_invoice: item.total_invoice || 0,
               last_purchase_date: item.last_purchase_date,
+              last_master_unit_quantity: item.last_master_unit_quantity
+                ? Number(item.last_master_unit_quantity)
+                : null, // ⭐ Mới: Map last_master_unit_quantity từ view
+              // ⭐ Lấy po_template_products nếu có (từ v_suppliers_admin)
+              po_template_products: item.po_template_products || null,
             }));
 
             if (!isCancelled && !abortController.signal.aborted) {

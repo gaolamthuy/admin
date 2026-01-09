@@ -44,7 +44,7 @@ export const useProductPriceDifference = (enabled: boolean = false) => {
         setError(null);
 
         // Query view v_products_admin để lấy products có purchase data
-        // Lấy thêm thông tin từ kv_products để có đầy đủ data
+        // ⭐ Tối ưu: Lấy kv_images và kiotviet_id từ view, không cần query thêm kv_products
         const { data: priceComparisonData, error: priceError } = await supabase
           .from('v_products_admin')
           .select(
@@ -57,7 +57,9 @@ export const useProductPriceDifference = (enabled: boolean = false) => {
               latest_price_difference,
               latest_price_difference_percent,
               category_id,
-              is_active
+              is_active,
+              kiotviet_id,
+              kv_images
             `
           )
           .not('latest_purchase_order_id', 'is', null);
@@ -80,10 +82,10 @@ export const useProductPriceDifference = (enabled: boolean = false) => {
           .select('product_id, cost, branch_name')
           .in('product_id', productIds);
 
-        // Query thêm thông tin products (images, kiotviet_id) để hiển thị đầy đủ
+        // ⭐ Query thêm glt_labelprint_favorite từ kv_products (không có trong view)
         const { data: productsData, error: productsError } = await supabase
           .from('kv_products')
-          .select('id, kiotviet_id, code, images, glt_labelprint_favorite')
+          .select('id, glt_labelprint_favorite')
           .in('id', productIds);
 
         if (inventoryError) {
@@ -100,19 +102,15 @@ export const useProductPriceDifference = (enabled: boolean = false) => {
           costMap.set(inv.product_id, inv.cost);
         });
 
-        // Tạo map để lookup product data nhanh
+        // Tạo map để lookup product data nhanh (chỉ glt_labelprint_favorite từ kv_products)
         const productMap = new Map<
           number,
           {
-            kiotviet_id: number;
-            images: string[];
             glt_labelprint_favorite: boolean;
           }
         >();
         (productsData || []).forEach(p => {
           productMap.set(p.id, {
-            kiotviet_id: p.kiotviet_id || 0,
-            images: (p.images as string[]) || [],
             glt_labelprint_favorite: p.glt_labelprint_favorite || false,
           });
         });
@@ -131,6 +129,9 @@ export const useProductPriceDifference = (enabled: boolean = false) => {
 
             const productData = productMap.get(pc.product_id);
 
+            // Parse kv_images từ JSONB (từ kv_products.images - text[] đã convert sang jsonb)
+            const kvImages = (pc.kv_images as string[] | null) || [];
+
             return {
               product_id: pc.product_id,
               product_code: pc.product_code,
@@ -144,9 +145,9 @@ export const useProductPriceDifference = (enabled: boolean = false) => {
               cost_difference: costDifference,
               cost_difference_percent: costDifferencePercent,
               category_id: pc.category_id || null,
-              // Thêm product data
-              kiotviet_id: productData?.kiotviet_id || 0,
-              images: productData?.images || [],
+              // ⭐ Sử dụng data từ view (kiotviet_id, kv_images)
+              kiotviet_id: pc.kiotviet_id || 0,
+              images: kvImages, // ⭐ Từ kv_images trong view
               glt_labelprint_favorite:
                 productData?.glt_labelprint_favorite || false,
             } as ProductWithPriceDifference & {

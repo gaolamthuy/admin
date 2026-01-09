@@ -3,21 +3,28 @@ import { TemplateProduct, SelectedProduct } from '../hooks/useTemplates';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Checkbox } from '@/components/ui/checkbox';
 import { Label } from '@/components/ui/label';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { formatDaysAgo, formatDate } from '@/utils/date';
+import { Button } from '@/components/ui/button';
+import { X, RotateCcw } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 
 interface ProductSelectorProps {
   templates: TemplateProduct[];
   loading: boolean;
   error: string | null;
   selectedProducts: Record<number, SelectedProduct>;
-  isSelectAll: boolean;
   selectedSupplierId: number | null | undefined;
-  onToggleProduct: (product: TemplateProduct, checked: boolean) => void;
-  onSelectAll: (checked: boolean) => void;
+  onRemoveProduct: (product: TemplateProduct) => void;
+  onAddProduct: (product: TemplateProduct) => void;
+  onRemoveAll: () => void;
   onQuantityChange: (productId: number, value: number) => void;
 }
 
@@ -29,12 +36,15 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   loading,
   error,
   selectedProducts,
-  isSelectAll,
   selectedSupplierId,
-  onToggleProduct,
-  onSelectAll,
+  onRemoveProduct,
+  onAddProduct,
+  onRemoveAll,
   onQuantityChange,
 }) => {
+  // Tính số lượng products đã chọn
+  const selectedCount = Object.keys(selectedProducts).length;
+  const hasSelectedProducts = selectedCount > 0;
   return (
     <div className="space-y-4">
       {error && (
@@ -44,18 +54,23 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
         </Alert>
       )}
 
-      {templates.length > 0 && (
+      {templates.length > 0 && hasSelectedProducts && (
         <div className="flex items-center justify-between rounded-md border p-3">
           <div className="flex items-center gap-2">
-            <Checkbox checked={isSelectAll} onCheckedChange={onSelectAll} />
-            <Label className="font-medium cursor-pointer">
-              Chọn tất cả ({templates.length} sản phẩm)
-            </Label>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={onRemoveAll}
+              className="text-destructive hover:text-destructive"
+            >
+              <X className="mr-2 h-4 w-4" />
+              Xóa tất cả ({selectedCount} sản phẩm)
+            </Button>
           </div>
         </div>
       )}
 
-      <ScrollArea className="h-72 rounded-md border">
+      <ScrollArea className="rounded-md border">
         {loading ? (
           <div className="space-y-3 p-4">
             {Array.from({ length: 6 }).map((_, index) => (
@@ -73,7 +88,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
               const selected = template.product_id
                 ? selectedProducts[template.product_id]
                 : undefined;
-              const isChecked = !!selected;
+              const isSelected = !!selected;
               // Use combination of supplier_id and product_id for unique key
               // Fallback to index if product_id is missing
               const uniqueKey = template.product_id
@@ -82,19 +97,73 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
               return (
                 <div
                   key={uniqueKey}
-                  className="flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between"
+                  className={cn(
+                    'flex flex-col gap-3 p-4 md:flex-row md:items-center md:justify-between transition-opacity',
+                    !isSelected && 'opacity-50'
+                  )}
                 >
                   <div className="flex flex-1 items-start gap-3">
-                    <Checkbox
-                      checked={isChecked}
-                      onCheckedChange={checked =>
-                        onToggleProduct(template, Boolean(checked))
-                      }
-                    />
-                    <div>
+                    {/* ⭐ Mới: Nút X để xóa hoặc nút Thêm lại */}
+                    {isSelected ? (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                        onClick={() => onRemoveProduct(template)}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8 text-muted-foreground hover:text-foreground"
+                        onClick={() => onAddProduct(template)}
+                      >
+                        <RotateCcw className="h-4 w-4" />
+                      </Button>
+                    )}
+                    {/* ⭐ Mới: Hiển thị product image với hover để hiện ảnh to 300x300 */}
+                    {template.images && template.images.length > 0 && (
+                      <TooltipProvider>
+                        <Tooltip>
+                          <TooltipTrigger asChild>
+                            <div className="relative h-16 w-16 flex-shrink-0 rounded-md border overflow-hidden bg-muted cursor-pointer">
+                              <img
+                                src={template.images[0]}
+                                alt={template.product_name || 'Product'}
+                                className="h-full w-full object-cover"
+                                loading="lazy"
+                                onError={e => {
+                                  (e.target as HTMLImageElement).style.display = 'none';
+                                }}
+                              />
+                            </div>
+                          </TooltipTrigger>
+                          <TooltipContent className="w-[300px] h-[300px] p-0 border-0 bg-transparent shadow-none">
+                            <img
+                              src={template.images[0]}
+                              alt={template.product_name || 'Product'}
+                              className="w-[300px] h-[300px] object-cover rounded-md border shadow-lg"
+                              loading="lazy"
+                              onError={e => {
+                                (e.target as HTMLImageElement).style.display = 'none';
+                              }}
+                            />
+                          </TooltipContent>
+                        </Tooltip>
+                      </TooltipProvider>
+                    )}
+                    <div className="flex-1 max-w-md">
                       <p className="font-medium">
                         {template.product_name || 'Không tên'}
                       </p>
+                      {/* ⭐ Mới: Hiển thị order_template */}
+                      {template.order_template && (
+                        <p className="text-sm text-muted-foreground mt-0.5">
+                          {template.order_template}
+                        </p>
+                      )}
                       {template.child_units &&
                         template.child_units.length > 0 && (
                           <div className="flex flex-wrap gap-1 mt-1">
@@ -109,23 +178,18 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
                             ))}
                           </div>
                         )}
-                      {template.last_purchase_date ? (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Lần cuối: {formatDate(template.last_purchase_date)} (
-                          {formatDaysAgo(template.last_purchase_date)})
-                        </p>
-                      ) : (
-                        <p className="text-sm text-muted-foreground mt-1">
-                          Chưa có lịch sử mua hàng
-                        </p>
-                      )}
                     </div>
                   </div>
 
-                  {isChecked && selected && (
+                  {isSelected && selected && (
                     <div className="flex flex-col gap-2 md:flex-row md:items-center">
                       <div className="space-y-1">
-                        <Label>Số lượng</Label>
+                        <Label>
+                          Số lượng{' '}
+                          {template.child_units && template.child_units.length > 0
+                            ? template.child_units[0].unit
+                            : ''}
+                        </Label>
                         <Input
                           type="number"
                           min={1}
@@ -136,31 +200,20 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
                               Number(event.target.value)
                             )
                           }
+                          placeholder="1"
                           className="w-32"
                         />
-                        {/* Hiển thị quy đổi nếu có child_units */}
-                        {template.child_units &&
-                          template.child_units.length > 0 &&
-                          template.child_units.map((childUnit, idx) => {
-                            // Tính quy đổi: số lượng đơn vị chính (kg) / conversion_value = số lượng đơn vị con (bao)
-                            // Ví dụ: 100 kg / 50 = 2 bao (nếu conversion_value = 50)
-                            const convertedQuantity =
-                              selected.quantity / childUnit.conversion_value;
-                            // Hiển thị số nguyên nếu không có phần thập phân, ngược lại hiển thị 2 chữ số thập phân
-                            const displayQuantity = Number.isInteger(
-                              convertedQuantity
-                            )
-                              ? convertedQuantity.toString()
-                              : convertedQuantity.toFixed(2);
-                            return (
-                              <p
-                                key={idx}
-                                className="text-xs text-muted-foreground mt-0.5"
-                              >
-                                = {displayQuantity} {childUnit.unit}
-                              </p>
-                            );
-                          })}
+                        {/* ⭐ Mới: Hiển thị subtext = conversion_value * quantity (kg) */}
+                        {template.master_unit &&
+                          template.child_units &&
+                          template.child_units.length > 0 && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              ={' '}
+                              {template.child_units[0].conversion_value *
+                                selected.quantity}{' '}
+                              {template.master_unit}
+                            </p>
+                          )}
                       </div>
                     </div>
                   )}

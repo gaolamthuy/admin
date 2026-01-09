@@ -19,7 +19,7 @@ import {
 import { cn } from '@/lib/utils';
 import { useIsAdmin } from '@/hooks/useAuth';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Package, ShoppingCart, Home, Users } from 'lucide-react';
+import { Package, ShoppingCart, Home, Users, CreditCard } from 'lucide-react';
 
 interface MenuItem {
   key: string;
@@ -41,7 +41,12 @@ const menuItems: MenuItem[] = [
     label: 'Đơn mua hàng',
     icon: <ShoppingCart className="h-4 w-4" />,
     path: '/purchase-orders',
-    adminOnly: true,
+  },
+  {
+    key: 'payments',
+    label: 'Thanh toán',
+    icon: <CreditCard className="h-4 w-4" />,
+    path: '/payments',
   },
   {
     key: 'customers',

@@ -6,6 +6,10 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
+# Lock files - chỉ dùng pnpm
+package-lock.json
+yarn.lock
+
 # Build outputs
 dist/
 dist-ssr/
@@ -107,6 +111,7 @@ temp/
 .vite/
 
 # Project specific
+# docs/ - Allow specific docs files
 docs/
 instruction/
 
