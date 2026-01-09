@@ -103,8 +103,10 @@ export const useCustomers = (searchTerm?: string) => {
 
       // ⭐ Sort phải được gọi SAU khi đã áp dụng tất cả filters
       // Đảm bảo sort luôn được áp dụng (mới nhất trước, nulls ở cuối)
+      // ⚠️ Supabase chỉ hỗ trợ nullsFirst, không có nullsLast
+      // Để đưa nulls về cuối, dùng nullsFirst: false
       query = query
-        .order('latest_invoice_datetime', { ascending: false, nullsLast: true })
+        .order('latest_invoice_datetime', { ascending: false, nullsFirst: false })
         .limit(2000); // ⭐ Limit để tối ưu performance
 
       const { data, error } = await query;
