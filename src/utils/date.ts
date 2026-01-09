@@ -21,7 +21,8 @@ dayjs.extend(timezone);
 dayjs.extend(relativeTime);
 dayjs.locale('vi');
 
-// ⭐ Database lưu VN time nhưng đánh dấu UTC, nên cần timezone để parse đúng
+// ⭐ Database đã lưu UTC thực sự (kv_invoices, glt_payment đã được chuẩn hóa)
+// VN_TIMEZONE chỉ dùng cho fallback hoặc các trường hợp đặc biệt
 const VN_TIMEZONE = 'Asia/Ho_Chi_Minh';
 
 /**
@@ -46,30 +47,51 @@ function parseToUTC(
   }
   
   // Nếu là string, parse theo format từ database
-  // ⚠️ VẤN ĐỀ: Database trả về '2026-01-08 16:28:57.033+00' nhưng thực chất đây là VN time (UTC+7)
-  // chứ không phải UTC. Vì vậy cần parse như VN time rồi convert sang UTC để so sánh.
+  // ✅ Database đã lưu UTC thực sự (kv_invoices, glt_payment đã được chuẩn hóa)
+  // Format: '2026-01-08 08:56:53.354+00' là UTC thực sự
   if (typeof date === 'string') {
-    let normalized = date.trim();
+    const dateStr = date.trim();
     
-    // Bỏ timezone offset (+00, +00:00) vì đây không phải UTC thực sự
-    // Format: '2026-01-08 16:28:57.033+00' -> '2026-01-08 16:28:57.033'
-    normalized = normalized.replace(/[+-]\d\d:?\d\d?$/, '').trim();
+    // Detect timezone offset: +00, +00:00, -05:30, etc.
+    const timezoneMatch = dateStr.match(/([+-]\d\d:?\d\d?)$/);
+    const timezoneOffset = timezoneMatch ? timezoneMatch[1] : null;
+    
+    // Nếu có timezone offset là +00 hoặc +00:00, parse trực tiếp như UTC
+    // dayjs.utc() có thể parse trực tiếp format '2026-01-08 08:56:53.354+00'
+    if (timezoneOffset === '+00' || timezoneOffset === '+00:00') {
+      const parsedAsUTC = dayjs.utc(dateStr);
+      if (parsedAsUTC.isValid()) {
+        return parsedAsUTC;
+      }
+    }
+    
+    // Nếu không có timezone hoặc timezone khác, thử parse như UTC
+    // (vì database đã lưu UTC thực sự)
+    let normalized = dateStr.replace(/[+-]\d\d:?\d\d?$/, '').trim();
     
     // Replace space với T để tạo ISO format
     if (normalized.includes(' ')) {
       normalized = normalized.replace(' ', 'T');
     }
     
-    // Parse như VN time (UTC+7), sau đó convert sang UTC
-    // Dùng timezone plugin để parse đúng VN time rồi convert sang UTC
-    const parsed = dayjs.tz(normalized, VN_TIMEZONE);
-    if (parsed.isValid()) {
-      // Convert từ VN timezone sang UTC
-      return parsed.utc();
+    // Thử parse như UTC trước (database đã lưu UTC)
+    const parsedAsUTC = dayjs.utc(normalized);
+    if (parsedAsUTC.isValid()) {
+      return parsedAsUTC;
     }
     
-    // Fallback: parse trực tiếp và convert
-    const fallback = dayjs.tz(date.replace(/[+-]\d\d:?\d\d?$/, '').replace(' ', 'T'), VN_TIMEZONE);
+    // Fallback: parse với Date object (tự động detect timezone)
+    try {
+      const dateObj = new Date(dateStr);
+      if (!isNaN(dateObj.getTime())) {
+        return dayjs.utc(dateObj);
+      }
+    } catch {
+      // Ignore
+    }
+    
+    // Fallback cuối cùng: parse như VN time rồi convert (chỉ để tương thích dữ liệu cũ)
+    const fallback = dayjs.tz(normalized, VN_TIMEZONE);
     if (fallback.isValid()) {
       return fallback.utc();
     }
@@ -292,11 +314,12 @@ export function formatDaysAgo(
 
 /**
  * Format ngày tháng theo định dạng Việt Nam
- * @param date - Ngày cần format
+ * Convert từ UTC sang GMT+7 (Asia/Ho_Chi_Minh) trước khi format
+ * @param date - Ngày cần format (UTC từ database)
  * @param format - Format string (mặc định: 'DD/MM/YYYY')
- * @returns Chuỗi ngày tháng đã format
+ * @returns Chuỗi ngày tháng đã format theo giờ Việt Nam
  * @example
- * formatDate('2025-01-10') // "10/01/2025"
+ * formatDate('2025-01-10T00:00:00Z') // "10/01/2025" (đã convert sang GMT+7)
  * formatDate('2025-01-10', 'DD-MM-YYYY') // "10-01-2025"
  */
 export function formatDate(
@@ -306,15 +329,17 @@ export function formatDate(
   if (!date) return '-';
   const d = parseToUTC(date);
   if (!d) return '-';
-  return d.format(format);
+  // Convert từ UTC sang GMT+7 (Asia/Ho_Chi_Minh) rồi format
+  return d.tz(VN_TIMEZONE).format(format);
 }
 
 /**
  * Format ngày tháng kèm giờ theo định dạng Việt Nam
- * @param date - Ngày cần format
- * @returns Chuỗi ngày tháng giờ đã format (DD/MM/YYYY HH:mm)
+ * Convert từ UTC sang GMT+7 (Asia/Ho_Chi_Minh) trước khi format
+ * @param date - Ngày cần format (UTC từ database)
+ * @returns Chuỗi ngày tháng giờ đã format (DD/MM/YYYY HH:mm) theo giờ Việt Nam
  * @example
- * formatDateTime('2025-01-10 14:30:00') // "10/01/2025 14:30"
+ * formatDateTime('2025-01-10T14:30:00Z') // "10/01/2025 21:30" (đã convert sang GMT+7)
  */
 export function formatDateTime(
   date: string | Date | dayjs.Dayjs | null | undefined
@@ -322,15 +347,35 @@ export function formatDateTime(
   if (!date) return '-';
   const d = parseToUTC(date);
   if (!d) return '-';
-  return d.format('DD/MM/YYYY HH:mm');
+  // Convert từ UTC sang GMT+7 (Asia/Ho_Chi_Minh) rồi format
+  return d.tz(VN_TIMEZONE).format('DD/MM/YYYY HH:mm');
+}
+
+/**
+ * Format ngày tháng kèm giờ và giây theo định dạng Việt Nam
+ * Convert từ UTC sang GMT+7 (Asia/Ho_Chi_Minh) trước khi format
+ * @param date - Ngày cần format (UTC từ database)
+ * @returns Chuỗi ngày tháng giờ giây đã format (DD/MM/YYYY HH:mm:ss) theo giờ Việt Nam
+ * @example
+ * formatDateTimeWithSeconds('2025-01-10T14:30:45Z') // "10/01/2025 21:30:45" (đã convert sang GMT+7)
+ */
+export function formatDateTimeWithSeconds(
+  date: string | Date | dayjs.Dayjs | null | undefined
+): string {
+  if (!date) return '-';
+  const d = parseToUTC(date);
+  if (!d) return '-';
+  // Convert từ UTC sang GMT+7 (Asia/Ho_Chi_Minh) rồi format
+  return d.tz(VN_TIMEZONE).format('DD/MM/YYYY HH:mm:ss');
 }
 
 /**
  * Format chỉ giờ theo định dạng Việt Nam
- * @param date - Ngày cần format
- * @returns Chuỗi giờ đã format (HH:mm)
+ * Convert từ UTC sang GMT+7 (Asia/Ho_Chi_Minh) trước khi format
+ * @param date - Ngày cần format (UTC từ database)
+ * @returns Chuỗi giờ đã format (HH:mm) theo giờ Việt Nam
  * @example
- * formatTime('2025-01-10 14:30:00') // "14:30"
+ * formatTime('2025-01-10T14:30:00Z') // "21:30" (đã convert sang GMT+7)
  */
 export function formatTime(
   date: string | Date | dayjs.Dayjs | null | undefined
@@ -338,7 +383,8 @@ export function formatTime(
   if (!date) return '-';
   const d = parseToUTC(date);
   if (!d) return '-';
-  return d.format('HH:mm');
+  // Convert từ UTC sang GMT+7 (Asia/Ho_Chi_Minh) rồi format
+  return d.tz(VN_TIMEZONE).format('HH:mm');
 }
 
 // ============================================

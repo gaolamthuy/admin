@@ -19,6 +19,7 @@ import { PurchaseOrderList } from '@/pages/purchase-orders/PurchaseOrderList';
 import { PurchaseOrderCreate } from '@/pages/purchase-orders/PurchaseOrderCreate';
 import { PurchaseOrderShow } from '@/pages/purchase-orders/PurchaseOrderShow';
 import { CustomersList } from '@/pages/customers/CustomersList';
+import { PaymentsList } from '@/pages/payments/PaymentsList';
 import { Toaster } from '@/components/ui/sonner';
 import './App.css';
 
@@ -94,6 +95,17 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <CustomersList />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/payments"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <PaymentsList />
                   </Layout>
                 </ProtectedRoute>
               }
