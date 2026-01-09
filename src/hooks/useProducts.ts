@@ -44,7 +44,7 @@ export const useProducts = (filters: ProductFilters = {}) => {
       }
 
       // Query từ v_products_admin view (có đầy đủ thông tin)
-      // Tối ưu: Sử dụng kiotviet_id và images từ view thay vì query thêm
+      // Tối ưu: Sử dụng kiotviet_id, glt_images và kv_images từ view thay vì query thêm
       let query = supabase
         .from('v_products_admin')
         .select(
@@ -62,7 +62,8 @@ export const useProducts = (filters: ProductFilters = {}) => {
             latest_price_difference,
             latest_price_difference_percent,
             cost_diff_from_latest_po,
-            images
+            glt_images,
+            kv_images
           `
         )
         .eq('is_active', true);
@@ -145,19 +146,27 @@ export const useProducts = (filters: ProductFilters = {}) => {
       });
 
       // Combine data và map sang Product format
-      // Tối ưu: Sử dụng kiotviet_id và images từ view
+      // Tối ưu: Sử dụng kiotviet_id, glt_images và kv_images từ view
       const products: Product[] = (data || [])
         .map(p => {
           const productDetails = productMap.get(p.product_id);
           
-          // Parse images từ JSONB (nếu có)
-          // View trả về images dưới dạng JSONB array với structure:
+          // Parse kv_images từ JSONB (từ kv_products.images - text[] đã convert sang jsonb)
+          // kv_images là array of strings (URLs từ KiotViet)
+          // ⭐ Ưu tiên kv_images đầu tiên cho ProductList
+          const kvImagesFromView = (p.kv_images as string[] | null) || [];
+          
+          // Parse glt_images từ JSONB (từ glt_product_images)
+          // View trả về glt_images dưới dạng JSONB array với structure:
           // [{ id, role, url, url_with_rev, path, width, height, format, rev, ... }]
           // Chúng ta chỉ cần extract URL cho Product.images (string[])
-          const imagesFromView = (p.images as Array<{ url?: string; url_with_rev?: string }> | null) || [];
-          const imageUrls = imagesFromView
+          const gltImagesFromView = (p.glt_images as Array<{ url?: string; url_with_rev?: string }> | null) || [];
+          const gltImageUrls = gltImagesFromView
             .map(img => img.url_with_rev || img.url)
             .filter((url): url is string => Boolean(url));
+          
+          // Merge cả 2 sources: ưu tiên kv_images (từ KiotViet), fallback về glt_images (có cache busting với rev)
+          const imageUrls = kvImagesFromView.length > 0 ? kvImagesFromView : gltImageUrls;
           
           return {
             id: Number(p.product_id),

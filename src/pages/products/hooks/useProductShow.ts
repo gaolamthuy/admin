@@ -149,7 +149,8 @@ export const useProductShow = (id: string | number) => {
         glt_images_homepage: customFields.glt_images_homepage || null,
         glt_custom_image_url: customFields.glt_custom_image_url || null,
         // Extended fields từ view
-        images: viewData.images,
+        glt_images: viewData.glt_images, // ⭐ Từ glt_product_images
+        kv_images: viewData.kv_images, // ⭐ Từ kv_products.images
         inventory_cost: viewData.inventory_cost,
         // Spread tất cả fields khác từ view để đảm bảo backward compatibility
         ...viewData,
@@ -177,10 +178,10 @@ export const useProductImages = (productId: number | null | undefined) => {
         return [];
       }
 
-      // Query từ v_products_admin để lấy images đã được aggregate sẵn
+      // Query từ v_products_admin để lấy glt_images đã được aggregate sẵn
       const { data, error } = await supabase
         .from('v_products_admin')
-        .select('images, kiotviet_id')
+        .select('glt_images, kiotviet_id')
         .eq('product_id', productId)
         .single();
 
@@ -198,8 +199,8 @@ export const useProductImages = (productId: number | null | undefined) => {
         return [];
       }
 
-      // Parse images từ JSONB array
-      const images = (data.images || []) as Array<{
+      // Parse glt_images từ JSONB array (từ glt_product_images)
+      const images = (data.glt_images || []) as Array<{
         id: number;
         role: string;
         url: string | null;

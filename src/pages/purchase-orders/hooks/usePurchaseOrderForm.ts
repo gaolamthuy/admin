@@ -69,16 +69,44 @@ export const usePurchaseOrderForm = () => {
         return next;
       }
 
+      // ⭐ Mới: Set quantity = 1 (số bao, child unit)
       next[product.product_id] = {
         ...product,
-        quantity: Math.max(1, Math.round(product.avg_quantity) || 1),
-        price: product.avg_price,
+        quantity: 1, // Mặc định 1 bao
+        price: null, // ⭐ Mới: Set mặc định = null (không còn avg_price)
       };
 
       // isSelectAll sẽ được tính toán từ bên ngoài dựa trên templates và selectedProducts
 
       return next;
     });
+  };
+
+  /**
+   * Remove product (xóa khỏi selected)
+   */
+  const removeProduct = (product: TemplateProduct) => {
+    if (!product.product_id) return;
+    setSelectedProducts(prev => {
+      const next = { ...prev };
+      delete next[product.product_id];
+      return next;
+    });
+  };
+
+  /**
+   * Add product (thêm vào selected)
+   */
+  const addProduct = (product: TemplateProduct) => {
+    if (!product.product_id) return;
+    setSelectedProducts(prev => ({
+      ...prev,
+      [product.product_id]: {
+        ...product,
+        quantity: 1, // Mặc định 1 bao
+        price: null,
+      },
+    }));
   };
 
   /**
@@ -91,10 +119,11 @@ export const usePurchaseOrderForm = () => {
       const allSelected: Record<number, SelectedProduct> = {};
       templates.forEach(template => {
         if (template.product_id) {
+          // ⭐ Mới: Set quantity = 1 (số bao, child unit)
           allSelected[template.product_id] = {
             ...template,
-            quantity: Math.max(1, Math.round(template.avg_quantity) || 1),
-            price: template.avg_price,
+            quantity: 1, // Mặc định 1 bao
+            price: null, // ⭐ Mới: Set mặc định = null (không còn avg_price)
           };
         }
       });
@@ -102,6 +131,13 @@ export const usePurchaseOrderForm = () => {
     } else {
       setSelectedProducts({});
     }
+  };
+
+  /**
+   * Remove all products (xóa tất cả)
+   */
+  const removeAll = () => {
+    setSelectedProducts({});
   };
 
   /**
@@ -139,10 +175,11 @@ export const usePurchaseOrderForm = () => {
       const autoSelected: Record<number, SelectedProduct> = {};
       templates.forEach(template => {
         if (template.product_id) {
+          // ⭐ Mới: Set quantity = 1 (số bao, child unit)
           autoSelected[template.product_id] = {
             ...template,
-            quantity: Math.max(1, Math.round(template.avg_quantity) || 1),
-            price: template.avg_price,
+            quantity: 1, // Mặc định 1 bao
+            price: null, // ⭐ Mới: Set mặc định = null (không còn avg_price)
           };
         }
       });
@@ -174,6 +211,9 @@ export const usePurchaseOrderForm = () => {
     validate,
     toggleProduct,
     selectAll,
+    removeProduct,
+    addProduct,
+    removeAll,
     updateQuantity,
     updatePrice,
     autoSelectAll,
