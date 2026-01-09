@@ -8,6 +8,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
+import { Badge } from '@/components/ui/badge';
 import { Loader2, Search } from 'lucide-react';
 import { usePayments, type Payment } from '@/hooks/usePayments';
 import { formatDate, formatTimeAgo, formatDateTimeWithSeconds } from '@/utils/date';
@@ -183,36 +184,59 @@ export const PaymentsList = () => {
             </div>
           ) : (
             <>
-              {/* Thông tin số lượng records */}
-              <div className="mb-4 text-sm text-muted-foreground">
+              {/* Thông tin số lượng records - Đã ẩn theo yêu cầu */}
+              {/* <div className="mb-4 text-sm text-muted-foreground">
                 Hiển thị {paginatedPayments.length} / {filteredPayments.length} giao dịch
                 {!isAdmin && (
                   <span className="ml-2 text-xs">
                     (Staff chỉ xem được 20 records đầu tiên)
                   </span>
                 )}
-              </div>
+              </div> */}
               <div className="space-y-6">
                 {groupedPayments.map(group => (
                   <section key={group.date} className="space-y-3">
                     <div className="flex items-baseline justify-between">
-                      <div className="flex flex-col">
-                        <span className="text-sm font-semibold">
-                          {group.date === 'unknown'
-                            ? 'Không rõ ngày'
-                            : (() => {
-                                // Format date group: dd/mm/yyyy (days ago)
-                                // Dùng displayTime từ group nếu có, nếu không thì tạo từ date key
-                                const dateStr = group.displayTime || `${group.date}T00:00:00Z`;
-                                const formattedDate = formatDate(dateStr, 'DD/MM/YYYY');
-                                const daysAgoText = formatTimeAgo(dateStr, {
-                                  includeSeconds: false,
-                                  includeMinutes: false,
-                                  includeHours: false,
-                                });
-                                return `${formattedDate} (${daysAgoText})`;
-                              })()}
-                        </span>
+                      <div className="flex items-center gap-2 flex-wrap">
+                        {group.date === 'unknown' ? (
+                          <span className="text-sm font-semibold">Không rõ ngày</span>
+                        ) : (() => {
+                            // Format date group: dddd, dd/MM/yyyy với times ago trong badge
+                            const dateStr = group.displayTime || `${group.date}T00:00:00Z`;
+                            
+                            // Format với thứ trong tuần: dddd, DD/MM/YYYY
+                            // dddd = tên đầy đủ của thứ (thứ hai, thứ ba, ...) với locale 'vi'
+                            let formattedDate = formatDate(dateStr, 'dddd, DD/MM/YYYY');
+                            
+                            // Capitalize chữ cái đầu của weekday để đẹp hơn
+                            // Ví dụ: "thứ hai" -> "Thứ Hai"
+                            const parts = formattedDate.split(', ');
+                            if (parts.length === 2) {
+                              const weekday = parts[0];
+                              const datePart = parts[1];
+                              // Capitalize từng từ trong weekday
+                              const capitalizedWeekday = weekday
+                                .split(' ')
+                                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                .join(' ');
+                              formattedDate = `${capitalizedWeekday}, ${datePart}`;
+                            }
+                            
+                            const daysAgoText = formatTimeAgo(dateStr, {
+                              includeSeconds: false,
+                              includeMinutes: false,
+                              includeHours: false,
+                            });
+                            
+                            return (
+                              <>
+                                <span className="text-sm font-semibold">{formattedDate}</span>
+                                <Badge variant="outline" className="text-xs">
+                                  {daysAgoText}
+                                </Badge>
+                              </>
+                            );
+                          })()}
                       </div>
                       <span className="text-xs text-muted-foreground">
                         {group.items.length} giao dịch
