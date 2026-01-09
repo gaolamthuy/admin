@@ -34,7 +34,7 @@ export const PurchaseOrderListView: React.FC<PurchaseOrderListViewProps> = ({
     <div className="space-y-4">
       {/* Header với View Mode Toggle và Filter */}
       <div className="flex items-center justify-between">
-        <h2 className="text-2xl font-bold">Danh sách đơn mua hàng</h2>
+        <h2 className="text-2xl font-bold">Danh sách đơn nhập hàng</h2>
 
         {/* Right side: Filter + View Mode Toggle */}
         <div className="flex items-center gap-2">

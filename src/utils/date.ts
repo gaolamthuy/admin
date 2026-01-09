@@ -53,7 +53,8 @@ function parseToUTC(
     const dateStr = date.trim();
     
     // Detect timezone offset: +00, +00:00, -05:30, etc.
-    const timezoneMatch = dateStr.match(/([+-]\d\d:?\d\d?)$/);
+    // Pattern: match +00, +00:00, -05:30, +07:00, etc.
+    const timezoneMatch = dateStr.match(/([+-]\d{2}(?::\d{2})?)$/);
     const timezoneOffset = timezoneMatch ? timezoneMatch[1] : null;
     
     // Nếu có timezone offset là +00 hoặc +00:00, parse trực tiếp như UTC
@@ -66,15 +67,19 @@ function parseToUTC(
     }
     
     // Nếu không có timezone hoặc timezone khác, thử parse như UTC
-    // (vì database đã lưu UTC thực sự)
-    let normalized = dateStr.replace(/[+-]\d\d:?\d\d?$/, '').trim();
+    // ⚠️ LƯU Ý: Các field timestamp without time zone có thể là:
+    // - Dữ liệu mới (đã chuẩn hóa): parse như UTC ✅
+    // - Dữ liệu cũ từ KiotViet: có thể là VN time, nhưng đã được migrate sang UTC
+    // Pattern: match +00, +00:00, -05:30, +07:00, etc. (2 chữ số, có thể có : và 2 chữ số nữa)
+    let normalized = dateStr.replace(/[+-]\d{2}(?::\d{2})?$/, '').trim();
     
-    // Replace space với T để tạo ISO format
+    // Replace space với T để tạo ISO format (chỉ replace lần đầu)
     if (normalized.includes(' ')) {
       normalized = normalized.replace(' ', 'T');
     }
     
-    // Thử parse như UTC trước (database đã lưu UTC)
+    // Thử parse như UTC trước (database đã lưu UTC thực sự)
+    // Format: '2022-08-10T04:44:38.187' hoặc '2026-01-09T09:44:09.17'
     const parsedAsUTC = dayjs.utc(normalized);
     if (parsedAsUTC.isValid()) {
       return parsedAsUTC;
@@ -393,6 +398,7 @@ export function formatTime(
 
 /**
  * Kiểm tra xem một ngày có hợp lệ không
+ * Sử dụng parseToUTC để đảm bảo nhất quán với các hàm khác
  * @param date - Ngày cần kiểm tra
  * @returns true nếu hợp lệ, false nếu không
  */
@@ -400,7 +406,9 @@ export function isValidDate(
   date: string | Date | dayjs.Dayjs | null | undefined
 ): boolean {
   if (!date) return false;
-  return dayjs(date).isValid();
+  // Sử dụng parseToUTC để nhất quán với các hàm format khác
+  const parsed = parseToUTC(date);
+  return parsed !== null && parsed.isValid();
 }
 
 /**

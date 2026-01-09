@@ -55,10 +55,10 @@ export const PurchaseOrderList = () => {
     <div className="container mx-auto py-6 space-y-6">
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
-          <CardTitle>Danh sách đơn mua hàng</CardTitle>
+          <CardTitle>Danh sách đơn nhập hàng</CardTitle>
           <Button onClick={() => navigate('/purchase-orders/create')}>
             <Plus className="mr-2 h-4 w-4" />
-            Tạo đơn mua hàng
+            Tạo đơn nhập hàng
           </Button>
         </CardHeader>
         <CardContent>
@@ -68,7 +68,7 @@ export const PurchaseOrderList = () => {
             </div>
           ) : purchaseOrders.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">Chưa có đơn mua hàng nào</p>
+              <p className="text-muted-foreground">Chưa có đơn nhập hàng nào</p>
             </div>
           ) : (
             <>

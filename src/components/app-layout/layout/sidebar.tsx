@@ -38,7 +38,7 @@ const menuItems: MenuItem[] = [
   },
   {
     key: 'purchase-orders',
-    label: 'Đơn mua hàng',
+    label: 'Nhập hàng',
     icon: <ShoppingCart className="h-4 w-4" />,
     path: '/purchase-orders',
   },
