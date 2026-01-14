@@ -28,8 +28,14 @@ const VN_TIMEZONE = 'Asia/Ho_Chi_Minh';
 /**
  * Parse date string to UTC (database returns UTC timestamps)
  * Tất cả date operations đều dùng UTC để đảm bảo chính xác
+ * 
+ * ✅ Đơn giản hóa: dayjs.utc() có thể parse trực tiếp tất cả format từ database
+ * - timestamp with time zone: '2026-01-08 08:56:53.354+00' ✅
+ * - timestamp without time zone: '2022-08-10 04:44:38.187' ✅ (parse như UTC vì database đã lưu UTC)
+ * - Date object: parse trực tiếp ✅
+ * 
  * @param date - Date string or Date object (usually UTC from database)
- * @returns dayjs object in UTC
+ * @returns dayjs object in UTC, null nếu không parse được
  */
 function parseToUTC(
   date: string | Date | dayjs.Dayjs | null | undefined
@@ -46,41 +52,19 @@ function parseToUTC(
     return dayjs.utc(date);
   }
   
-  // Nếu là string, parse theo format từ database
+  // Nếu là string, dayjs.utc() có thể parse trực tiếp tất cả format từ database
   // ✅ Database đã lưu UTC thực sự (kv_invoices, glt_payment đã được chuẩn hóa)
-  // Format: '2026-01-08 08:56:53.354+00' là UTC thực sự
+  // Format: '2026-01-08 08:56:53.354+00' hoặc '2022-08-10 04:44:38.187'
   if (typeof date === 'string') {
     const dateStr = date.trim();
     
-    // Detect timezone offset: +00, +00:00, -05:30, etc.
-    const timezoneMatch = dateStr.match(/([+-]\d\d:?\d\d?)$/);
-    const timezoneOffset = timezoneMatch ? timezoneMatch[1] : null;
-    
-    // Nếu có timezone offset là +00 hoặc +00:00, parse trực tiếp như UTC
-    // dayjs.utc() có thể parse trực tiếp format '2026-01-08 08:56:53.354+00'
-    if (timezoneOffset === '+00' || timezoneOffset === '+00:00') {
-      const parsedAsUTC = dayjs.utc(dateStr);
-      if (parsedAsUTC.isValid()) {
-        return parsedAsUTC;
-      }
+    // dayjs.utc() có thể parse trực tiếp format từ database
+    const parsed = dayjs.utc(dateStr);
+    if (parsed.isValid()) {
+      return parsed;
     }
     
-    // Nếu không có timezone hoặc timezone khác, thử parse như UTC
-    // (vì database đã lưu UTC thực sự)
-    let normalized = dateStr.replace(/[+-]\d\d:?\d\d?$/, '').trim();
-    
-    // Replace space với T để tạo ISO format
-    if (normalized.includes(' ')) {
-      normalized = normalized.replace(' ', 'T');
-    }
-    
-    // Thử parse như UTC trước (database đã lưu UTC)
-    const parsedAsUTC = dayjs.utc(normalized);
-    if (parsedAsUTC.isValid()) {
-      return parsedAsUTC;
-    }
-    
-    // Fallback: parse với Date object (tự động detect timezone)
+    // Fallback: thử parse với Date object (tự động detect timezone)
     try {
       const dateObj = new Date(dateStr);
       if (!isNaN(dateObj.getTime())) {
@@ -88,12 +72,6 @@ function parseToUTC(
       }
     } catch {
       // Ignore
-    }
-    
-    // Fallback cuối cùng: parse như VN time rồi convert (chỉ để tương thích dữ liệu cũ)
-    const fallback = dayjs.tz(normalized, VN_TIMEZONE);
-    if (fallback.isValid()) {
-      return fallback.utc();
     }
     
     return null;
@@ -214,11 +192,26 @@ export function formatTimeAgo(
 
   const now = dayjs.utc();
 
-  // Tính các khoảng thời gian
+  // ⚠️ QUAN TRỌNG: So sánh ngày tháng (YYYY-MM-DD) thay vì dùng diff('day')
+  // vì diff('day') tính theo số giờ chênh lệch, không phải theo ngày tháng
+  // Ví dụ: 10/01 17:00 và 11/01 12:00 chỉ cách 19 giờ → daysDiff = 0 (SAI)
+  // Nhưng thực tế đây là 2 ngày khác nhau → cần so sánh YYYY-MM-DD
+  const nowDateStr = now.format('YYYY-MM-DD');
+  const targetDateStr = targetDate.format('YYYY-MM-DD');
+  
+  // So sánh ngày tháng để xác định "Hôm nay", "Hôm qua" chính xác
+  const isSameDay = nowDateStr === targetDateStr;
+  // Clone now để tránh mutate, rồi subtract 1 ngày để lấy ngày hôm qua
+  const yesterdayDateStr = now.clone().subtract(1, 'day').format('YYYY-MM-DD');
+  const isYesterday = targetDateStr === yesterdayDateStr;
+
+  // Tính các khoảng thời gian (sau khi đã xác định isSameDay và isYesterday)
   const secondsDiff = now.diff(targetDate, 'second');
   const minutesDiff = now.diff(targetDate, 'minute');
   const hoursDiff = now.diff(targetDate, 'hour');
-  const daysDiff = now.diff(targetDate, 'day');
+  const calendarDaysDiff = now.diff(targetDate, 'day', true); // true = floating point
+  const daysDiff = Math.floor(calendarDaysDiff); // Làm tròn xuống để lấy số ngày nguyên
+  
   const weeksDiff = Math.floor(daysDiff / 7);
   const monthsDiff = now.diff(targetDate, 'month');
   const yearsDiff = now.diff(targetDate, 'year');
@@ -257,13 +250,14 @@ export function formatTimeAgo(
   }
 
   // Ngày
-  // ⚠️ Chỉ hiển thị "Hôm nay" nếu đã qua >= 24 giờ hoặc không includeHours
-  if (daysDiff === 0) {
-    // Nếu không includeHours và cùng ngày, hiển thị "Hôm nay"
-    // Nếu includeHours nhưng hoursDiff >= 24, thì daysDiff sẽ >= 1, không vào đây
+  // ⚠️ QUAN TRỌNG: So sánh theo ngày tháng (YYYY-MM-DD) thay vì daysDiff
+  // để đảm bảo "Hôm nay" và "Hôm qua" chính xác
+  if (isSameDay) {
     return 'Hôm nay';
   }
-  if (daysDiff === 1) return 'Hôm qua';
+  if (isYesterday) {
+    return 'Hôm qua';
+  }
   if (daysDiff >= 2 && daysDiff <= 7) {
     return `${daysDiff} ngày trước`;
   }
@@ -393,6 +387,7 @@ export function formatTime(
 
 /**
  * Kiểm tra xem một ngày có hợp lệ không
+ * Sử dụng parseToUTC để đảm bảo nhất quán với các hàm khác
  * @param date - Ngày cần kiểm tra
  * @returns true nếu hợp lệ, false nếu không
  */
@@ -400,7 +395,9 @@ export function isValidDate(
   date: string | Date | dayjs.Dayjs | null | undefined
 ): boolean {
   if (!date) return false;
-  return dayjs(date).isValid();
+  // Sử dụng parseToUTC để nhất quán với các hàm format khác
+  const parsed = parseToUTC(date);
+  return parsed !== null && parsed.isValid();
 }
 
 /**
