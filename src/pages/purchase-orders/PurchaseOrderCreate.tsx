@@ -165,7 +165,7 @@ export const PurchaseOrderCreate = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Tạo đơn mua hàng mới</CardTitle>
+          <CardTitle>Tạo đơn nhập hàng mới</CardTitle>
           <div className="flex items-center gap-2 mt-4">
             <div
               className={cn(
@@ -366,7 +366,7 @@ export const PurchaseOrderCreate = () => {
                       </>
                     ) : (
                       <>
-                        Tạo đơn mua hàng
+                        Tạo đơn nhập hàng
                         <ArrowRight className="ml-2 h-4 w-4" />
                       </>
                     )}

@@ -67,7 +67,7 @@ export const SupplierSelector: React.FC<SupplierSelectorProps> = ({
                         </p>
                       ) : (
                         <p className="text-sm text-muted-foreground mt-1">
-                          Chưa có đơn mua hàng
+                          Chưa có đơn nhập hàng
                         </p>
                       )}
                     </div>

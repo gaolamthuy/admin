@@ -79,7 +79,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
           </div>
         ) : templates.length === 0 ? (
           <div className="p-6 text-center text-sm text-muted-foreground">
-            Chưa có đơn mua hàng nào để đề xuất sản phẩm. Bạn vẫn có thể tạo đơn
+            Chưa có đơn nhập hàng nào để đề xuất sản phẩm. Bạn vẫn có thể tạo đơn
             mới ngay trong KiotViet sau khi chọn nhà cung cấp.
           </div>
         ) : (

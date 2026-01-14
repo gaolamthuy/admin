@@ -49,7 +49,7 @@ export const PurchaseOrderShow = () => {
             <p className="text-destructive">
               {error instanceof Error
                 ? error.message
-                : 'Không tìm thấy đơn mua hàng'}
+                : 'Không tìm thấy đơn nhập hàng'}
             </p>
             <Button
               onClick={() => navigate('/purchase-orders')}
@@ -76,7 +76,7 @@ export const PurchaseOrderShow = () => {
       <Card>
         <CardHeader>
           <CardTitle>
-            Đơn mua hàng #{purchaseOrder.code || purchaseOrder.id}
+            Đơn nhập hàng #{purchaseOrder.code || purchaseOrder.id}
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-6">

@@ -26,7 +26,7 @@ export interface CreatePurchaseOrderPayload {
 }
 
 const DEFAULT_ERROR_MESSAGE =
-  'Không thể tạo đơn mua hàng. Vui lòng thử lại hoặc kiểm tra log trong n8n.';
+  'Không thể tạo đơn nhập hàng. Vui lòng thử lại hoặc kiểm tra log trong n8n.';
 
 const buildWebhookUrl = (baseUrl?: string) => {
   if (!baseUrl) return null;
@@ -98,14 +98,14 @@ export const useCreatePurchaseOrder = () => {
           throw new Error(text || DEFAULT_ERROR_MESSAGE);
         }
 
-        toast.success('Đơn mua hàng đã được tạo', {
+        toast.success('Đơn nhập hàng đã được tạo', {
           description: 'KiotViet đang xử lý đơn nháp mới.',
         });
       } catch (error) {
         const message =
           error instanceof Error ? error.message : DEFAULT_ERROR_MESSAGE;
         setErrorMessage(message);
-        toast.error('Tạo đơn mua hàng thất bại', {
+        toast.error('Tạo đơn nhập hàng thất bại', {
           description: message,
         });
         throw error;
