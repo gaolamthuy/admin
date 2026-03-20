@@ -114,13 +114,11 @@ export const ProductList = () => {
   const { data: categories = [], isLoading: categoriesLoading } =
     useProductCategories();
 
-  // Fetch products:
-  // - Admin: chỉ lấy products có purchase data (requirePurchaseData: true)
-  // - Non-admin: lấy tất cả products (requirePurchaseData: false)
+  // Fetch products: lấy tất cả products (không filter theo purchase data)
   const { data: productsRaw = [], isLoading: productsLoading } = useProducts({
     category: filters.category,
     isFavorite: filters.isFavorite,
-    requirePurchaseData: isAdmin, // Admin: chỉ products có purchase data
+    requirePurchaseData: false, // Bỏ filter purchase data, hiển thị tất cả products
   });
 
   // Fetch inventory costs cho admin để tính cost_difference

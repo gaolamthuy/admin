@@ -29,6 +29,18 @@ export interface ProductImage {
 }
 
 /**
+ * Interface cho image trong glt_images_homepage
+ */
+export interface HomepageImage {
+  id: string;
+  url: string;
+  order: number;
+  createdAt: number;
+  updatedAt: number;
+  description: string | null;
+}
+
+/**
  * Interface cho dữ liệu từ view v_products_admin
  */
 export interface PurchaseOrderDetail {
@@ -125,7 +137,11 @@ export const useProductShow = (id: string | number) => {
         glt_visible?: boolean;
         glt_retail_promotion?: boolean;
         glt_labelprint_favorite?: boolean;
-        glt_images_homepage?: any;
+        glt_images_upload?: {
+          main?: string | null;
+          package?: string | null;
+        } | null;
+        glt_images_homepage?: HomepageImage[];
         glt_custom_image_url?: string | null;
       }) || {};
 
@@ -146,6 +162,7 @@ export const useProductShow = (id: string | number) => {
         glt_visible: customFields.glt_visible ?? true,
         glt_retail_promotion: customFields.glt_retail_promotion ?? false,
         glt_labelprint_favorite: customFields.glt_labelprint_favorite ?? false,
+        glt_images_upload: customFields.glt_images_upload || null,
         glt_images_homepage: customFields.glt_images_homepage || null,
         glt_custom_image_url: customFields.glt_custom_image_url || null,
         // Extended fields từ view
@@ -501,6 +518,84 @@ export const useUploadProductImage = () => {
         queryClient.invalidateQueries({ queryKey: ['product-show'] });
         queryClient.invalidateQueries({ queryKey: ['products'] });
       }, 2000); // Đợi 2 giây để n8n xử lý xong
+    },
+  });
+};
+
+/**
+ * Hook để upload ảnh gốc vào glt_custom_fields.glt_images_upload
+ * Upload lên Cloudinary với context.type='base-image'
+ * Update trực tiếp vào glt_custom_fields
+ *
+ * @param productId - kv_products.id
+ * @param imageType - 'main' | 'package'
+ */
+export const useUploadBaseProductImage = () => {
+  const queryClient = useQueryClient();
+  const { data: session } = useSession();
+
+  return useMutation({
+    mutationFn: async ({
+      productId,
+      imageType,
+      file,
+    }: {
+      productId: number;
+      imageType: 'main' | 'package';
+      file: File;
+    }) => {
+      if (!session) {
+        throw new Error('Not authenticated');
+      }
+
+      // Import validateImageFile và uploadImageToCloudinary
+      const {
+        validateImageFile,
+        uploadImageToCloudinary,
+      } = await import('@/lib/cloudinary');
+
+      // Validate file
+      validateImageFile(file);
+
+      // Upload lên Cloudinary với context.type='base-image'
+      const result = await uploadImageToCloudinary({
+        file,
+        kiotvietId: productId.toString(),
+        useSignedUpload: true,
+        useCloudflareFunction: false,
+        context: {
+          product_id: productId,
+          type: 'base-image',
+          image_type: imageType, // 'main' hoặc 'package'
+        },
+      });
+
+      // Update glt_custom_fields.glt_images_upload
+      const imageUrl = result.public_id
+        ? `https://res.cloudinary.com/gaolamthuy/image/upload/${result.public_id}`
+        : null;
+
+      const { data, error } = await supabase
+        .from('kv_products')
+        .update({
+          glt_custom_fields: supabase.raw(
+            `jsonb_set(
+              COALESCE(glt_custom_fields, '{}'),
+              '{glt_images_upload}',
+              '{"${imageType}": ${imageUrl ? `'${imageUrl}'` : 'null'}}'
+            )`
+          ),
+        })
+        .eq('id', productId)
+        .select('glt_custom_fields')
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (_, variables) => {
+      // Invalidate queries để refresh data
+      queryClient.invalidateQueries({ queryKey: ['product-show', variables.productId] });
     },
   });
 };
