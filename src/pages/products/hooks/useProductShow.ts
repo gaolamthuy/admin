@@ -575,16 +575,30 @@ export const useUploadBaseProductImage = () => {
         ? `https://res.cloudinary.com/gaolamthuy/image/upload/${result.public_id}`
         : null;
 
+      // Fetch current glt_custom_fields
+      const { data: currentProduct, error: fetchError } = await supabase
+        .from('kv_products')
+        .select('glt_custom_fields')
+        .eq('id', productId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Update the glt_images_upload object
+      const customFields = currentProduct?.glt_custom_fields || {};
+      const imagesUpload = (customFields as Record<string, unknown>)?.glt_images_upload || {};
+      const updatedCustomFields = {
+        ...customFields,
+        glt_images_upload: {
+          ...(imagesUpload as Record<string, unknown>),
+          [imageType]: imageUrl,
+        },
+      };
+
       const { data, error } = await supabase
         .from('kv_products')
         .update({
-          glt_custom_fields: supabase.raw(
-            `jsonb_set(
-              COALESCE(glt_custom_fields, '{}'),
-              '{glt_images_upload}',
-              '{"${imageType}": ${imageUrl ? `'${imageUrl}'` : 'null'}}'
-            )`
-          ),
+          glt_custom_fields: updatedCustomFields,
         })
         .eq('id', productId)
         .select('glt_custom_fields')
