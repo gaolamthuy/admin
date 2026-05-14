@@ -13,7 +13,7 @@ import {
   useProductPriceComparison,
   useProductInventory,
   useUpdateProduct,
-  useUploadBaseProductImage,
+  useUploadProductImage,
   type HomepageImage,
 } from './hooks/useProductShow';
 import {
@@ -75,9 +75,43 @@ export const ProductShow = () => {
 
   // Mutation để update product
   const updateProduct = useUpdateProduct();
-  
-  // Mutation để upload base images
-  const uploadBaseImage = useUploadBaseProductImage();
+
+  // Mutation để upload ảnh
+  const uploadProductImage = useUploadProductImage();
+
+  // Track uploading state per role
+  const uploadingRoleRef = useRef<string | null>(null);
+
+  // Handler để upload ảnh cho role
+  const handleUploadImage = async (
+    role: string,
+    imageType: string,
+    file: File,
+  ) => {
+    if (!record?.kiotviet_id) return;
+
+    uploadingRoleRef.current = role;
+
+    try {
+      await toast.promise(
+        uploadProductImage.mutateAsync({
+          kiotvietId: record.kiotviet_id,
+          role,
+          imageType,
+          file,
+        }),
+        {
+          loading: `Đang upload ảnh ${role}/${imageType}...`,
+          success: `Đã upload ảnh ${role}/${imageType} thành công`,
+          error: `Upload ảnh thất bại. Vui lòng thử lại.`,
+        }
+      );
+    } catch (error) {
+      console.error('Upload error:', error);
+    } finally {
+      uploadingRoleRef.current = null;
+    }
+  };
 
   // Form cho inline editing
   const form = useForm({
@@ -100,33 +134,6 @@ export const ProductShow = () => {
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [record]);
-
-  /**
-   * Handle upload base image
-   */
-  const handleUploadBaseImage = async (
-    imageType: 'main' | 'package',
-    file: File,
-  ) => {
-    if (!record?.id) return;
-
-    try {
-      await toast.promise(
-        uploadBaseImage.mutateAsync({
-          productId: record.id,
-          imageType,
-          file,
-        }),
-        {
-          loading: `Đang upload ảnh ${imageType}...`,
-          success: `Đã upload ảnh ${imageType} thành công`,
-          error: `Upload ảnh ${imageType} thất bại. Vui lòng thử lại.`,
-        }
-      );
-    } catch (error) {
-      console.error('Upload error:', error);
-    }
-  };
 
   // Handle form submission - Auto save khi có thay đổi
   const onSubmit = async (values: {
@@ -529,136 +536,132 @@ export const ProductShow = () => {
 
         {/* Tab Hình ảnh */}
         <TabsContent value="images" className="space-y-6">
-          {/* Section 1: Ảnh gốc upload (glt_images_upload) */}
+          {/* Section 1: Ảnh theo Role từ glt_images */}
           <Card>
             <CardHeader>
-              <CardTitle>Ảnh gốc upload</CardTitle>
+              <CardTitle>Ảnh theo Role</CardTitle>
               <CardDescription>
-                Upload ảnh gốc để xử lý thành các phiên bản hiển thị
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {/* Main Image Upload */}
-                <div className="space-y-3">
-                  <div className="text-sm font-medium">Ảnh Main</div>
-                  {record?.glt_images_upload?.main ? (
-                    <div className="relative rounded-lg border overflow-hidden">
-                      <img
-                        src={record.glt_images_upload.main}
-                        alt="Main upload"
-                        className="w-[300px] h-[400px] object-cover"
-                        onClick={() => window.open(record.glt_images_upload.main, '_blank')}
-                      />
-                    </div>
-                  ) : (
-                    <div className="relative rounded-lg border border-dashed overflow-hidden bg-muted/20 w-[300px] h-[400px] flex items-center justify-center">
-                      <label className="cursor-pointer w-full h-full flex items-center justify-center">
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file && record?.id) {
-                              handleUploadBaseImage('main', file);
-                            }
-                          }}
-                          disabled={uploadBaseImage.isPending}
-                        />
-                        <div className="text-center text-muted-foreground text-xs">
-                          <Upload className="h-6 w-6 mx-auto mb-1" />
-                          <p>Upload ảnh main</p>
-                        </div>
-                      </label>
-                    </div>
-                  )}
-                </div>
-
-                {/* Package Image Upload */}
-                <div className="space-y-3">
-                  <div className="text-sm font-medium">Ảnh Package</div>
-                  {record?.glt_images_upload?.package ? (
-                    <div className="relative rounded-lg border overflow-hidden">
-                      <img
-                        src={record.glt_images_upload.package}
-                        alt="Package upload"
-                        className="w-[300px] h-[400px] object-cover"
-                        onClick={() => window.open(record.glt_images_upload.package, '_blank')}
-                      />
-                    </div>
-                  ) : (
-                    <div className="relative rounded-lg border border-dashed overflow-hidden bg-muted/20 w-[300px] h-[400px] flex items-center justify-center">
-                      <label className="cursor-pointer w-full h-full flex items-center justify-center">
-                        <input
-                          type="file"
-                          accept="image/jpeg,image/png,image/webp"
-                          className="hidden"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file && record?.id) {
-                              handleUploadBaseImage('package', file);
-                            }
-                          }}
-                          disabled={uploadBaseImage.isPending}
-                        />
-                        <div className="text-center text-muted-foreground text-xs">
-                          <Upload className="h-6 w-6 mx-auto mb-1" />
-                          <p>Upload ảnh package</p>
-                        </div>
-                      </label>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {uploadBaseImage.isPending && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                  Đang upload...
-                </div>
-              )}
-            </CardContent>
-          </Card>
-
-          {/* Section 2: Ảnh đã xử lý (glt_images_homepage) */}
-          <Card>
-            <CardHeader>
-              <CardTitle>Ảnh hiển thị</CardTitle>
-              <CardDescription>
-                Các ảnh đã được xử lý và sử dụng để hiển thị
+                Các ảnh đã xử lý theo từng role (closeup, feature, package, infocard...)
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {record?.glt_images_homepage && record.glt_images_homepage.length > 0 ? (
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                  {record.glt_images_homepage.map((image: HomepageImage) => (
-                    <div key={image.id} className="space-y-2">
-                      <div className="text-sm font-medium text-muted-foreground">
-                        {image.description || image.id}
-                      </div>
-                      <div className="relative rounded-lg border overflow-hidden">
-                        <img
-                          src={image.url}
-                          alt={image.description || image.id}
-                          className="w-[300px] h-[400px] object-cover"
-                          onClick={() => window.open(image.url, '_blank')}
-                        />
-                      </div>
-                      <div className="text-xs text-muted-foreground">
-                        <div>Order: {image.order}</div>
-                        {image.updatedAt && (
-                          <div>{formatDaysAgo(new Date(image.updatedAt * 1000).toISOString())}</div>
-                        )}
-                      </div>
+              {(() => {
+                // Parse glt_images từ record
+                const gltImages = record?.glt_images as Array<{
+                  role: string;
+                  images: Record<string, {
+                    id: number;
+                    url: string;
+                    path: string;
+                    width?: number;
+                    height?: number;
+                    format?: string;
+                  }>;
+                }> | undefined;
+
+                if (!gltImages || gltImages.length === 0) {
+                  return (
+                    <div className="text-center py-12 text-sm text-muted-foreground">
+                      Chưa có ảnh nào được xử lý.
                     </div>
-                  ))}
-                </div>
-              ) : (
-                <div className="text-center py-12 text-sm text-muted-foreground">
-                  Chưa có ảnh hiển thị. Vui lòng upload ảnh gốc từ phần trên.
-                </div>
-              )}
+                  );
+                }
+
+                return (
+                  <div className="space-y-8">
+                    {gltImages.map((roleData, roleIndex) => {
+                      const { role, images } = roleData;
+                      const displayImage = images.display;
+                      const linkVariants = Object.entries(images).filter(
+                        ([key]) => key !== 'display'
+                      );
+
+                      return (
+                        <div key={roleIndex} className="space-y-4">
+                          {/* Role Header */}
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-sm font-semibold uppercase tracking-wide">
+                              {role}
+                            </h4>
+                            <Badge variant="outline" className="text-xs">
+                              {Object.keys(images).length} variants
+                            </Badge>
+                            {/* Upload button */}
+                            <label className="cursor-pointer">
+                              <input
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                className="hidden"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    handleUploadImage(role, 'display', file);
+                                  }
+                                  e.target.value = '';
+                                }}
+                                disabled={uploadProductImage.isPending && uploadingRoleRef.current === role}
+                              />
+                              {uploadProductImage.isPending && uploadingRoleRef.current === role ? (
+                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                              ) : (
+                                <Upload className="h-4 w-4 text-muted-foreground hover:text-primary transition-colors" />
+                              )}
+                            </label>
+                          </div>
+
+                          {/* Display preview + các variant còn lại dạng link */}
+                          <div className="flex flex-wrap gap-4">
+                            {displayImage && (
+                              <div className="space-y-2">
+                                <div className="text-xs font-medium text-muted-foreground">
+                                  Display
+                                </div>
+                                <div 
+                                  className="relative rounded-lg border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
+                                  onClick={() => window.open(displayImage.url, '_blank')}
+                                >
+                                  <img
+                                    src={displayImage.url}
+                                    alt={`${role} display`}
+                                    className="w-[200px] h-[267px] object-cover"
+                                  />
+                                  {displayImage.format && (
+                                    <div className="absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded">
+                                      {displayImage.format.toUpperCase()}
+                                      {displayImage.width && ` ${displayImage.width}x${displayImage.height}`}
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          {linkVariants.length > 0 && (
+                            <div className="flex flex-wrap gap-2">
+                              {linkVariants.map(([imageType, imageData]) => (
+                                <a
+                                  key={imageType}
+                                  href={imageData.url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary underline underline-offset-2"
+                                >
+                                  {imageType}
+                                  {imageData.format && (
+                                    <span className="text-[10px] opacity-70">
+                                      ({imageData.format})
+                                    </span>
+                                  )}
+                                </a>
+                              ))}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                );
+              })()}
             </CardContent>
           </Card>
         </TabsContent>
