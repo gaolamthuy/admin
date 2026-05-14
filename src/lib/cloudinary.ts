@@ -170,7 +170,22 @@ export async function uploadImageToCloudinary(
         );
       }
 
+      // Build context string nếu có
+      let contextString = '';
+      if (context) {
+        const contextCustom: Record<string, string> = {};
+        Object.entries(context).forEach(([key, value]) => {
+          if (value !== undefined) {
+            contextCustom[key] = String(value);
+          }
+        });
+        if (Object.keys(contextCustom).length > 0) {
+          contextString = JSON.stringify({ custom: contextCustom });
+        }
+      }
+
       // Các tham số cần ký (sắp xếp a-z, exclude file/api_key/signature)
+      // QUAN TRỌNG: Tất cả tham số gửi lên phải có trong signature
       const signatureParams: SignatureParams = {
         invalidate: true, // Xóa cache CDN cũ
         overwrite: true, // Cho phép overwrite
@@ -178,32 +193,52 @@ export async function uploadImageToCloudinary(
         timestamp,
       };
 
+      // Thêm context vào signature nếu có
+      if (contextString) {
+        signatureParams.context = contextString;
+      }
+
       // Generate signature ở client (KHÔNG AN TOÀN)
       signature = await generateCloudinarySignature(
         signatureParams,
         clientApiSecret
       );
       apiKey = clientApiKey;
+
+      // Thêm các tham số vào form (phải khớp với signature params)
+      form.append('public_id', publicId);
+      form.append('overwrite', 'true');
+      form.append('invalidate', 'true');
+      form.append('api_key', apiKey);
+      form.append('timestamp', timestamp);
+      form.append('signature', signature);
+
+      // Thêm context vào form (đã có trong signature)
+      if (contextString) {
+        form.append('context', contextString);
+      }
     }
 
-    // Thêm các tham số vào form
-    form.append('public_id', publicId);
-    form.append('overwrite', 'true');
-    form.append('invalidate', 'true');
-    form.append('api_key', apiKey);
-    form.append('timestamp', timestamp);
-    form.append('signature', signature);
-    
-    // Thêm context.custom nếu có (để gửi đến webhook)
-    if (context) {
-      const contextCustom: Record<string, string> = {};
-      Object.entries(context).forEach(([key, value]) => {
-        if (value !== undefined) {
-          contextCustom[key] = String(value);
+    // Nếu dùng Cloudflare Function, thêm params vào form ở đây
+    if (params.useCloudflareFunction) {
+      form.append('public_id', publicId);
+      form.append('overwrite', 'true');
+      form.append('invalidate', 'true');
+      form.append('api_key', apiKey);
+      form.append('timestamp', timestamp);
+      form.append('signature', signature);
+
+      // Thêm context.custom nếu có (để gửi đến webhook)
+      if (context) {
+        const contextCustom: Record<string, string> = {};
+        Object.entries(context).forEach(([key, value]) => {
+          if (value !== undefined) {
+            contextCustom[key] = String(value);
+          }
+        });
+        if (Object.keys(contextCustom).length > 0) {
+          form.append('context', JSON.stringify({ custom: contextCustom }));
         }
-      });
-      if (Object.keys(contextCustom).length > 0) {
-        form.append('context', JSON.stringify({ custom: contextCustom }));
       }
     }
   } else {
