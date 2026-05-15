@@ -29,6 +29,18 @@ export interface ProductImage {
 }
 
 /**
+ * Interface cho image trong glt_images_homepage
+ */
+export interface HomepageImage {
+  id: string;
+  url: string;
+  order: number;
+  createdAt: number;
+  updatedAt: number;
+  description: string | null;
+}
+
+/**
  * Interface cho dữ liệu từ view v_products_admin
  */
 export interface PurchaseOrderDetail {
@@ -125,7 +137,11 @@ export const useProductShow = (id: string | number) => {
         glt_visible?: boolean;
         glt_retail_promotion?: boolean;
         glt_labelprint_favorite?: boolean;
-        glt_images_homepage?: any;
+        glt_images_upload?: {
+          main?: string | null;
+          package?: string | null;
+        } | null;
+        glt_images_homepage?: HomepageImage[];
         glt_custom_image_url?: string | null;
       }) || {};
 
@@ -146,6 +162,7 @@ export const useProductShow = (id: string | number) => {
         glt_visible: customFields.glt_visible ?? true,
         glt_retail_promotion: customFields.glt_retail_promotion ?? false,
         glt_labelprint_favorite: customFields.glt_labelprint_favorite ?? false,
+        glt_images_upload: customFields.glt_images_upload || null,
         glt_images_homepage: customFields.glt_images_homepage || null,
         glt_custom_image_url: customFields.glt_custom_image_url || null,
         // Extended fields từ view
@@ -443,26 +460,29 @@ export const useRegenerateProductImages = () => {
 };
 
 /**
- * Hook để upload product image lên Cloudinary với context
- * Upload lên Cloudinary với context.custom chứa product_id và role
- * Cloudinary sẽ tự động gọi webhook n8n để xử lý
+ * Hook để upload ảnh gốc vào glt_custom_fields.glt_images_upload
+ * Upload lên Cloudinary với context.type='base-image'
+ * Update trực tiếp vào glt_custom_fields
  *
- * @param kiotvietId - kv_products.kiotviet_id
- * @param role - Role prefix: 'closeup' | 'package'
+ * @param productId - kv_products.id (để update database)
+ * @param kiotvietId - kv_products.kiotviet_id (để làm public_id cho Cloudinary)
+ * @param imageType - 'main' | 'package'
  */
-export const useUploadProductImage = () => {
+export const useUploadBaseProductImage = () => {
   const queryClient = useQueryClient();
   const { data: session } = useSession();
 
   return useMutation({
     mutationFn: async ({
-      file,
+      productId,
       kiotvietId,
-      role,
+      imageType,
+      file,
     }: {
-      file: File;
+      productId: number;
       kiotvietId: number;
-      role: 'closeup' | 'package';
+      imageType: 'main' | 'package';
+      file: File;
     }) => {
       if (!session) {
         throw new Error('Not authenticated');
@@ -477,30 +497,121 @@ export const useUploadProductImage = () => {
       // Validate file
       validateImageFile(file);
 
-      // Upload lên Cloudinary với context.custom
-      // Context sẽ được Cloudinary gửi đến webhook n8n
+      // Tạo public_id: {kiotvietId}/{imageType}-original
+      // Ví dụ: gaolamthuy/15742017/main-original hoặc gaolamthuy/15742017/package-original
+      const publicIdWithSuffix = `${kiotvietId}/${imageType}-original`;
+
+      // Upload lên Cloudinary với context.type='base-image'
       const result = await uploadImageToCloudinary({
         file,
-        kiotvietId: kiotvietId.toString(),
+        kiotvietId: publicIdWithSuffix, // Dùng public_id có path để phân biệt main/package
         useSignedUpload: true,
-        useCloudflareFunction: false, // Dùng client-side signature (DEV)
+        useCloudflareFunction: false,
         context: {
-          product_id: kiotvietId,
-          role: role, // 'closeup' hoặc 'package'
+          kiotviet_id: kiotvietId,
+          image_type: imageType, // 'main' hoặc 'package'
+          type: 'base-image',
         },
       });
 
-      // Sau khi upload thành công, Cloudinary sẽ tự động gọi webhook
-      // Không cần gọi thêm API nào nữa
-      return result;
+      // Update glt_custom_fields.glt_images_upload
+      const imageUrl = result.public_id
+        ? `https://res.cloudinary.com/gaolamthuy/image/upload/${result.public_id}`
+        : null;
+
+      // Fetch current glt_custom_fields
+      const { data: currentProduct, error: fetchError } = await supabase
+        .from('kv_products')
+        .select('glt_custom_fields')
+        .eq('id', productId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Update the glt_images_upload object
+      const customFields = currentProduct?.glt_custom_fields || {};
+      const imagesUpload = (customFields as Record<string, unknown>)?.glt_images_upload || {};
+      const updatedCustomFields = {
+        ...customFields,
+        glt_images_upload: {
+          ...(imagesUpload as Record<string, unknown>),
+          [imageType]: imageUrl,
+        },
+      };
+
+      const { data, error } = await supabase
+        .from('kv_products')
+        .update({
+          glt_custom_fields: updatedCustomFields,
+        })
+        .eq('id', productId)
+        .select('glt_custom_fields')
+        .single();
+
+      if (error) throw error;
+      return data;
     },
-    onSuccess: () => {
-      // Invalidate queries sau một chút để đợi n8n xử lý xong
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['product-images'] });
-        queryClient.invalidateQueries({ queryKey: ['product-show'] });
-        queryClient.invalidateQueries({ queryKey: ['products'] });
-      }, 2000); // Đợi 2 giây để n8n xử lý xong
+    onSuccess: (_, variables) => {
+      // Invalidate queries để refresh data
+      queryClient.invalidateQueries({ queryKey: ['product-show', variables.productId] });
+    },
+  });
+};
+
+/**
+ * Hook để upload ảnh cho role cụ thể (feature, closeup, package, infocard)
+ * Upload trực tiếp vào glt_product_images table
+ *
+ * @param kiotvietId - kv_products.kiotviet_id
+ */
+export const useUploadProductImage = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({
+      kiotvietId,
+      role,
+      imageType,
+      file,
+    }: {
+      kiotvietId: number;
+      role: string;
+      imageType: string;
+      file: File;
+    }) => {
+      const { validateImageFile, uploadImageToCloudinary } = await import('@/lib/cloudinary');
+
+      validateImageFile(file);
+
+      const publicId = `${kiotvietId}/${role}-${imageType}`;
+
+      const result = await uploadImageToCloudinary({
+        file,
+        kiotvietId: publicId,
+        useSignedUpload: true,
+        useCloudflareFunction: false,
+        context: {
+          kiotviet_id: String(kiotvietId),
+          role,
+          image_type: imageType,
+        },
+      });
+
+      const imageUrl = result.public_id
+        ? `https://cdn.gaolamthuy.vn/${result.public_id}`
+        : null;
+
+      if (!imageUrl) {
+        throw new Error('Failed to get image URL');
+      }
+
+      return { imageUrl, role, imageType };
+    },
+    onSuccess: (_, variables) => {
+      queryClient.invalidateQueries({
+        queryKey: ['product-show', variables.kiotvietId],
+      });
+      queryClient.invalidateQueries({ queryKey: ['product-images'] });
     },
   });
 };

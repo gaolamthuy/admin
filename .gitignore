@@ -120,4 +120,6 @@ downloads/
 scripts/
 .cursor/
 
-.mcp/
+.mcp/docs/kiotviet-http/*.md
+*.token
+*.key

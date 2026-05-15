@@ -38,9 +38,17 @@ npm run preview
 
 ## 📚 Documentation
 
-- [Core Architecture](./docs/CORE_ARCHITECTURE.md) - Architecture & patterns
-- [Deployment Guide](./docs/DEPLOYMENT.md) - Deployment strategy
-- [Git Strategy](./.github/GIT_STRATEGY.md) - Git workflow
+### 🤖 AI Context & Collaboration
+- **[AI Context Documentation](./docs/ai-context/)** - Complete guide for AI assistants and pair programming
+  - [Project Context](./docs/ai-context/PROJECT_CONTEXT.md) - Project overview và architecture
+  - [Development Guide](./docs/ai-context/DEVELOPMENT_GUIDE.md) - Development workflows và patterns
+  - [API Documentation](./docs/ai-context/API_DOCUMENTATION.md) - API specs và integrations
+  - [Troubleshooting](./docs/ai-context/TROUBLESHOOTING.md) - Common issues và solutions
+  - [AI Assistant Guide](./docs/ai-context/AI_ASSISTANT_GUIDE.md) - Specific guidelines for AI
+  - [Pair Programming](./docs/ai-context/PAIR_PROGRAMMING.md) - Collaboration best practices
+
+### 📖 Technical Docs  
+- [KiotViet API Docs](./docs/kiotviet-http/) - KiotViet integration guides
 
 ## 🔒 Environment Variables
 
@@ -54,3 +62,5 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 ## 📝 License
 
 MIT
+
+## Test deploy #2
