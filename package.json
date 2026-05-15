@@ -2,6 +2,10 @@
   "name": "gaolamthuy-admin",
   "version": "1.0.0",
   "private": true,
+  "packageManager": "pnpm@10.11.0",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "type": "module",
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
