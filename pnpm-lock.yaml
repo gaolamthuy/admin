@@ -132,8 +132,8 @@ importers:
         specifier: ^0.4.6
         version: 0.4.6(react-dom@19.0.3(react@19.0.3))(react@19.0.3)
       postcss:
-        specifier: ^8.5.3
-        version: 8.5.6
+        specifier: ^8.5.14
+        version: 8.5.14
       react:
         specifier: 19.0.3
         version: 19.0.3
@@ -150,11 +150,11 @@ importers:
         specifier: ^2.1.8
         version: 2.1.9(react-dom@19.0.3(react@19.0.3))(react@19.0.3)
       react-router:
-        specifier: ^7.0.2
-        version: 7.11.0(react-dom@19.0.3(react@19.0.3))(react@19.0.3)
+        specifier: ^7.15.1
+        version: 7.15.1(react-dom@19.0.3(react@19.0.3))(react@19.0.3)
       react-router-dom:
-        specifier: ^7.11.0
-        version: 7.11.0(react-dom@19.0.3(react@19.0.3))(react@19.0.3)
+        specifier: ^7.15.1
+        version: 7.15.1(react-dom@19.0.3(react@19.0.3))(react@19.0.3)
       recharts:
         specifier: ^2.15.3
         version: 2.15.4(react-dom@19.0.3(react@19.0.3))(react@19.0.3)
@@ -3888,8 +3888,8 @@ packages:
     resolution: {integrity: sha512-orRsuYpJVw8LdAwqqLykBj9ecS5/cRHlI5+nvTo8LcCKmzDmqVORXtOIYEEQuL9D4BxtA1lm5isAqzQZCoQ6Eg==}
     engines: {node: '>=4'}
 
-  postcss@8.5.6:
-    resolution: {integrity: sha512-3Ybi1tAuwAP9s0r1UQ2J4n5Y0G05bJkpUIO0/bI9MhwmD70S5aTWbXGBwxHrelT+XM1k6dM0pk+SwNkpTRN7Pg==}
+  postcss@8.5.14:
+    resolution: {integrity: sha512-SoSL4+OSEtR99LHFZQiJLkT59C5B1amGO1NzTwj7TT1qCUgUO6hxOvzkOYxD+vMrXBM3XJIKzokoERdqQq/Zmg==}
     engines: {node: ^10 || ^12 || >=14}
 
   powershell-utils@0.1.0:
@@ -4003,15 +4003,15 @@ packages:
       react: ^16.14.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc
       react-dom: ^16.14.0 || ^17.0.0 || ^18.0.0 || ^19.0.0 || ^19.0.0-rc
 
-  react-router-dom@7.11.0:
-    resolution: {integrity: sha512-e49Ir/kMGRzFOOrYQBdoitq3ULigw4lKbAyKusnvtDu2t4dBX4AGYPrzNvorXmVuOyeakai6FUPW5MmibvVG8g==}
+  react-router-dom@7.15.1:
+    resolution: {integrity: sha512-AzF62gjY6U9rkMq4RfP/r2EVtQ7DMfNMjyOp/flLTCrtRylLiK4wT4pSq6O8rOXZ2eXdZYJPEYe+ifomiv+Igg==}
     engines: {node: '>=20.0.0'}
     peerDependencies:
       react: '>=18'
       react-dom: '>=18'
 
-  react-router@7.11.0:
-    resolution: {integrity: sha512-uI4JkMmjbWCZc01WVP2cH7ZfSzH91JAZUDd7/nIprDgWxBV1TkkmLToFh7EbMTcMak8URFRa2YoBL/W8GWnCTQ==}
+  react-router@7.15.1:
+    resolution: {integrity: sha512-R8rl9HhgikFYoPJymnUtPXWbnDb3oget6lQnfIoupbt61aT9aOhRkDsY2XRhZRyX1Z/8a5sL74fXmFNm3NRK5A==}
     engines: {node: '>=20.0.0'}
     peerDependencies:
       react: '>=18'
@@ -6897,7 +6897,7 @@ snapshots:
       '@alloc/quick-lru': 5.2.0
       '@tailwindcss/node': 4.1.18
       '@tailwindcss/oxide': 4.1.18
-      postcss: 8.5.6
+      postcss: 8.5.14
       tailwindcss: 4.1.18
 
   '@tailwindcss/vite@4.1.18(vite@6.4.2(@types/node@20.19.27)(jiti@2.6.1)(lightningcss@1.30.2)(yaml@2.8.2))':
@@ -8666,7 +8666,7 @@ snapshots:
       cssesc: 3.0.0
       util-deprecate: 1.0.2
 
-  postcss@8.5.6:
+  postcss@8.5.14:
     dependencies:
       nanoid: 3.3.11
       picocolors: 1.1.1
@@ -8771,13 +8771,13 @@ snapshots:
       react: 19.0.3
       react-dom: 19.0.3(react@19.0.3)
 
-  react-router-dom@7.11.0(react-dom@19.0.3(react@19.0.3))(react@19.0.3):
+  react-router-dom@7.15.1(react-dom@19.0.3(react@19.0.3))(react@19.0.3):
     dependencies:
       react: 19.0.3
       react-dom: 19.0.3(react@19.0.3)
-      react-router: 7.11.0(react-dom@19.0.3(react@19.0.3))(react@19.0.3)
+      react-router: 7.15.1(react-dom@19.0.3(react@19.0.3))(react@19.0.3)
 
-  react-router@7.11.0(react-dom@19.0.3(react@19.0.3))(react@19.0.3):
+  react-router@7.15.1(react-dom@19.0.3(react@19.0.3))(react@19.0.3):
     dependencies:
       cookie: 1.1.1
       react: 19.0.3
@@ -8972,7 +8972,7 @@ snapshots:
       node-fetch: 3.3.2
       open: 11.0.0
       ora: 8.2.0
-      postcss: 8.5.6
+      postcss: 8.5.14
       postcss-selector-parser: 7.1.1
       prompts: 2.4.2
       recast: 0.23.11
@@ -9295,7 +9295,7 @@ snapshots:
       esbuild: 0.25.12
       fdir: 6.5.0(picomatch@4.0.4)
       picomatch: 4.0.4
-      postcss: 8.5.6
+      postcss: 8.5.14
       rollup: 4.60.3
       tinyglobby: 0.2.16
     optionalDependencies:
