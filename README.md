@@ -63,4 +63,4 @@ VITE_SUPABASE_ANON_KEY=your-anon-key
 
 MIT
 
-## Test deploy #1
+## Test deploy #2
