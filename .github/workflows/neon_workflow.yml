@@ -81,24 +81,39 @@ jobs:
           AUTH_URL: ${{ steps.parse_endpoint.outputs.auth_url }}
           DATA_API_URL: ${{ steps.parse_endpoint.outputs.data_api_url }}
         run: |
-          echo "Updating Coolify preview env vars..."
+          echo "Updating Coolify preview env vars via Node.js..."
 
           update_env() {
             local key="$1" value="$2"
-            printf '{"key":"%s","value":"%s","is_preview":true}' "$key" "$value" > /tmp/payload.json
-            echo "Payload for ${key}:"
-            cat /tmp/payload.json
-            echo ""
-            RESPONSE=$(curl -s -w "\n%{http_code}" \
-              -X PATCH "${COOLIFY_URL}/api/v1/applications/${COOLIFY_APP_UUID}/envs" \
-              -H "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
-              -H "Content-Type: application/json" \
-              -H "Accept: application/json" \
-              -d @/tmp/payload.json)
-            HTTP_CODE=$(echo "$RESPONSE" | tail -1)
-            BODY=$(echo "$RESPONSE" | sed '$d')
-            echo "${key} -> HTTP ${HTTP_CODE}"
-            echo "Response: ${BODY:0:300}"
+            echo "Updating ${key}..."
+            node -e "
+              const https = require('https');
+              const data = JSON.stringify({key: '${key}', value: '${value}', is_preview: true});
+              const url = new URL('${COOLIFY_URL}/api/v1/applications/${COOLIFY_APP_UUID}/envs');
+              const options = {
+                hostname: url.hostname,
+                port: 443,
+                path: url.pathname,
+                method: 'PATCH',
+                headers: {
+                  'Authorization': 'Bearer ${COOLIFY_API_TOKEN}',
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json',
+                  'Content-Length': Buffer.byteLength(data)
+                }
+              };
+              const req = https.request(options, (res) => {
+                let body = '';
+                res.on('data', (chunk) => body += chunk);
+                res.on('end', () => {
+                  console.log('${key} -> HTTP ' + res.statusCode);
+                  console.log('Response: ' + body.substring(0, 300));
+                });
+              });
+              req.on('error', (e) => console.error('Error: ' + e.message));
+              req.write(data);
+              req.end();
+            "
           }
 
           update_env "VITE_NEON_AUTH_URL" "${AUTH_URL}"
