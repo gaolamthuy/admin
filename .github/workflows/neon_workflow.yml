@@ -74,52 +74,37 @@ jobs:
           echo "Data API: $DATA_API_URL"
 
       - name: Update Coolify preview env vars
+        uses: actions/github-script@v7
         env:
           COOLIFY_URL: ${{ vars.COOLIFY_URL }}
           COOLIFY_APP_UUID: ${{ vars.COOLIFY_APP_UUID }}
           COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
           AUTH_URL: ${{ steps.parse_endpoint.outputs.auth_url }}
           DATA_API_URL: ${{ steps.parse_endpoint.outputs.data_api_url }}
-        run: |
-          echo "Updating Coolify preview env vars via Node.js..."
+        with:
+          script: |
+            const url = `${process.env.COOLIFY_URL}/api/v1/applications/${process.env.COOLIFY_APP_UUID}/envs`;
 
-          update_env() {
-            local key="$1" value="$2"
-            echo "Updating ${key}..."
-            node -e "
-              const https = require('https');
-              const data = JSON.stringify({key: '${key}', value: '${value}', is_preview: true});
-              const url = new URL('${COOLIFY_URL}/api/v1/applications/${COOLIFY_APP_UUID}/envs');
-              const options = {
-                hostname: url.hostname,
-                port: 443,
-                path: url.pathname,
+            async function updateEnv(key, value) {
+              console.log(`Updating ${key}...`);
+              const res = await fetch(url, {
                 method: 'PATCH',
                 headers: {
-                  'Authorization': 'Bearer ${COOLIFY_API_TOKEN}',
+                  'Authorization': `Bearer ${process.env.COOLIFY_API_TOKEN}`,
                   'Content-Type': 'application/json',
-                  'Accept': 'application/json',
-                  'Content-Length': Buffer.byteLength(data)
-                }
-              };
-              const req = https.request(options, (res) => {
-                let body = '';
-                res.on('data', (chunk) => body += chunk);
-                res.on('end', () => {
-                  console.log('${key} -> HTTP ' + res.statusCode);
-                  console.log('Response: ' + body.substring(0, 300));
-                });
+                  'Accept': 'application/json'
+                },
+                body: JSON.stringify({ key, value, is_preview: true })
               });
-              req.on('error', (e) => console.error('Error: ' + e.message));
-              req.write(data);
-              req.end();
-            "
-          }
+              const body = await res.text();
+              console.log(`${key} -> HTTP ${res.status}`);
+              console.log(`Response: ${body.substring(0, 300)}`);
+              if (!res.ok) throw new Error(`${key} update failed: ${res.status}`);
+            }
 
-          update_env "VITE_NEON_AUTH_URL" "${AUTH_URL}"
-          update_env "VITE_NEON_DATA_API_URL" "${DATA_API_URL}"
-
-          echo "Done updating Coolify env vars"
+            await updateEnv('VITE_NEON_AUTH_URL', process.env.AUTH_URL);
+            await updateEnv('VITE_NEON_DATA_API_URL', process.env.DATA_API_URL);
+            console.log('Done updating Coolify env vars');
 
       - name: Comment preview URLs on PR
         uses: actions/github-script@v7
@@ -160,27 +145,30 @@ jobs:
           api_key: ${{ secrets.NEON_API_KEY }}
 
       - name: Reset Coolify preview env vars to production
+        uses: actions/github-script@v7
         env:
           COOLIFY_URL: ${{ vars.COOLIFY_URL }}
           COOLIFY_APP_UUID: ${{ vars.COOLIFY_APP_UUID }}
           COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
-        run: |
-          PROD_AUTH="https://ep-morning-unit-ao8tb312.neonauth.c-2.ap-southeast-1.aws.neon.tech/neondb/auth"
-          PROD_DATA_API="https://ep-morning-unit-ao8tb312.apirest.c-2.ap-southeast-1.aws.neon.tech/neondb/rest/v1"
+        with:
+          script: |
+            const url = `${process.env.COOLIFY_URL}/api/v1/applications/${process.env.COOLIFY_APP_UUID}/envs`;
+            const PROD_AUTH = 'https://ep-morning-unit-ao8tb312.neonauth.c-2.ap-southeast-1.aws.neon.tech/neondb/auth';
+            const PROD_DATA_API = 'https://ep-morning-unit-ao8tb312.apirest.c-2.ap-southeast-1.aws.neon.tech/neondb/rest/v1';
 
-          update_env() {
-            local key="$1" value="$2"
-            printf '{"key":"%s","value":"%s","is_preview":true}' "$key" "$value" > /tmp/payload.json
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-              -X PATCH "${COOLIFY_URL}/api/v1/applications/${COOLIFY_APP_UUID}/envs" \
-              -H "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
-              -H "Content-Type: application/json" \
-              -H "Accept: application/json" \
-              -d @/tmp/payload.json)
-            echo "${key} -> HTTP ${HTTP_CODE}"
-          }
+            async function updateEnv(key, value) {
+              const res = await fetch(url, {
+                method: 'PATCH',
+                headers: {
+                  'Authorization': `Bearer ${process.env.COOLIFY_API_TOKEN}`,
+                  'Content-Type': 'application/json',
+                  'Accept': 'application/json'
+                },
+                body: JSON.stringify({ key, value, is_preview: true })
+              });
+              console.log(`${key} -> HTTP ${res.status}`);
+            }
 
-          update_env "VITE_NEON_AUTH_URL" "${PROD_AUTH}"
-          update_env "VITE_NEON_DATA_API_URL" "${PROD_DATA_API}"
-
-          echo "Preview env vars reset to production values"
+            await updateEnv('VITE_NEON_AUTH_URL', PROD_AUTH);
+            await updateEnv('VITE_NEON_DATA_API_URL', PROD_DATA_API);
+            console.log('Preview env vars reset to production values');
