@@ -6,7 +6,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { client } from '@/lib/neon';
 import { useSession } from '@/hooks/useAuth';
 
 /**
@@ -109,7 +109,7 @@ export const useProductShow = (id: string | number) => {
       }
 
       // Query từ v_products_admin (có đầy đủ tất cả fields)
-      const { data: viewData, error: viewError } = await supabase
+      const { data: viewData, error: viewError } = await client
         .from('v_products_admin')
         .select('*')
         .eq('product_id', id)
@@ -121,7 +121,7 @@ export const useProductShow = (id: string | number) => {
           console.warn(
             'Product not found in v_products_admin, falling back to direct query'
           );
-          const { data, error } = await supabase
+          const { data, error } = await client
             .from('kv_products')
             .select('*')
             .eq('id', id)
@@ -196,7 +196,7 @@ export const useProductImages = (productId: number | null | undefined) => {
       }
 
       // Query từ v_products_admin để lấy glt_images đã được aggregate sẵn
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('v_products_admin')
         .select('glt_images, kiotviet_id')
         .eq('product_id', productId)
@@ -273,7 +273,7 @@ export const useProductPriceComparison = (
         return null;
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('v_products_admin')
         .select('*')
         .eq('product_code', productCode)
@@ -308,7 +308,7 @@ export const useProductInventory = (productId: number | null | undefined) => {
         return null;
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('kv_product_inventories')
         .select('product_id, cost, branch_id, branch_name')
         .eq('product_id', productId)
@@ -352,7 +352,7 @@ export const useUpdateProduct = () => {
         throw new Error('Not authenticated');
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('kv_products')
         .update(fields)
         .eq('id', id)
@@ -520,7 +520,7 @@ export const useUploadBaseProductImage = () => {
         : null;
 
       // Fetch current glt_custom_fields
-      const { data: currentProduct, error: fetchError } = await supabase
+      const { data: currentProduct, error: fetchError } = await client
         .from('kv_products')
         .select('glt_custom_fields')
         .eq('id', productId)
@@ -539,7 +539,7 @@ export const useUploadBaseProductImage = () => {
         },
       };
 
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('kv_products')
         .update({
           glt_custom_fields: updatedCustomFields,

@@ -6,7 +6,7 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { client } from '@/lib/neon';
 import { useSession } from '@/hooks/useAuth';
 
 /**
@@ -106,7 +106,7 @@ export const usePurchaseOrders = () => {
         throw new Error('Not authenticated');
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('v_purchase_orders')
         .select('*')
         .eq('status', 3) // Chỉ lấy status = 3
@@ -137,7 +137,7 @@ export const usePurchaseOrder = (id: string | number) => {
         throw new Error('Not authenticated');
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('kv_purchase_orders')
         .select('*')
         .eq('id', id)
@@ -168,7 +168,7 @@ export const usePurchaseOrderDetails = (purchaseOrderId: string | number) => {
         throw new Error('Not authenticated');
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('kv_purchase_order_details')
         .select('*')
         .eq('purchase_order_id', purchaseOrderId)
@@ -198,7 +198,7 @@ export const useSuppliers = () => {
         throw new Error('Not authenticated');
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('kv_suppliers')
         .select('kiotviet_id, name, code, is_active')
         .eq('is_active', true)
@@ -223,7 +223,7 @@ export const useCreatePurchaseOrder = () => {
 
   return useMutation({
     mutationFn: async (data: Partial<PurchaseOrder>) => {
-      const { data: result, error } = await supabase
+      const { data: result, error } = await client
         .from('kv_purchase_orders')
         .insert(data)
         .select()

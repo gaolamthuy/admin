@@ -7,7 +7,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { client } from '@/lib/neon';
 import { useSession } from '@/hooks/useAuth';
 import type { Product } from '@/types';
 
@@ -45,7 +45,7 @@ export const useProducts = (filters: ProductFilters = {}) => {
 
       // Query từ v_products_admin view (có đầy đủ thông tin)
       // Tối ưu: Sử dụng kiotviet_id, glt_images và kv_images từ view thay vì query thêm
-      let query = supabase
+      let query = client
         .from('v_products_admin')
         .select(
           `
@@ -93,7 +93,7 @@ export const useProducts = (filters: ProductFilters = {}) => {
         return [];
       }
 
-      const { data: productsData, error: productsError } = await supabase
+      const { data: productsData, error: productsError } = await client
         .from('kv_products')
         .select(
           'id, code, glt_labelprint_favorite, master_unit_id, category_name, weight, unit, allows_sale, type, has_variants, description, glt_visible, glt_retail_promotion, glt_created_at, glt_updated_at, created_date, modified_date'
@@ -237,7 +237,7 @@ export const useProduct = (id: string | number) => {
         throw new Error('Not authenticated');
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('kv_products')
         .select('*')
         .eq('id', id)
@@ -267,7 +267,7 @@ export const useProductCategories = () => {
         throw new Error('Not authenticated');
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('kv_product_categories')
         .select('category_id, category_name, glt_is_active')
         .eq('glt_is_active', true)

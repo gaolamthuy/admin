@@ -5,7 +5,7 @@
  */
 
 import { useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { client } from '@/lib/neon';
 import { useSession } from '@/hooks/useAuth';
 import {
   uploadImageToCloudinary,
@@ -98,7 +98,7 @@ export const useUploadProductImage = () => {
 
       // 3. Lưu metadata vào Supabase
       // Tìm record cũ với cùng product_id và role (nếu có) để tính rev mới
-      const { data: existingRecord } = await supabase
+      const { data: existingRecord } = await client
         .from('glt_product_images')
         .select('id, rev')
         .eq('product_id', kiotvietId)
@@ -111,7 +111,7 @@ export const useUploadProductImage = () => {
       const newRev = existingRecord?.rev ? existingRecord.rev + 1 : 1;
 
       // Insert record mới (giữ lịch sử các version)
-      const { data: supabaseRecord, error: insertError } = await supabase
+      const { data: supabaseRecord, error: insertError } = await client
         .from('glt_product_images')
         .insert({
           product_id: kiotvietId,

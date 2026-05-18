@@ -1,6 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { supabase } from '@/lib/supabase';
-import { ensureSessionActive } from '@/lib/supabase-session';
+import { client } from '@/lib/neon';
 import { ChildUnit } from './useTemplates';
 
 export interface SupplierOption {
@@ -67,7 +66,7 @@ export const useSuppliers = (open: boolean) => {
     // ⭐ Ưu tiên query từ v_suppliers_admin, fallback về kv_supplier_stats nếu view chưa tồn tại
     const executeQuery = async () => {
       // Thử query từ v_suppliers_admin trước
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('v_suppliers_admin')
         .select('*')
         .order('total_invoice', { ascending: false })
@@ -80,7 +79,7 @@ export const useSuppliers = (open: boolean) => {
       // Nếu view chưa tồn tại (PGRST205), fallback về kv_supplier_stats
       if (error && error.code === 'PGRST205') {
         console.log('[useSuppliers] v_suppliers_admin not found, falling back to kv_supplier_stats');
-        return await supabase
+        return await client
           .from('kv_supplier_stats')
           .select('*')
           .order('total_invoice', { ascending: false })
@@ -108,7 +107,7 @@ export const useSuppliers = (open: boolean) => {
           }
 
           try {
-            await ensureSessionActive(supabase);
+            // Neon handles session automatically via Data API
             const queryStartTime = Date.now();
             const { data, error: queryError } = await executeQuery();
             const queryDuration = Date.now() - queryStartTime;

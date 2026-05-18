@@ -6,7 +6,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { client } from '@/lib/neon';
 import { useSession } from '@/hooks/useAuth';
 
 /**
@@ -52,7 +52,7 @@ export const usePayments = (isAdmin: boolean = false) => {
         throw new Error('Not authenticated');
       }
 
-      let query = supabase
+      let query = client
         .from('glt_payment')
         .select(
           `

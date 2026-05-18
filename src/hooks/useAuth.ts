@@ -6,8 +6,8 @@
  */
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
-import type { Session } from '@supabase/supabase-js';
+import { client } from '@/lib/neon';
+type Session = Awaited<ReturnType<typeof client.auth.getSession>>['data']['session'];
 
 /**
  * Interface cho AuthUser với role từ glt_users table
@@ -30,7 +30,7 @@ export const useSession = () => {
   return useQuery({
     queryKey: ['auth', 'session'],
     queryFn: async (): Promise<Session | null> => {
-      const { data, error } = await supabase.auth.getSession();
+      const { data, error } = await client.auth.getSession();
       if (error) throw error;
       return data.session;
     },
@@ -56,7 +56,7 @@ export const useAuthUser = () => {
 
       try {
         // Get user role from glt_users table
-        const { data: userData, error } = await supabase
+        const { data: userData, error } = await client
           .from('glt_users')
           .select('role, note')
           .eq('user_id', session.user.id)
@@ -72,9 +72,12 @@ export const useAuthUser = () => {
           email: session.user.email || '',
           name:
             session.user.user_metadata?.full_name ||
+            session.user.user_metadata?.displayName ||
             session.user.email ||
             'User',
-          avatar: session.user.user_metadata?.avatar_url,
+          avatar:
+            session.user.user_metadata?.avatar_url ||
+            session.user.user_metadata?.profileImageUrl,
           role: userData?.role || 'User',
         };
       } catch (error) {
@@ -83,7 +86,10 @@ export const useAuthUser = () => {
         return {
           id: session.user.id,
           email: session.user.email || '',
-          name: session.user.email || 'User',
+          name:
+            session.user.user_metadata?.displayName ||
+            session.user.email ||
+            'User',
           role: 'User',
         };
       }
@@ -124,7 +130,7 @@ export const useLogin = () => {
       email: string;
       password: string;
     }) => {
-      const { data, error } = await supabase.auth.signInWithPassword({
+      const { data, error } = await client.auth.signInWithPassword({
         email,
         password,
       });
@@ -132,9 +138,13 @@ export const useLogin = () => {
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
-      // Invalidate và refetch auth queries
-      queryClient.invalidateQueries({ queryKey: ['auth'] });
+    onSuccess: async (data) => {
+      if (data.session) {
+        queryClient.setQueryData(['auth', 'session'], data.session);
+        await queryClient.invalidateQueries({
+          queryKey: ['auth', 'user', data.session.user.id],
+        });
+      }
     },
   });
 };
@@ -155,7 +165,7 @@ export const useRegister = () => {
       email: string;
       password: string;
     }) => {
-      const { data, error } = await supabase.auth.signUp({
+      const { data, error } = await client.auth.signUp({
         email,
         password,
       });
@@ -179,7 +189,7 @@ export const useLogout = () => {
 
   return useMutation({
     mutationFn: async () => {
-      const { error } = await supabase.auth.signOut();
+      const { error } = await client.auth.signOut();
       if (error) throw error;
     },
     onSuccess: () => {
@@ -197,7 +207,7 @@ export const useLogout = () => {
 export const useForgotPassword = () => {
   return useMutation({
     mutationFn: async (email: string) => {
-      const { data, error } = await supabase.auth.resetPasswordForEmail(email, {
+      const { data, error } = await client.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/reset-password`,
       });
 

@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from 'react';
-import { supabase } from '@/lib/supabase';
+import { client } from '@/lib/neon';
 
 /**
  * Interface cho product với price difference data
@@ -45,7 +45,7 @@ export const useProductPriceDifference = (enabled: boolean = false) => {
 
         // Query view v_products_admin để lấy products có purchase data
         // ⭐ Tối ưu: Lấy kv_images và kiotviet_id từ view, không cần query thêm kv_products
-        const { data: priceComparisonData, error: priceError } = await supabase
+        const { data: priceComparisonData, error: priceError } = await client
           .from('v_products_admin')
           .select(
             `
@@ -77,13 +77,13 @@ export const useProductPriceDifference = (enabled: boolean = false) => {
 
         // Query inventory costs cho tất cả products
         const productIds = priceComparisonData.map(p => p.product_id);
-        const { data: inventoryData, error: inventoryError } = await supabase
+        const { data: inventoryData, error: inventoryError } = await client
           .from('kv_product_inventories')
           .select('product_id, cost, branch_name')
           .in('product_id', productIds);
 
         // ⭐ Query thêm glt_labelprint_favorite từ kv_products (không có trong view)
-        const { data: productsData, error: productsError } = await supabase
+        const { data: productsData, error: productsError } = await client
           .from('kv_products')
           .select('id, glt_labelprint_favorite')
           .in('id', productIds);

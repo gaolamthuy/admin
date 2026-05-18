@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
-import { supabase } from '@/lib/supabase';
-import type { AuthChangeEvent, Session } from '@supabase/supabase-js';
+import { client } from '@/lib/neon';
+type Session = Awaited<ReturnType<typeof client.auth.getSession>>['data']['session'];
+type AuthChangeEvent = string;
 
 interface AuthUser {
   name: string;
@@ -23,10 +24,10 @@ export function useAuthUser() {
       try {
         const {
           data: { session },
-        } = await supabase.auth.getSession();
+        } = await client.auth.getSession();
         if (session?.user) {
           // Get user role from glt_users table
-          const { data: userData } = await supabase
+          const { data: userData } = await client
             .from('glt_users')
             .select('role, note')
             .eq('user_id', session.user.id)
@@ -54,12 +55,12 @@ export function useAuthUser() {
     // Listen for auth changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(
-      async (_event: AuthChangeEvent, session: Session | null) => {
+    } = client.auth.onAuthStateChange(
+      async (_event: string, session: Session | null) => {
         if (session?.user) {
           try {
             // Get user role from glt_users table
-            const { data: userData } = await supabase
+            const { data: userData } = await client
               .from('glt_users')
               .select('role, note')
               .eq('user_id', session.user.id)
@@ -98,7 +99,7 @@ export function useAuthUser() {
 
   const signOut = async () => {
     try {
-      await supabase.auth.signOut();
+      await client.auth.signOut();
     } catch (error) {
       console.error('Error signing out:', error);
     }
