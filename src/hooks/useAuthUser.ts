@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { client } from '@/lib/neon';
-import type { AuthChangeEvent, Session } from '@supabase/auth-js';
+type Session = Awaited<ReturnType<typeof client.auth.getSession>>['data']['session'];
+type AuthChangeEvent = string;
 
 interface AuthUser {
   name: string;

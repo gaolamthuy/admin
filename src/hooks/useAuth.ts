@@ -7,7 +7,7 @@
 
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { client } from '@/lib/neon';
-import type { Session } from '@supabase/auth-js';
+type Session = Awaited<ReturnType<typeof client.auth.getSession>>['data']['session'];
 
 /**
  * Interface cho AuthUser với role từ glt_users table
