@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { supabase } from '@/lib/supabase';
+import { client } from '@/lib/neon';
 
 export interface ChildUnit {
   code: string;
@@ -135,7 +135,7 @@ export const useTemplates = (
           // Query master_unit từ kv_products
           const productIds = processed.map(p => p.product_id);
           if (productIds.length > 0) {
-            const { data: productsData, error: productsError } = await supabase
+            const { data: productsData, error: productsError } = await client
               .from('kv_products')
               .select('kiotviet_id, unit')
               .in('kiotviet_id', productIds);
@@ -203,7 +203,7 @@ export const useTemplates = (
       try {
         console.log('[useTemplates] Starting query from kv_supplier_product_templates...');
 
-        const { data, error: queryError } = await supabase
+        const { data, error: queryError } = await client
           .from('kv_supplier_product_templates')
           .select('product_id, product_code, product_name, last_purchase_date, child_units')
           .eq('supplier_id', currentSupplierId)
@@ -263,7 +263,7 @@ export const useTemplates = (
         // Query master_unit từ kv_products
         const productIds = processed.map(p => p.product_id);
         if (productIds.length > 0) {
-          const { data: productsData, error: productsError } = await supabase
+          const { data: productsData, error: productsError } = await client
             .from('kv_products')
             .select('kiotviet_id, unit')
             .in('kiotviet_id', productIds);

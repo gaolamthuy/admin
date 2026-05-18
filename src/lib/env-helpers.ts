@@ -32,7 +32,7 @@ export const validateEnvironment = () => {
  * @returns Array of missing variables
  */
 export const checkRequiredVariables = (): string[] => {
-  const required = ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY', 'NODE_ENV'];
+  const required = ['VITE_NEON_AUTH_URL', 'VITE_NEON_DATA_API_URL', 'NODE_ENV'];
 
   const missing: string[] = [];
 
@@ -50,31 +50,19 @@ export const checkRequiredVariables = (): string[] => {
  * Validate Supabase configuration
  * @returns Validation result
  */
-export const validateSupabaseConfig = () => {
+export const validateNeonConfig = () => {
   const errors: string[] = [];
 
-  // Check URL format
   try {
-    new URL(env.VITE_SUPABASE_URL);
+    new URL(env.VITE_NEON_AUTH_URL);
   } catch {
-    errors.push('Invalid Supabase URL format');
+    errors.push('Invalid Neon Auth URL format');
   }
 
-  // Check URL contains supabase
-  if (!env.VITE_SUPABASE_URL.includes('supabase')) {
-    errors.push("Supabase URL should contain 'supabase'");
-  }
-
-  // Check key is not empty
-  if (!env.VITE_SUPABASE_ANON_KEY || env.VITE_SUPABASE_ANON_KEY.length === 0) {
-    errors.push('Supabase anonymous key is required');
-  }
-
-  // Production-specific checks
-  if (isProduction) {
-    if (!env.VITE_SUPABASE_URL.includes('supabase.co')) {
-      errors.push('Production must use Supabase hosted URL (*.supabase.co)');
-    }
+  try {
+    new URL(env.VITE_NEON_DATA_API_URL);
+  } catch {
+    errors.push('Invalid Neon Data API URL format');
   }
 
   return {
@@ -91,7 +79,7 @@ export const logEnvironmentInfo = () => {
 
   console.log('🔧 Environment Configuration:');
   console.log(`  • Environment: ${env.NODE_ENV}`);
-  console.log(`  • Supabase URL: ${env.VITE_SUPABASE_URL}`);
+  console.log(`  • Neon Auth URL: ${env.VITE_NEON_AUTH_URL}`);
   console.log(`  • App Title: ${env.VITE_APP_TITLE || 'Not set'}`);
   console.log(`  • App Version: ${env.VITE_APP_VERSION || 'Not set'}`);
 };
@@ -144,7 +132,7 @@ export const getEnvironmentInfo = () => ({
   isDevelopment,
   isProduction,
   isTest,
-  supabaseUrl: env.VITE_SUPABASE_URL,
+  supabaseUrl: env.VITE_NEON_AUTH_URL,
   appTitle: env.VITE_APP_TITLE,
   appVersion: env.VITE_APP_VERSION,
   timestamp: new Date().toISOString(),
@@ -155,7 +143,7 @@ export const getEnvironmentInfo = () => ({
  */
 export const monitorEnvironment = () => {
   const validation = validateEnvironment();
-  const supabaseConfig = validateSupabaseConfig();
+    const supabaseConfig = validateNeonConfig();
   const requiredVars = checkRequiredVariables();
 
   return {
@@ -172,11 +160,11 @@ export const monitorEnvironment = () => {
  * Get environment setup documentation
  */
 export const getEnvironmentDocumentation = () => ({
-  required: ['VITE_SUPABASE_URL', 'VITE_SUPABASE_ANON_KEY'],
+  required: ['VITE_NEON_AUTH_URL', 'VITE_NEON_DATA_API_URL'],
   optional: ['VITE_APP_TITLE', 'VITE_APP_VERSION'],
   format: {
-    VITE_SUPABASE_URL: 'https://your-project.supabase.co',
-    VITE_SUPABASE_ANON_KEY: 'your-anon-key-here',
+    VITE_NEON_AUTH_URL: 'https://ep-xxx.neonauth.../neondb/auth',
+    VITE_NEON_DATA_API_URL: 'https://ep-xxx.../neondb/rest/v1',
     VITE_APP_TITLE: 'My Application',
     VITE_APP_VERSION: '1.0.0',
   },

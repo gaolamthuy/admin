@@ -7,7 +7,7 @@
 
 import { useEffect } from 'react';
 import { useQueryClient } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { client } from '@/lib/neon';
 import { ReactNode } from 'react';
 
 interface AuthProviderProps {
@@ -26,14 +26,14 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
   useEffect(() => {
     // Get initial session
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    client.auth.getSession().then(({ data: { session } }) => {
       queryClient.setQueryData(['auth', 'session'], session);
     });
 
     // Listen for auth state changes
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange(async (_event, session) => {
+    } = client.auth.onAuthStateChange(async (_event, session) => {
       // Update session trong TanStack Query cache
       queryClient.setQueryData(['auth', 'session'], session);
 

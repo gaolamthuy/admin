@@ -10,8 +10,8 @@ import { renderWithProviders } from '@/test/utils';
 import ProductCategoryFilter from '../ProductCategoryFilter';
 
 // Mock supabase (updated from @/utility to @/lib/supabase)
-vi.mock('@/lib/supabase', () => ({
-  supabase: {
+vi.mock('@/lib/neon', () => ({
+  client: {
     from: vi.fn(() => ({
       select: vi.fn(() => ({
         eq: vi.fn(() => ({

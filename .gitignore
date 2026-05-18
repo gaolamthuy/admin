@@ -119,6 +119,11 @@ n8n/
 downloads/
 scripts/
 .cursor/
+.opencode/
+.kilo/
+.agents/
+opencode.json
+skills-lock.json
 
 .mcp/docs/kiotviet-http/*.md
 *.token

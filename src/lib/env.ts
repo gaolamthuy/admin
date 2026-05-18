@@ -10,15 +10,15 @@ import { z } from 'zod';
  * Validates all required and optional environment variables
  */
 const envSchema = z.object({
-  // Supabase configuration
-  VITE_SUPABASE_URL: z
+  // Neon configuration
+  VITE_NEON_AUTH_URL: z
     .string()
-    .url('Invalid Supabase URL format')
-    .describe('Supabase project URL'),
-  VITE_SUPABASE_ANON_KEY: z
+    .url('Invalid Neon Auth URL format')
+    .describe('Neon Auth URL'),
+  VITE_NEON_DATA_API_URL: z
     .string()
-    .min(1, 'Supabase anonymous key is required')
-    .describe('Supabase anonymous key'),
+    .url('Invalid Neon Data API URL format')
+    .describe('Neon Data API URL'),
 
   // n8n webhook configuration
   VITE_N8N_WEBHOOK_URL: z
@@ -101,12 +101,12 @@ try {
     });
 
     console.error('\n📝 Required environment variables:');
-    console.error('  • VITE_SUPABASE_URL: https://your-project.supabase.co');
-    console.error('  • VITE_SUPABASE_ANON_KEY: your-anon-key');
+    console.error('  • VITE_NEON_AUTH_URL: https://ep-xxx.neonauth.../neondb/auth');
+    console.error('  • VITE_NEON_DATA_API_URL: https://ep-xxx.../neondb/rest/v1');
 
     console.error('\n💡 Setup instructions:');
     console.error('  1. Copy .env.example to .env.local');
-    console.error('  2. Fill in your Supabase credentials');
+    console.error('  2. Fill in your Neon credentials');
     console.error('  3. Restart the development server');
 
     console.error('\n📚 Documentation:');
@@ -119,8 +119,8 @@ try {
 
     if (isTest) {
       const fallback: Partial<Environment> = {
-        VITE_SUPABASE_URL: 'https://example.supabase.co',
-        VITE_SUPABASE_ANON_KEY: 'test-anon-key',
+        VITE_NEON_AUTH_URL: 'https://example.neonauth.aws.neon.tech/neondb/auth',
+        VITE_NEON_DATA_API_URL: 'https://example.aws.neon.tech/neondb/rest/v1',
         NODE_ENV: 'test',
       };
 

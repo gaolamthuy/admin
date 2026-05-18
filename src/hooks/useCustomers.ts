@@ -6,7 +6,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { supabase } from '@/lib/supabase';
+import { client } from '@/lib/neon';
 import { useSession } from '@/hooks/useAuth';
 import { compareDates } from '@/utils/date';
 
@@ -63,7 +63,7 @@ export const useCustomers = (searchTerm?: string) => {
       // ⭐ Tối ưu: Không select recent_invoices ở list page (chỉ load khi vào detail)
       // Chỉ select các fields cần thiết + latest_invoice_datetime để sort
       // ⭐ Performance: Limit 2000 records để tránh load quá nhiều (frontend sẽ paginate)
-      const baseQuery = supabase
+      const baseQuery = client
         .from('v_customers_admin')
         .select(
           `
@@ -155,7 +155,7 @@ export const useCustomer = (id: string | number) => {
       }
 
       // ⭐ Detail page: Load đầy đủ bao gồm recent_invoices
-      const { data, error } = await supabase
+      const { data, error } = await client
         .from('v_customers_admin')
         .select('*')
         .eq('id', id)
