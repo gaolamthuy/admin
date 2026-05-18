@@ -82,23 +82,25 @@ jobs:
           DATA_API_URL: ${{ steps.parse_endpoint.outputs.data_api_url }}
         run: |
           echo "Updating Coolify preview env vars..."
+          echo "curl version: $(curl --version | head -1)"
 
           update_env() {
             local key="$1" value="$2"
-            printf '{"key":"%s","value":"%s","is_preview":true}' "$key" "$value" > /tmp/payload.json
-            echo "Payload for ${key}:"
-            cat /tmp/payload.json
-            echo ""
-            RESPONSE=$(curl -s -w "\n%{http_code}" \
-              -X PATCH "${COOLIFY_URL}/api/v1/applications/${COOLIFY_APP_UUID}/envs" \
-              -H "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
-              -H "Content-Type: application/json" \
-              -H "Accept: application/json" \
-              -d @/tmp/payload.json)
+            BODY=$(cat <<EOF
+          {"key":"${key}","value":"${value}","is_preview":true}
+          EOF
+          )
+            echo "Payload: ${BODY}"
+
+            RESPONSE=$(curl -v -s -w "\n%{http_code}" \
+              --request PATCH "${COOLIFY_URL}/api/v1/applications/${COOLIFY_APP_UUID}/envs" \
+              --header "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
+              --header "Content-Type: application/json" \
+              --data-raw "${BODY}" 2>&1)
             HTTP_CODE=$(echo "$RESPONSE" | tail -1)
-            BODY=$(echo "$RESPONSE" | sed '$d')
             echo "${key} -> HTTP ${HTTP_CODE}"
-            echo "Response: ${BODY:0:300}"
+            echo "Full response (masked):"
+            echo "$RESPONSE" | grep -v "Authorization" | grep -v "Bearer" | tail -20
           }
 
           update_env "VITE_NEON_AUTH_URL" "${AUTH_URL}"
