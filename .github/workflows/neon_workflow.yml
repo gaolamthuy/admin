@@ -82,22 +82,30 @@ jobs:
           DATA_API_URL: ${{ steps.parse_endpoint.outputs.data_api_url }}
         run: |
           echo "Updating Coolify preview env vars..."
+          echo "Token length: ${#COOLIFY_API_TOKEN}"
+          echo "Token prefix: ${COOLIFY_API_TOKEN:0:2}***"
 
           # Update VITE_NEON_AUTH_URL
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
             -X PATCH "${COOLIFY_URL}/api/v1/applications/${COOLIFY_APP_UUID}/envs" \
             -H "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
             -H "Content-Type: application/json" \
             -d "{\"key\":\"VITE_NEON_AUTH_URL\",\"value\":\"${AUTH_URL}\",\"is_preview\":true}")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
           echo "VITE_NEON_AUTH_URL -> HTTP ${HTTP_CODE}"
+          echo "Response: ${BODY:0:200}"
 
           # Update VITE_NEON_DATA_API_URL
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+          RESPONSE=$(curl -s -w "\n%{http_code}" \
             -X PATCH "${COOLIFY_URL}/api/v1/applications/${COOLIFY_APP_UUID}/envs" \
             -H "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
             -H "Content-Type: application/json" \
             -d "{\"key\":\"VITE_NEON_DATA_API_URL\",\"value\":\"${DATA_API_URL}\",\"is_preview\":true}")
+          HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+          BODY=$(echo "$RESPONSE" | sed '$d')
           echo "VITE_NEON_DATA_API_URL -> HTTP ${HTTP_CODE}"
+          echo "Response: ${BODY:0:200}"
 
           echo "Done updating Coolify env vars"
 
