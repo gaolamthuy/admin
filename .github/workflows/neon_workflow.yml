@@ -1,4 +1,4 @@
-name: Create/Delete Branch for Pull Request
+name: Neon Preview Branch + Coolify Deploy
 
 on:
   pull_request:
@@ -24,20 +24,22 @@ jobs:
 
   create_neon_branch:
     name: Create Neon Branch
-    outputs:
-      db_url: ${{ steps.create_neon_branch_encode.outputs.db_url }}
-      db_url_with_pooler: ${{ steps.create_neon_branch_encode.outputs.db_url_with_pooler }}
     needs: setup
-    if: |
+    if: >-
       github.event_name == 'pull_request' && (
       github.event.action == 'synchronize'
       || github.event.action == 'opened'
       || github.event.action == 'reopened')
     runs-on: ubuntu-latest
+    outputs:
+      db_url: ${{ steps.create_neon_branch.outputs.db_url }}
+      db_url_with_pooler: ${{ steps.create_neon_branch.outputs.db_url_with_pooler }}
+      branch_host: ${{ steps.parse_endpoint.outputs.host }}
     steps:
-      - name: Get branch expiration date as an env variable (2 weeks from now)
+      - name: Get branch expiration date (2 weeks)
         id: get_expiration_date
         run: echo "EXPIRES_AT=$(date -u --date '+14 days' +'%Y-%m-%dT%H:%M:%SZ')" >> "$GITHUB_ENV"
+
       - name: Create Neon Branch
         id: create_neon_branch
         uses: neondatabase/create-branch-action@v6
@@ -47,41 +49,82 @@ jobs:
           api_key: ${{ secrets.NEON_API_KEY }}
           expires_at: ${{ env.EXPIRES_AT }}
 
-# The step above creates a new Neon branch.
-# You may want to do something with the new branch, such as run migrations, run tests
-# on it, or send the connection details to a hosting platform environment.
-# The branch DATABASE_URL is available to you via:
-# "${{ steps.create_neon_branch.outputs.db_url_with_pooler }}".
-# It's important you don't log the DATABASE_URL as output as it contains a username and
-# password for your database.
-# For example, you can uncomment the lines below to run a database migration command:
-#      - name: Run Migrations
-#        run: npm run db:migrate
-#        env:
-#          # to use pooled connection
-#          DATABASE_URL: "${{ steps.create_neon_branch.outputs.db_url_with_pooler }}"
-#          # OR to use unpooled connection
-#          # DATABASE_URL: "${{ steps.create_neon_branch.outputs.db_url }}"
+      - name: Parse endpoint from db_url
+        id: parse_endpoint
+        run: |
+          DB_URL="${{ steps.create_neon_branch.outputs.db_url }}"
+          echo "Raw db_url: ${DB_URL:0:30}..."
+          HOST=$(echo "$DB_URL" | sed -E 's|.*@([^/]+).*|\1|')
+          echo "Parsed host: $HOST"
+          echo "host=$HOST" >> "$GITHUB_OUTPUT"
 
-# Following the step above, which runs database migrations, you may want to check
-# for schema changes in your database. We recommend using the following action to
-# post a comment to your pull request with the schema diff. For this action to work,
-# you also need to give permissions to the workflow job to be able to post comments
-# and read your repository contents. Add the following permissions to the workflow job:
-#
-# permissions:
-#   contents: read
-#   pull-requests: write
-#
-# You can also check out https://github.com/neondatabase/schema-diff-action for more
-# information on how to use the schema diff action.
-# You can uncomment the lines below to enable the schema diff action.
-#      - name: Post Schema Diff Comment to PR
-#        uses: neondatabase/schema-diff-action@v1
-#        with:
-#          project_id: ${{ vars.NEON_PROJECT_ID }}
-#          compare_branch: preview/pr-${{ github.event.number }}-${{ needs.setup.outputs.branch }}
-#          api_key: ${{ secrets.NEON_API_KEY }}
+          ENDPOINT=$(echo "$HOST" | cut -d'.' -f1)
+          REGION_AND_SUFFIX=$(echo "$HOST" | sed "s/${ENDPOINT}\.//")
+          echo "endpoint=$ENDPOINT" >> "$GITHUB_OUTPUT"
+          echo "region_suffix=$REGION_AND_SUFFIX" >> "$GITHUB_OUTPUT"
+
+          AUTH_URL="https://${ENDPOINT}.neonauth.${REGION_AND_SUFFIX}/neondb/auth"
+          DATA_API_URL="https://${ENDPOINT}.apirest.${REGION_AND_SUFFIX}/neondb/rest/v1"
+
+          echo "auth_url=$AUTH_URL" >> "$GITHUB_OUTPUT"
+          echo "data_api_url=$DATA_API_URL" >> "$GITHUB_OUTPUT"
+          echo ""
+          echo "=== Preview Branch URLs ==="
+          echo "Auth:     $AUTH_URL"
+          echo "Data API: $DATA_API_URL"
+
+      - name: Update Coolify preview env vars
+        env:
+          COOLIFY_URL: ${{ vars.COOLIFY_URL }}
+          COOLIFY_APP_UUID: ${{ vars.COOLIFY_APP_UUID }}
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+          AUTH_URL: ${{ steps.parse_endpoint.outputs.auth_url }}
+          DATA_API_URL: ${{ steps.parse_endpoint.outputs.data_api_url }}
+        run: |
+          echo "Updating Coolify preview env vars..."
+
+          # Update VITE_NEON_AUTH_URL
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X PATCH "${COOLIFY_URL}/api/v1/applications/${COOLIFY_APP_UUID}/envs" \
+            -H "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"key\":\"VITE_NEON_AUTH_URL\",\"value\":\"${AUTH_URL}\",\"is_preview\":true}")
+          echo "VITE_NEON_AUTH_URL -> HTTP ${HTTP_CODE}"
+
+          # Update VITE_NEON_DATA_API_URL
+          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            -X PATCH "${COOLIFY_URL}/api/v1/applications/${COOLIFY_APP_UUID}/envs" \
+            -H "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"key\":\"VITE_NEON_DATA_API_URL\",\"value\":\"${DATA_API_URL}\",\"is_preview\":true}")
+          echo "VITE_NEON_DATA_API_URL -> HTTP ${HTTP_CODE}"
+
+          echo "Done updating Coolify env vars"
+
+      - name: Comment preview URLs on PR
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const authUrl = '${{ steps.parse_endpoint.outputs.auth_url }}';
+            const dataApiUrl = '${{ steps.parse_endpoint.outputs.data_api_url }}';
+            const branchName = 'preview/pr-${{ github.event.number }}-${{ needs.setup.outputs.branch }}';
+            const comment = `## 🌿 Neon Preview Branch Created
+
+            **Branch:** \`${branchName}\`
+
+            | Variable | URL |
+            |---|---|
+            | Auth URL | \`${authUrl}\` |
+            | Data API URL | \`${dataApiUrl}\` |
+
+            Coolify preview env vars updated. Preview deployment will use these URLs.`;
+
+            github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body: comment
+            });
 
   delete_neon_branch:
     name: Delete Neon Branch
@@ -95,3 +138,26 @@ jobs:
           project_id: ${{ vars.NEON_PROJECT_ID }}
           branch: preview/pr-${{ github.event.number }}-${{ needs.setup.outputs.branch }}
           api_key: ${{ secrets.NEON_API_KEY }}
+
+      - name: Reset Coolify preview env vars to production
+        env:
+          COOLIFY_URL: ${{ vars.COOLIFY_URL }}
+          COOLIFY_APP_UUID: ${{ vars.COOLIFY_APP_UUID }}
+          COOLIFY_API_TOKEN: ${{ secrets.COOLIFY_API_TOKEN }}
+        run: |
+          PROD_AUTH="https://ep-morning-unit-ao8tb312.neonauth.c-2.ap-southeast-1.aws.neon.tech/neondb/auth"
+          PROD_DATA_API="https://ep-morning-unit-ao8tb312.apirest.c-2.ap-southeast-1.aws.neon.tech/neondb/rest/v1"
+
+          curl -s -o /dev/null -w "VITE_NEON_AUTH_URL -> HTTP %{http_code}\n" \
+            -X PATCH "${COOLIFY_URL}/api/v1/applications/${COOLIFY_APP_UUID}/envs" \
+            -H "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"key\":\"VITE_NEON_AUTH_URL\",\"value\":\"${PROD_AUTH}\",\"is_preview\":true}"
+
+          curl -s -o /dev/null -w "VITE_NEON_DATA_API_URL -> HTTP %{http_code}\n" \
+            -X PATCH "${COOLIFY_URL}/api/v1/applications/${COOLIFY_APP_UUID}/envs" \
+            -H "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
+            -H "Content-Type: application/json" \
+            -d "{\"key\":\"VITE_NEON_DATA_API_URL\",\"value\":\"${PROD_DATA_API}\",\"is_preview\":true}"
+
+          echo "Preview env vars reset to production values"
