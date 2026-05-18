@@ -39,47 +39,8 @@ export const useSession = () => {
     retry: 1,
   });
 };
+// preview deploy test 1747563200
 
-/**
- * Hook lấy current user với role từ glt_users table
- * Tự động fetch role từ database sau khi có session
- *
- * @returns Query result với user data (bao gồm role)
- */
-export const useAuthUser = () => {
-  const { data: session } = useSession();
-
-  return useQuery({
-    queryKey: ['auth', 'user', session?.user?.id],
-    queryFn: async (): Promise<AuthUser | null> => {
-      if (!session?.user) return null;
-
-      try {
-        // Get user role from glt_users table
-        const { data: userData, error } = await client
-          .from('glt_users')
-          .select('role, note')
-          .eq('user_id', session.user.id)
-          .single();
-
-        if (error && error.code !== 'PGRST116') {
-          // PGRST116 = no rows returned, không phải error
-          console.warn('Error fetching user role:', error);
-        }
-
-        return {
-          id: session.user.id,
-          email: session.user.email || '',
-          name:
-            session.user.user_metadata?.full_name ||
-            session.user.user_metadata?.displayName ||
-            session.user.email ||
-            'User',
-          avatar:
-            session.user.user_metadata?.avatar_url ||
-            session.user.user_metadata?.profileImageUrl,
-          role: userData?.role || 'User',
-        };
       } catch (error) {
         console.error('Error in useAuthUser:', error);
         // Return basic user info nếu không fetch được role

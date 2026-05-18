@@ -86,13 +86,19 @@ jobs:
           update_env() {
             local key="$1" value="$2"
             printf '{"key":"%s","value":"%s","is_preview":true}' "$key" "$value" > /tmp/payload.json
-            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+            echo "Payload for ${key}:"
+            cat /tmp/payload.json
+            echo ""
+            RESPONSE=$(curl -s -w "\n%{http_code}" \
               -X PATCH "${COOLIFY_URL}/api/v1/applications/${COOLIFY_APP_UUID}/envs" \
               -H "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
               -H "Content-Type: application/json" \
               -H "Accept: application/json" \
               -d @/tmp/payload.json)
+            HTTP_CODE=$(echo "$RESPONSE" | tail -1)
+            BODY=$(echo "$RESPONSE" | sed '$d')
             echo "${key} -> HTTP ${HTTP_CODE}"
+            echo "Response: ${BODY:0:300}"
           }
 
           update_env "VITE_NEON_AUTH_URL" "${AUTH_URL}"
