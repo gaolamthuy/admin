@@ -83,21 +83,20 @@ jobs:
         run: |
           echo "Updating Coolify preview env vars..."
 
-          # Update VITE_NEON_AUTH_URL
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-            -X PATCH "${COOLIFY_URL}/api/v1/applications/${COOLIFY_APP_UUID}/envs" \
-            -H "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
-            -H "Content-Type: application/json" \
-            -d "{\"key\":\"VITE_NEON_AUTH_URL\",\"value\":\"${AUTH_URL}\",\"is_preview\":true}")
-          echo "VITE_NEON_AUTH_URL -> HTTP ${HTTP_CODE}"
+          update_env() {
+            local key="$1" value="$2"
+            printf '{"key":"%s","value":"%s","is_preview":true}' "$key" "$value" > /tmp/payload.json
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+              -X PATCH "${COOLIFY_URL}/api/v1/applications/${COOLIFY_APP_UUID}/envs" \
+              -H "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -H "Accept: application/json" \
+              -d @/tmp/payload.json)
+            echo "${key} -> HTTP ${HTTP_CODE}"
+          }
 
-          # Update VITE_NEON_DATA_API_URL
-          HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
-            -X PATCH "${COOLIFY_URL}/api/v1/applications/${COOLIFY_APP_UUID}/envs" \
-            -H "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
-            -H "Content-Type: application/json" \
-            -d "{\"key\":\"VITE_NEON_DATA_API_URL\",\"value\":\"${DATA_API_URL}\",\"is_preview\":true}")
-          echo "VITE_NEON_DATA_API_URL -> HTTP ${HTTP_CODE}"
+          update_env "VITE_NEON_AUTH_URL" "${AUTH_URL}"
+          update_env "VITE_NEON_DATA_API_URL" "${DATA_API_URL}"
 
           echo "Done updating Coolify env vars"
 
@@ -148,16 +147,19 @@ jobs:
           PROD_AUTH="https://ep-morning-unit-ao8tb312.neonauth.c-2.ap-southeast-1.aws.neon.tech/neondb/auth"
           PROD_DATA_API="https://ep-morning-unit-ao8tb312.apirest.c-2.ap-southeast-1.aws.neon.tech/neondb/rest/v1"
 
-          curl -s -o /dev/null -w "VITE_NEON_AUTH_URL -> HTTP %{http_code}\n" \
-            -X PATCH "${COOLIFY_URL}/api/v1/applications/${COOLIFY_APP_UUID}/envs" \
-            -H "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
-            -H "Content-Type: application/json" \
-            -d "{\"key\":\"VITE_NEON_AUTH_URL\",\"value\":\"${PROD_AUTH}\",\"is_preview\":true}"
+          update_env() {
+            local key="$1" value="$2"
+            printf '{"key":"%s","value":"%s","is_preview":true}' "$key" "$value" > /tmp/payload.json
+            HTTP_CODE=$(curl -s -o /dev/null -w "%{http_code}" \
+              -X PATCH "${COOLIFY_URL}/api/v1/applications/${COOLIFY_APP_UUID}/envs" \
+              -H "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
+              -H "Content-Type: application/json" \
+              -H "Accept: application/json" \
+              -d @/tmp/payload.json)
+            echo "${key} -> HTTP ${HTTP_CODE}"
+          }
 
-          curl -s -o /dev/null -w "VITE_NEON_DATA_API_URL -> HTTP %{http_code}\n" \
-            -X PATCH "${COOLIFY_URL}/api/v1/applications/${COOLIFY_APP_UUID}/envs" \
-            -H "Authorization: Bearer ${COOLIFY_API_TOKEN}" \
-            -H "Content-Type: application/json" \
-            -d "{\"key\":\"VITE_NEON_DATA_API_URL\",\"value\":\"${PROD_DATA_API}\",\"is_preview\":true}"
+          update_env "VITE_NEON_AUTH_URL" "${PROD_AUTH}"
+          update_env "VITE_NEON_DATA_API_URL" "${PROD_DATA_API}"
 
           echo "Preview env vars reset to production values"
