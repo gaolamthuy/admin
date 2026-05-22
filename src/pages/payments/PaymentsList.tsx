@@ -86,7 +86,7 @@ export const PaymentsList = () => {
       const provider = payment.provider?.toLowerCase() ?? '';
       const account = payment.account_number?.toLowerCase() ?? '';
       const ref = payment.ref?.toLowerCase() ?? '';
-      const note = payment.note?.toLowerCase() ?? '';
+      const momoRef = payment.momo_ref?.toLowerCase() ?? '';
       const handleRef = payment.handle_ref?.toLowerCase() ?? '';
       const handleStatus = payment.handle_status?.toLowerCase() ?? '';
 
@@ -94,7 +94,7 @@ export const PaymentsList = () => {
         provider.includes(term) ||
         account.includes(term) ||
         ref.includes(term) ||
-        note.includes(term) ||
+        momoRef.includes(term) ||
         handleRef.includes(term) ||
         handleStatus.includes(term)
       );
