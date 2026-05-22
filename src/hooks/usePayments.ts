@@ -21,7 +21,7 @@ export interface Payment {
   transaction_type: string | null;
   balance: number | null;
   ref: string | null;
-  note: string | null;
+  momo_ref: string | null;
   received_at: string | null;
   raw_body: unknown;
   created_at: string | null;
@@ -64,7 +64,7 @@ export const usePayments = (isAdmin: boolean = false) => {
           transaction_type,
           balance,
           ref,
-          note,
+          momo_ref,
           received_at,
           raw_body,
           created_at,
