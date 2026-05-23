@@ -34,20 +34,30 @@ interface ProductWithPriceDifference extends ProductCardType {
   costDiffFromLatestPo?: number | null; // inventory_cost - latest_total_cost_per_unit
 }
 
-/**
- * Helper function to generate N8N print URL
- */
-const generatePrintUrl = (code: string, quantity: number): string => {
-  const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL;
-  return `${webhookUrl}/print?printType=label-product&code=${code}&quantity=${quantity}`;
-};
+const WINDMILL_PRINT_URL =
+  'https://windmill.gaolamthuy.vn/api/r/main/print';
 
-/**
- * Helper function to generate priceboard URL
- */
-const generatePriceboardUrl = (kiotvietId: number): string => {
-  const webhookUrl = import.meta.env.VITE_N8N_WEBHOOK_URL;
-  return `${webhookUrl}/print?printType=priceboard&kiotviet_id=${kiotvietId}`;
+const submitPostForm = (
+  url: string,
+  params: Record<string, string>,
+  target = '_blank'
+) => {
+  const form = document.createElement('form');
+  form.method = 'POST';
+  form.action = url;
+  form.target = target;
+
+  Object.entries(params).forEach(([key, value]) => {
+    const input = document.createElement('input');
+    input.type = 'hidden';
+    input.name = key;
+    input.value = value;
+    form.appendChild(input);
+  });
+
+  document.body.appendChild(form);
+  form.submit();
+  document.body.removeChild(form);
 };
 
 /**
@@ -65,7 +75,6 @@ interface PrintModalProps {
 const PrintModal: React.FC<PrintModalProps> = ({
   isOpen,
   onClose,
-  productCode,
   productName,
   productFullName,
   kiotvietId,
@@ -74,10 +83,17 @@ const PrintModal: React.FC<PrintModalProps> = ({
   const [customQuantity, setCustomQuantity] = useState<string>('');
 
   const handlePrint = async (quantity: number) => {
+    if (!kiotvietId) {
+      console.warn('KiotViet ID is missing for label print');
+      return;
+    }
     setLoading(true);
     try {
-      const url = generatePrintUrl(productCode, quantity);
-      window.open(url, '_blank');
+      submitPostForm(WINDMILL_PRINT_URL, {
+        printType: 'label-product',
+        productId: String(kiotvietId),
+        quantity: String(quantity),
+      });
       onClose();
     } catch (error) {
       console.error('Print error:', error);
@@ -105,8 +121,10 @@ const PrintModal: React.FC<PrintModalProps> = ({
     }
     setLoading(true);
     try {
-      const url = generatePriceboardUrl(kiotvietId);
-      window.open(url, '_blank');
+      submitPostForm(WINDMILL_PRINT_URL, {
+        printType: 'priceboard',
+        kiotviet_id: String(kiotvietId),
+      });
       onClose();
     } catch (error) {
       console.error('Priceboard print error:', error);
@@ -226,12 +244,15 @@ const ProductCardComponent: React.FC<
   const productWithPrice = product as ProductWithPriceDifference;
 
   const handleQuickPrint = (quantity: number) => {
-    if (!product.code) {
-      console.warn('Product code is missing:', product);
+    if (!product.kiotviet_id) {
+      console.warn('Product kiotviet_id is missing:', product);
       return;
     }
-    const url = generatePrintUrl(product.code, quantity);
-    window.open(url, '_blank');
+    submitPostForm(WINDMILL_PRINT_URL, {
+      printType: 'label-product',
+      productId: String(product.kiotviet_id),
+      quantity: String(quantity),
+    });
   };
 
   return (
