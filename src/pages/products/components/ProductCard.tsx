@@ -34,8 +34,15 @@ interface ProductWithPriceDifference extends ProductCardType {
   costDiffFromLatestPo?: number | null; // inventory_cost - latest_total_cost_per_unit
 }
 
-const WINDMILL_PRINT_URL =
-  'https://windmill.gaolamthuy.vn/api/r/main/print';
+const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+
+const getPrintUrl = () => {
+  if (!BACKEND_URL) {
+    console.warn('VITE_BACKEND_URL is not configured');
+    return '';
+  }
+  return `${BACKEND_URL.replace(/\/$/, '')}/api/r/main/print`;
+};
 
 const submitPostForm = (
   url: string,
@@ -89,7 +96,7 @@ const PrintModal: React.FC<PrintModalProps> = ({
     }
     setLoading(true);
     try {
-      submitPostForm(WINDMILL_PRINT_URL, {
+      submitPostForm(getPrintUrl(), {
         printType: 'label-product',
         productId: String(kiotvietId),
         quantity: String(quantity),
@@ -121,7 +128,7 @@ const PrintModal: React.FC<PrintModalProps> = ({
     }
     setLoading(true);
     try {
-      submitPostForm(WINDMILL_PRINT_URL, {
+      submitPostForm(getPrintUrl(), {
         printType: 'priceboard',
         kiotviet_id: String(kiotvietId),
       });
@@ -248,7 +255,7 @@ const ProductCardComponent: React.FC<
       console.warn('Product kiotviet_id is missing:', product);
       return;
     }
-    submitPostForm(WINDMILL_PRINT_URL, {
+    submitPostForm(getPrintUrl(), {
       printType: 'label-product',
       productId: String(product.kiotviet_id),
       quantity: String(quantity),
