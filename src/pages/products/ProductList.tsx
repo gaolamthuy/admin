@@ -1,6 +1,7 @@
 /**
  * Product List Page
  * Sử dụng TanStack Query với filters và conditional rendering cho admin
+ * Supports card view and list (table) view with URL param sync
  *
  * @module pages/products/ProductList
  */
@@ -10,7 +11,9 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useProducts, useProductCategories } from '@/hooks/useProducts';
 import { useIsAdmin } from '@/hooks/useAuth';
 import { useProductPriceDifference } from './hooks/useProductPriceDifference';
+import { useUpdateProductPrice } from './hooks/useUpdateProductPrice';
 import { ProductCardGrid } from './components/ProductCardGrid';
+import { ProductListTable } from './components/ProductListTable';
 import type { Product, ProductCard } from '@/types/product';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -30,107 +33,106 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 import { Toggle } from '@/components/ui/toggle';
-import { Heart } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Heart, LayoutGrid, List } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
-import { ProductPriceDifferenceFilter } from './components/ProductPriceDifferenceFilter';
-import { AdminFilters } from '@/components/admin';
 
-/**
- * Filter state interface
- */
+type ViewMode = 'card' | 'list';
+
 interface FilterState {
   category: string | null;
   isFavorite: boolean;
-  sortByPriceDifference: boolean; // Admin only: sort theo cost_diff_from_latest_po
+  sortByPriceDifference: boolean;
+  sortByKvStatus: boolean;
+  viewMode: ViewMode;
 }
 
-/**
- * Product List Page Component
- */
 export const ProductList = () => {
   const navigate = useNavigate();
   const { isAdmin } = useIsAdmin();
   const [searchParams, setSearchParams] = useSearchParams();
 
-  /**
-   * Đọc filters từ URL params
-   * Default: favorite = true, category = null, sortByPriceDifference = false
-   */
   const readFiltersFromURL = (): FilterState => {
     const favoriteParam = searchParams.get('favorite');
     const categoryParam = searchParams.get('category');
     const sortParam = searchParams.get('sort');
+    const viewParam = searchParams.get('view');
 
     return {
       category: categoryParam || null,
-      // Default favorite = true nếu không có param trong URL
       isFavorite: favoriteParam === null ? true : favoriteParam === 'true',
       sortByPriceDifference: sortParam === 'price-diff',
+      sortByKvStatus: sortParam === 'kv-status',
+      viewMode: viewParam === 'list' ? 'list' : 'card',
     };
   };
 
-  // Filters state - khởi tạo từ URL params
   const [filters, setFilters] = useState<FilterState>(readFiltersFromURL);
 
-  // Sync filters với URL params khi URL thay đổi (browser back/forward)
   useEffect(() => {
     const urlFilters = readFiltersFromURL();
     setFilters(urlFilters);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [searchParams.toString()]); // Chỉ sync khi URL params thay đổi từ bên ngoài
+  }, [searchParams.toString()]);
 
-  // Sync filters với URL params khi filters thay đổi
   useEffect(() => {
     const newSearchParams = new URLSearchParams();
 
-    // Chỉ thêm favorite vào URL nếu khác default (true)
-    // Nếu favorite = false thì thêm ?favorite=false
-    // Nếu favorite = true thì không thêm (vì là default)
     if (!filters.isFavorite) {
       newSearchParams.set('favorite', 'false');
     }
 
-    // Thêm category nếu có
     if (filters.category) {
       newSearchParams.set('category', filters.category);
     }
 
-    // Thêm sort nếu có (admin only)
     if (isAdmin && filters.sortByPriceDifference) {
       newSearchParams.set('sort', 'price-diff');
+    } else if (isAdmin && filters.sortByKvStatus) {
+      newSearchParams.set('sort', 'kv-status');
     }
 
-    // Update URL mà không trigger navigation
+    if (filters.viewMode === 'list') {
+      newSearchParams.set('view', 'list');
+    }
+
     const newParamsString = newSearchParams.toString();
     const currentParamsString = searchParams.toString();
 
-    // Chỉ update nếu khác nhau để tránh infinite loop
     if (newParamsString !== currentParamsString) {
       setSearchParams(newSearchParams, { replace: true });
     }
   }, [filters, isAdmin, setSearchParams, searchParams]);
 
-  // Fetch categories
   const { data: categories = [], isLoading: categoriesLoading } =
     useProductCategories();
 
-  // Fetch products: lấy tất cả products (không filter theo purchase data)
   const { data: productsRaw = [], isLoading: productsLoading } = useProducts({
     category: filters.category,
     isFavorite: filters.isFavorite,
-    requirePurchaseData: false, // Bỏ filter purchase data, hiển thị tất cả products
+    requirePurchaseData: false,
   });
 
-  // Fetch inventory costs cho admin để tính cost_difference
   const {
     products: priceDifferenceProducts = [],
     loading: priceDifferenceLoading,
   } = useProductPriceDifference(isAdmin);
 
-  // Map products với price difference data và sort (chỉ cho admin)
+  const updateProductPrice = useUpdateProductPrice();
+  const [updatingPriceId, setUpdatingPriceId] = useState<number | null>(null);
+
+  const handleUpdatePrice = async (kiotvietId: number) => {
+    setUpdatingPriceId(kiotvietId);
+    try {
+      await updateProductPrice.mutateAsync(kiotvietId);
+    } finally {
+      setUpdatingPriceId(null);
+    }
+  };
+
   const products = useMemo(() => {
     type ProductWithExtendedFields = Omit<Product, 'id'> & {
-      id: string; // Convert to string for ProductCard compatibility
+      id: string;
       priceDifference?: number | null;
       priceDifferencePercent?: number | null;
       inventoryCost?: number | null;
@@ -143,20 +145,16 @@ export const ProductList = () => {
     let mappedProducts: ProductWithExtendedFields[];
 
     if (!isAdmin) {
-      // Non-admin: chỉ convert id sang string
       mappedProducts = productsRaw.map(p => ({
         ...p,
         id: String(p.id),
       })) as unknown as ProductWithExtendedFields[];
     } else {
-      // Admin: map với price difference data
       mappedProducts = productsRaw.map(product => {
-        // Tìm matching price difference data (có inventory cost)
         const priceDiffData = priceDifferenceProducts.find(
           p => p.product_id === Number(product.id)
         );
 
-        // Lưu latest_price_difference gốc từ v_products_admin (trước khi override)
         const productWithExt = product as unknown as ProductWithExtendedFields;
         const originalLatestPriceDifference =
           productWithExt.priceDifference || null;
@@ -166,7 +164,6 @@ export const ProductList = () => {
         return {
           ...product,
           id: String(product.id),
-          // Override price difference với cost_difference nếu có (từ inventory)
           priceDifference:
             priceDiffData?.cost_difference !== null &&
             priceDiffData?.cost_difference !== undefined
@@ -178,31 +175,58 @@ export const ProductList = () => {
               ? priceDiffData.cost_difference_percent
               : originalLatestPriceDifferencePercent,
           inventoryCost: priceDiffData?.inventory_cost || null,
-          // latest_price_difference từ v_products_admin (giữ nguyên giá trị gốc)
           latestPriceDifference: originalLatestPriceDifference,
           latestPriceDifferencePercent: originalLatestPriceDifferencePercent,
           latestPurchaseCost: productWithExt.latestPurchaseCost || null,
-          // cost_diff_from_latest_po từ v_products_admin (inventory_cost - latest_total_cost_per_unit)
           costDiffFromLatestPo: productWithExt.costDiffFromLatestPo || null,
         } as ProductWithExtendedFields;
       });
     }
 
-    // Sort theo cost_diff_from_latest_po nếu toggle on (admin only)
     if (isAdmin && filters.sortByPriceDifference) {
       mappedProducts.sort((a, b) => {
         const aDiff =
           a.costDiffFromLatestPo !== null &&
           a.costDiffFromLatestPo !== undefined
-            ? Number(a.costDiffFromLatestPo)
+            ? Math.abs(Number(a.costDiffFromLatestPo))
             : -Infinity;
         const bDiff =
           b.costDiffFromLatestPo !== null &&
           b.costDiffFromLatestPo !== undefined
-            ? Number(b.costDiffFromLatestPo)
+            ? Math.abs(Number(b.costDiffFromLatestPo))
             : -Infinity;
 
-        // Sort descending (lớn nhất trước)
+        return bDiff - aDiff;
+      });
+    }
+
+    if (isAdmin && filters.sortByKvStatus) {
+      mappedProducts.sort((a, b) => {
+        const aStatus = (a as Record<string, unknown>).kiotviet_status as {
+          cost_vs_basecost?: { status?: string; difference?: number | null };
+        } | null | undefined;
+        const bStatus = (b as Record<string, unknown>).kiotviet_status as {
+          cost_vs_basecost?: { status?: string; difference?: number | null };
+        } | null | undefined;
+
+        const aCostCheck = aStatus?.cost_vs_basecost;
+        const bCostCheck = bStatus?.cost_vs_basecost;
+
+        // matched = 0, mismatched = 1, no data = 2
+        const getStatusPriority = (status?: string) => {
+          if (status === 'mismatched') return 0;
+          if (status === 'matched') return 1;
+          return 2;
+        };
+
+        const aPriority = getStatusPriority(aCostCheck?.status);
+        const bPriority = getStatusPriority(bCostCheck?.status);
+
+        if (aPriority !== bPriority) return aPriority - bPriority;
+
+        // Both mismatched: sort by absolute difference descending
+        const aDiff = Math.abs(Number(aCostCheck?.difference ?? 0));
+        const bDiff = Math.abs(Number(bCostCheck?.difference ?? 0));
         return bDiff - aDiff;
       });
     }
@@ -213,42 +237,33 @@ export const ProductList = () => {
     productsRaw,
     priceDifferenceProducts,
     filters.sortByPriceDifference,
+    filters.sortByKvStatus,
   ]);
 
   const handleShow = (id: string | number) => {
     navigate(`/products/show/${id}`);
   };
 
-  const handleEdit = () => {
-    // Not needed per requirements
-  };
+  const handleEdit = () => {};
+  const handleDelete = () => {};
 
-  const handleDelete = () => {
-    // Not needed per requirements
-  };
-
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 10;
+  const [itemsPerPage, setItemsPerPage] = useState(20);
 
-  // Paginated products
   const paginatedProducts = useMemo(() => {
     const startIndex = (currentPage - 1) * itemsPerPage;
     const endIndex = startIndex + itemsPerPage;
     return products.slice(startIndex, endIndex);
-  }, [products, currentPage]);
+  }, [products, currentPage, itemsPerPage]);
 
-  // Total pages
   const totalPages = Math.ceil(products.length / itemsPerPage);
 
-  // Reset to page 1 when products change
   useEffect(() => {
     if (currentPage > totalPages && totalPages > 0) {
       setCurrentPage(1);
     }
   }, [currentPage, totalPages]);
 
-  // Loading state
   const isLoading = productsLoading || (isAdmin && priceDifferenceLoading);
 
   return (
@@ -258,7 +273,6 @@ export const ProductList = () => {
           <CardTitle>Danh sách sản phẩm</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Filters - dùng chung cho tất cả users */}
           <div className="flex flex-wrap gap-4 mb-6">
             <Select
               value={filters.category || 'all'}
@@ -305,41 +319,99 @@ export const ProductList = () => {
               <span className="font-medium">Yêu thích</span>
             </Toggle>
 
-            {/* Admin Filter: Sort theo Giá chênh lệch */}
-            <AdminFilters>
-              <ProductPriceDifferenceFilter
-                pressed={filters.sortByPriceDifference}
-                onPressedChange={pressed =>
-                  setFilters(prev => ({
-                    ...prev,
-                    sortByPriceDifference: pressed,
-                  }))
-                }
-                aria-label="Sort by price difference"
-              />
-            </AdminFilters>
+            <div className="ml-auto">
+              <ToggleGroup
+                type="single"
+                value={filters.viewMode}
+                onValueChange={(value) => {
+                  if (value) {
+                    setFilters(prev => ({
+                      ...prev,
+                      viewMode: value as ViewMode,
+                    }));
+                  }
+                }}
+                variant="outline"
+                size="sm"
+              >
+                <ToggleGroupItem value="card" aria-label="Card view">
+                  <LayoutGrid className="h-4 w-4" />
+                </ToggleGroupItem>
+                <ToggleGroupItem value="list" aria-label="List view">
+                  <List className="h-4 w-4" />
+                </ToggleGroupItem>
+              </ToggleGroup>
+            </div>
           </div>
 
-          {/* Products Display */}
           {isLoading ? (
             <div className="flex items-center justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin" />
             </div>
           ) : (
             <>
-              <ProductCardGrid
-                products={paginatedProducts as unknown as ProductCard[]}
-                loading={isLoading}
-                onEdit={handleEdit}
-                onShow={handleShow}
-                onDelete={handleDelete}
-                isAdmin={isAdmin}
-              />
+              {filters.viewMode === 'card' ? (
+                <ProductCardGrid
+                  products={paginatedProducts as unknown as ProductCard[]}
+                  loading={isLoading}
+                  onEdit={handleEdit}
+                  onShow={handleShow}
+                  onDelete={handleDelete}
+                  isAdmin={isAdmin}
+                />
+              ) : (
+                <ProductListTable
+                  products={paginatedProducts as unknown as Parameters<typeof ProductListTable>[0]['products']}
+                  loading={isLoading}
+                  onShow={handleShow}
+                  isAdmin={isAdmin}
+                  onUpdatePrice={handleUpdatePrice}
+                  updatingPriceId={updatingPriceId}
+                  sortByPriceDifference={filters.sortByPriceDifference}
+                  onTogglePriceDiffSort={() =>
+                    setFilters(prev => ({
+                      ...prev,
+                      sortByPriceDifference: !prev.sortByPriceDifference,
+                      sortByKvStatus: false,
+                    }))
+                  }
+                  sortByKvStatus={filters.sortByKvStatus}
+                  onToggleKvStatusSort={() =>
+                    setFilters(prev => ({
+                      ...prev,
+                      sortByKvStatus: !prev.sortByKvStatus,
+                      sortByPriceDifference: false,
+                    }))
+                  }
+                />
+              )}
 
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="mt-6 flex justify-center">
-                  <Pagination>
+              {products.length > 0 && (
+                <div className="mt-6 flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <span>Hiển thị</span>
+                    <Select
+                      value={String(itemsPerPage)}
+                      onValueChange={value => {
+                        setItemsPerPage(Number(value));
+                        setCurrentPage(1);
+                      }}
+                    >
+                      <SelectTrigger className="h-8 w-[70px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="10">10</SelectItem>
+                        <SelectItem value="20">20</SelectItem>
+                        <SelectItem value="50">50</SelectItem>
+                        <SelectItem value="100">100</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <span>mỗi trang</span>
+                  </div>
+
+                  {totalPages > 1 && (
+                    <Pagination>
                     <PaginationContent>
                       <PaginationItem>
                         <PaginationPrevious
@@ -354,7 +426,6 @@ export const ProductList = () => {
                         />
                       </PaginationItem>
 
-                      {/* First page */}
                       {currentPage > 3 && (
                         <>
                           <PaginationItem>
@@ -373,7 +444,6 @@ export const ProductList = () => {
                         </>
                       )}
 
-                      {/* Page numbers around current page */}
                       {Array.from({ length: totalPages }, (_, i) => i + 1)
                         .filter(
                           page =>
@@ -382,7 +452,6 @@ export const ProductList = () => {
                             (page >= currentPage - 1 && page <= currentPage + 1)
                         )
                         .map((page, index, array) => {
-                          // Add ellipsis if there's a gap
                           const prevPage = array[index - 1];
                           const showEllipsisBefore =
                             prevPage && page - prevPage > 1;
@@ -407,7 +476,6 @@ export const ProductList = () => {
                           );
                         })}
 
-                      {/* Last page */}
                       {currentPage < totalPages - 2 && (
                         <>
                           {currentPage < totalPages - 3 && (
@@ -442,6 +510,7 @@ export const ProductList = () => {
                       </PaginationItem>
                     </PaginationContent>
                   </Pagination>
+                  )}
                 </div>
               )}
             </>

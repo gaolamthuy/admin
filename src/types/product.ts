@@ -86,6 +86,25 @@ export interface ProductCard {
 }
 
 /**
+ * KiotViet status check result for cost vs basecost
+ * @interface KiotVietCostStatus
+ */
+export interface KiotVietCostStatus {
+  inventory_cost: number | null;
+  basecost_price: number | null;
+  status: 'matched' | 'mismatched' | 'no_inventory_cost' | 'no_basecost_price';
+  difference: number | null;
+}
+
+/**
+ * KiotViet status object from v_products_admin view
+ * @interface KiotVietStatus
+ */
+export interface KiotVietStatus {
+  cost_vs_basecost: KiotVietCostStatus;
+}
+
+/**
  * Product with extended fields for price difference (used in ProductList)
  * @interface ProductWithPriceDifference
  */
@@ -97,6 +116,7 @@ export interface ProductWithPriceDifference extends ProductCard {
   latestPriceDifferencePercent?: number | null;
   latestPurchaseCost?: number | null;
   costDiffFromLatestPo?: number | null;
+  kiotviet_status?: KiotVietStatus | null;
 }
 
 /**
