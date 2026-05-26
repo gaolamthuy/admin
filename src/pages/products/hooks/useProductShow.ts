@@ -56,12 +56,42 @@ export interface PurchaseOrderDetail {
   price_difference_percent: number | null;
 }
 
+export interface ChangelogEntry {
+  old: string;
+  new: string;
+  diff: number | null;
+  pct: number | null;
+  dir: 'up' | 'down' | null;
+  src: string | null;
+  at: string;
+}
+
+export interface ProductChangelog {
+  base_price?: ChangelogEntry[];
+  cost?: ChangelogEntry[];
+  order_template?: ChangelogEntry[];
+}
+
+export interface ChildUnitInfo {
+  kiotviet_id: number;
+  code: string;
+  full_name: string;
+  unit: string;
+  base_price: number;
+  conversion_value: number;
+  price_per_master_unit: number | null;
+  price_changelog?: ChangelogEntry[];
+}
+
 export interface ProductPriceComparison {
   product_id: number;
   product_code: string;
   product_name: string;
   base_price: number;
+  glt_extra_cost: number;
+  glt_baseprice_markup: number;
   new_baseprice_suggestion: number | null;
+  child_unit_info: ChildUnitInfo[];
   recent_purchases: PurchaseOrderDetail[];
   purchase_stats: {
     avg_price: number | null;
@@ -133,17 +163,18 @@ export const useProductShow = (id: string | number) => {
       }
 
       // Parse glt_custom_fields JSONB để lấy các fields thiếu
-      const customFields = (viewData.glt_custom_fields as {
-        glt_visible?: boolean;
-        glt_retail_promotion?: boolean;
-        glt_labelprint_favorite?: boolean;
-        glt_images_upload?: {
-          main?: string | null;
-          package?: string | null;
-        } | null;
-        glt_images_homepage?: HomepageImage[];
-        glt_custom_image_url?: string | null;
-      }) || {};
+      const customFields =
+        (viewData.glt_custom_fields as {
+          glt_visible?: boolean;
+          glt_retail_promotion?: boolean;
+          glt_labelprint_favorite?: boolean;
+          glt_images_upload?: {
+            main?: string | null;
+            package?: string | null;
+          } | null;
+          glt_images_homepage?: HomepageImage[];
+          glt_custom_image_url?: string | null;
+        }) || {};
 
       // Map data từ view sang format tương thích với ProductShow
       return {
@@ -158,6 +189,8 @@ export const useProductShow = (id: string | number) => {
         category_id: viewData.category_id,
         is_active: viewData.is_active,
         glt_baseprice_markup: viewData.glt_baseprice_markup,
+        glt_extra_cost: viewData.glt_extra_cost ?? 0,
+        child_unit_info: viewData.child_unit_info || [],
         // Fields từ glt_custom_fields JSONB
         glt_visible: customFields.glt_visible ?? true,
         glt_retail_promotion: customFields.glt_retail_promotion ?? false,
@@ -247,7 +280,8 @@ export const useProductImages = (productId: number | null | undefined) => {
             format: img.format,
             rev: img.rev,
             updated_at: img.updated_at,
-            created_at: img.rev_datetime || img.updated_at || new Date().toISOString(),
+            created_at:
+              img.rev_datetime || img.updated_at || new Date().toISOString(),
             alt: null,
             description: null,
           }) as ProductImage
@@ -444,7 +478,8 @@ export const useRegenerateProductImages = () => {
       if (!response.ok) {
         const text = await response.text();
         throw new Error(
-          text || 'Không thể regenerate images. Vui lòng thử lại hoặc kiểm tra log trong n8n.'
+          text ||
+            'Không thể regenerate images. Vui lòng thử lại hoặc kiểm tra log trong n8n.'
         );
       }
 
@@ -489,10 +524,8 @@ export const useUploadBaseProductImage = () => {
       }
 
       // Import validateImageFile và uploadImageToCloudinary
-      const {
-        validateImageFile,
-        uploadImageToCloudinary,
-      } = await import('@/lib/cloudinary');
+      const { validateImageFile, uploadImageToCloudinary } =
+        await import('@/lib/cloudinary');
 
       // Validate file
       validateImageFile(file);
@@ -530,7 +563,8 @@ export const useUploadBaseProductImage = () => {
 
       // Update the glt_images_upload object
       const customFields = currentProduct?.glt_custom_fields || {};
-      const imagesUpload = (customFields as Record<string, unknown>)?.glt_images_upload || {};
+      const imagesUpload =
+        (customFields as Record<string, unknown>)?.glt_images_upload || {};
       const updatedCustomFields = {
         ...customFields,
         glt_images_upload: {
@@ -553,7 +587,9 @@ export const useUploadBaseProductImage = () => {
     },
     onSuccess: (_, variables) => {
       // Invalidate queries để refresh data
-      queryClient.invalidateQueries({ queryKey: ['product-show', variables.productId] });
+      queryClient.invalidateQueries({
+        queryKey: ['product-show', variables.productId],
+      });
     },
   });
 };
@@ -579,7 +615,8 @@ export const useUploadProductImage = () => {
       imageType: string;
       file: File;
     }) => {
-      const { validateImageFile, uploadImageToCloudinary } = await import('@/lib/cloudinary');
+      const { validateImageFile, uploadImageToCloudinary } =
+        await import('@/lib/cloudinary');
 
       validateImageFile(file);
 
@@ -615,3 +652,5 @@ export const useUploadProductImage = () => {
     },
   });
 };
+
+export { useUpdateProductPrice } from './useUpdateProductPrice';

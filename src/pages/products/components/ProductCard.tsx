@@ -316,9 +316,9 @@ const ProductCardComponent: React.FC<
                     productWithPrice.costDiffFromLatestPo === undefined
                       ? 'text-muted-foreground'
                       : productWithPrice.costDiffFromLatestPo > 0
-                        ? 'text-green-600 dark:text-green-400'
+                        ? 'text-destructive'
                         : productWithPrice.costDiffFromLatestPo < 0
-                          ? 'text-destructive'
+                          ? 'text-green-600 dark:text-green-400'
                           : 'text-muted-foreground'
                   }`}
                 >
