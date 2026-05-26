@@ -63,7 +63,8 @@ export const useProducts = (filters: ProductFilters = {}) => {
             latest_price_difference_percent,
             cost_diff_from_latest_po,
             glt_images,
-            kv_images
+            kv_images,
+            kiotviet_status
           `
         )
         .eq('is_active', true);
@@ -198,11 +199,13 @@ export const useProducts = (filters: ProductFilters = {}) => {
             priceDifferencePercent: p.latest_price_difference_percent || null,
             latestPurchaseCost: p.latest_total_cost_per_unit || null,
             costDiffFromLatestPo: p.cost_diff_from_latest_po || null,
+            kiotviet_status: p.kiotviet_status || null,
           } as Product & {
             priceDifference?: number | null;
             priceDifferencePercent?: number | null;
             latestPurchaseCost?: number | null;
             costDiffFromLatestPo?: number | null;
+            kiotviet_status?: Record<string, unknown> | null;
           };
         })
         .filter(p => {
