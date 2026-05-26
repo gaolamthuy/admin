@@ -14,7 +14,11 @@ import {
   useProductInventory,
   useUpdateProduct,
   useUploadProductImage,
+  useUpdateProductPrice,
   type HomepageImage,
+  type ChildUnitInfo,
+  type ChangelogEntry,
+  type ProductChangelog,
 } from './hooks/useProductShow';
 import {
   Card,
@@ -45,7 +49,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { formatDaysAgo, formatDate } from '@/utils/date';
+import { formatDaysAgo, formatDate, formatTimeAgo } from '@/utils/date';
 import { toast } from 'sonner';
 
 /**
@@ -56,6 +60,7 @@ export const ProductShow = () => {
   const navigate = useNavigate();
   const { id } = useParams<{ id: string }>();
   const hasResetForm = useRef(false);
+  const updateProductPrice = useUpdateProductPrice();
 
   // Query product data
   const {
@@ -86,7 +91,7 @@ export const ProductShow = () => {
   const handleUploadImage = async (
     role: string,
     imageType: string,
-    file: File,
+    file: File
   ) => {
     if (!record?.kiotviet_id) return;
 
@@ -118,16 +123,17 @@ export const ProductShow = () => {
     defaultValues: {
       glt_retail_promotion: false,
       glt_baseprice_markup: 0,
+      glt_extra_cost: 0,
       glt_labelprint_favorite: false,
     },
   });
 
-  // Set form values khi record thay đổi
   useEffect(() => {
     if (record && !hasResetForm.current) {
       form.reset({
         glt_retail_promotion: record.glt_retail_promotion ?? false,
         glt_baseprice_markup: record.glt_baseprice_markup || 0,
+        glt_extra_cost: record.glt_extra_cost || 0,
         glt_labelprint_favorite: record.glt_labelprint_favorite ?? false,
       });
       hasResetForm.current = true;
@@ -135,10 +141,10 @@ export const ProductShow = () => {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [record]);
 
-  // Handle form submission - Auto save khi có thay đổi
   const onSubmit = async (values: {
     glt_retail_promotion: boolean;
     glt_baseprice_markup: number;
+    glt_extra_cost: number;
     glt_labelprint_favorite: boolean;
   }) => {
     if (!record?.id) return;
@@ -147,6 +153,9 @@ export const ProductShow = () => {
       glt_retail_promotion: Boolean(values.glt_retail_promotion),
       glt_baseprice_markup: values.glt_baseprice_markup
         ? parseFloat(String(values.glt_baseprice_markup))
+        : 0,
+      glt_extra_cost: values.glt_extra_cost
+        ? parseFloat(String(values.glt_extra_cost))
         : 0,
       glt_labelprint_favorite: Boolean(values.glt_labelprint_favorite),
     };
@@ -277,13 +286,240 @@ export const ProductShow = () => {
                       <span className="text-sm text-muted-foreground">
                         Danh mục:
                       </span>
-                      <p className="font-medium">{record.category_name || '-'}</p>
+                      <p className="font-medium">
+                        {record.category_name || '-'}
+                      </p>
                     </div>
                   </div>
                 </div>
               </div>
             </CardContent>
           </Card>
+
+          {/* Lịch sử thay đổi giá */}
+          {(() => {
+            const changelog = record.changelog as ProductChangelog | undefined;
+            if (!changelog || Object.keys(changelog).length === 0) return null;
+
+            const fieldLabels: Record<string, string> = {
+              base_price: 'Giá bán',
+              cost: 'Giá vốn',
+              order_template: 'Mẫu đặt hàng',
+            };
+
+            return (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Lịch sử thay đổi</CardTitle>
+                  <CardDescription>
+                    5 thay đổi gần nhất theo từng loại
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                  {Object.entries(changelog).map(([field, entries]) => {
+                    if (!entries || entries.length === 0) return null;
+                    return (
+                      <div key={field}>
+                        <h4 className="text-sm font-medium mb-2">
+                          {fieldLabels[field] || field}
+                        </h4>
+                        <div className="rounded-md border">
+                          <Table>
+                            <TableHeader>
+                              <TableRow>
+                                <TableHead>Thời gian</TableHead>
+                                <TableHead className="text-right">Cũ</TableHead>
+                                <TableHead className="text-right">
+                                  Mới
+                                </TableHead>
+                                {field !== 'order_template' && (
+                                  <TableHead className="text-right">
+                                    Chênh lệch
+                                  </TableHead>
+                                )}
+                                <TableHead>Nguồn</TableHead>
+                              </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                              {entries.map(
+                                (entry: ChangelogEntry, idx: number) => (
+                                  <TableRow key={idx}>
+                                    <TableCell>
+                                      <div className="text-sm">
+                                        {formatDate(entry.at)}
+                                      </div>
+                                      <div className="text-xs text-muted-foreground">
+                                        {formatTimeAgo(entry.at)}
+                                      </div>
+                                    </TableCell>
+                                    <TableCell className="text-right font-mono">
+                                      {field === 'order_template'
+                                        ? (entry.old?.slice(0, 30) || '-') +
+                                          (entry.old && entry.old.length > 30
+                                            ? '...'
+                                            : '')
+                                        : Number(
+                                            entry.old || 0
+                                          ).toLocaleString()}
+                                    </TableCell>
+                                    <TableCell className="text-right font-mono">
+                                      {field === 'order_template'
+                                        ? (entry.new?.slice(0, 30) || '-') +
+                                          (entry.new && entry.new.length > 30
+                                            ? '...'
+                                            : '')
+                                        : Number(
+                                            entry.new || 0
+                                          ).toLocaleString()}
+                                    </TableCell>
+                                    {field !== 'order_template' && (
+                                      <TableCell
+                                        className={`text-right font-medium ${
+                                          entry.dir === 'up'
+                                            ? 'text-destructive'
+                                            : entry.dir === 'down'
+                                              ? 'text-green-600 dark:text-green-400'
+                                              : ''
+                                        }`}
+
+                                      >
+                                        {entry.diff !== null ? (
+                                          <>
+                                            {entry.diff > 0 ? '+' : ''}
+                                            {Number(
+                                              entry.diff
+                                            ).toLocaleString()}
+                                            {entry.pct !== null && (
+                                              <span className="text-xs ml-1">
+                                                ({entry.pct > 0 ? '+' : ''}
+                                                {Number(entry.pct).toFixed(1)}
+                                                %)
+                                              </span>
+                                            )}
+                                          </>
+                                        ) : (
+                                          '-'
+                                        )}
+                                      </TableCell>
+                                    )}
+                                    <TableCell>
+                                      {entry.src ? (
+                                        <Badge
+                                          variant="secondary"
+                                          className="text-xs"
+                                        >
+                                          {entry.src === 'webhook'
+                                            ? 'KiotViet'
+                                            : entry.src === 'po_update'
+                                              ? 'Đơn nhập'
+                                              : entry.src === 'sync'
+                                                ? 'Sync'
+                                                : entry.src}
+                                        </Badge>
+                                      ) : (
+                                        <span className="text-xs text-muted-foreground">
+                                          -
+                                        </span>
+                                      )}
+                                    </TableCell>
+                                  </TableRow>
+                                )
+                              )}
+                            </TableBody>
+                          </Table>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </CardContent>
+              </Card>
+            );
+          })()}
+
+          {/* Đơn vị con (child units) */}
+          {record.child_unit_info && record.child_unit_info.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Đơn vị con</CardTitle>
+                <CardDescription>
+                  Các đơn vị quy đổi từ sản phẩm gốc
+                </CardDescription>
+              </CardHeader>
+              <CardContent>
+                <div className="rounded-md border">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Mã</TableHead>
+                        <TableHead>Tên</TableHead>
+                        <TableHead>Đơn vị</TableHead>
+                        <TableHead className="text-right">Giá bán</TableHead>
+                        <TableHead className="text-right">Quy đổi</TableHead>
+                        <TableHead className="text-right">
+                          Giá/đơn vị gốc
+                        </TableHead>
+                        <TableHead>Thay đổi gần nhất</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {(record.child_unit_info as ChildUnitInfo[]).map(cu => {
+                        const lastChange = cu.price_changelog?.[0];
+                        return (
+                          <TableRow key={cu.kiotviet_id}>
+                            <TableCell className="font-mono text-xs">
+                              {cu.code}
+                            </TableCell>
+                            <TableCell>{cu.full_name}</TableCell>
+                            <TableCell>
+                              <Badge variant="outline">{cu.unit}</Badge>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {Number(cu.base_price).toLocaleString()} VNĐ
+                            </TableCell>
+                            <TableCell className="text-right">
+                              × {cu.conversion_value}
+                            </TableCell>
+                            <TableCell className="text-right font-medium">
+                              {cu.price_per_master_unit
+                                ? `${Number(cu.price_per_master_unit).toLocaleString()} VNĐ`
+                                : '-'}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {lastChange ? (
+                                <span
+                                  className={
+                                    lastChange.dir === 'up'
+                                      ? 'text-destructive'
+                                      : lastChange.dir === 'down'
+                                        ? 'text-green-600 dark:text-green-400'
+                                        : ''
+                                  }
+                                >
+                                  {lastChange.dir === 'up' ? '↑' : '↓'}{' '}
+                                  {lastChange.diff !== null
+                                    ? `${lastChange.diff > 0 ? '+' : ''}${Number(lastChange.diff).toLocaleString()}`
+                                    : ''}
+                                  {lastChange.pct !== null &&
+                                    ` (${lastChange.pct > 0 ? '+' : ''}${Number(lastChange.pct).toFixed(1)}%)`}
+                                  <span className="text-xs text-muted-foreground ml-1">
+                                    {formatTimeAgo(lastChange.at)}
+                                  </span>
+                                </span>
+                              ) : (
+                                <span className="text-xs text-muted-foreground">
+                                  -
+                                </span>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          )}
 
           {/* So sánh giá với lịch sử nhập hàng */}
           <Card>
@@ -300,7 +536,8 @@ export const ProductShow = () => {
                     Đang tải dữ liệu so sánh giá...
                   </div>
                 </div>
-              ) : priceComparison && priceComparison.latest_purchase_order_id ? (
+              ) : priceComparison &&
+                priceComparison.latest_purchase_order_id ? (
                 <div className="space-y-6">
                   {/* Thông tin tổng quan */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -354,13 +591,33 @@ export const ProductShow = () => {
                           {formatDaysAgo(priceComparison.latest_purchase_date)})
                         </div>
                       )}
+                      {priceComparison.cost_diff_from_latest_po !== null &&
+                        priceComparison.cost_diff_from_latest_po !== 0 && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="mt-2 w-full"
+                            disabled={updateProductPrice.isPending}
+                            onClick={() => {
+                              if (record?.kiotviet_id) {
+                                updateProductPrice.mutate(record.kiotviet_id);
+                              }
+                            }}
+                          >
+                            {updateProductPrice.isPending ? (
+                              <Loader2 className="h-3 w-3 animate-spin mr-1" />
+                            ) : null}
+                            Cập nhật giá KioViet
+                          </Button>
+                        )}
                     </div>
                     <div className="rounded-lg border p-4">
                       <div className="text-sm text-muted-foreground">
                         Chênh lệch (Cost - Giá nhập)
                       </div>
                       {(() => {
-                        const costDiff = priceComparison.cost_diff_from_latest_po;
+                        const costDiff =
+                          priceComparison.cost_diff_from_latest_po;
                         const cost = inventory?.cost;
                         const costDiffPercent =
                           cost && cost > 0 && costDiff !== null
@@ -372,9 +629,9 @@ export const ProductShow = () => {
                             <div
                               className={`text-2xl font-bold mt-1 ${
                                 costDiff !== null && costDiff > 0
-                                  ? 'text-green-600 dark:text-green-400'
+                                  ? 'text-destructive'
                                   : costDiff !== null && costDiff < 0
-                                    ? 'text-destructive'
+                                    ? 'text-green-600 dark:text-green-400'
                                     : ''
                               }`}
                             >
@@ -388,9 +645,9 @@ export const ProductShow = () => {
                               <div
                                 className={`text-xs mt-1 ${
                                   costDiffPercent > 0
-                                    ? 'text-green-600 dark:text-green-400'
+                                    ? 'text-destructive'
                                     : costDiffPercent < 0
-                                      ? 'text-destructive'
+                                      ? 'text-green-600 dark:text-green-400'
                                       : ''
                                 }`}
                               >
@@ -439,7 +696,8 @@ export const ProductShow = () => {
                               {priceComparison.recent_purchases.map(
                                 (purchase, index) => {
                                   const cost = inventory?.cost;
-                                  const totalCost = purchase.total_cost_per_unit;
+                                  const totalCost =
+                                    purchase.total_cost_per_unit;
                                   const costDifference =
                                     cost && totalCost ? totalCost - cost : null;
                                   const costDifferencePercent =
@@ -457,7 +715,9 @@ export const ProductShow = () => {
                                         </div>
                                         {purchase.purchase_date && (
                                           <div className="text-xs text-muted-foreground">
-                                            {formatDaysAgo(purchase.purchase_date)}
+                                            {formatDaysAgo(
+                                              purchase.purchase_date
+                                            )}
                                           </div>
                                         )}
                                       </TableCell>
@@ -468,7 +728,9 @@ export const ProductShow = () => {
                                         {purchase.supplier_name || '-'}
                                       </TableCell>
                                       <TableCell className="text-right">
-                                        {Number(purchase.price).toLocaleString()}
+                                        {Number(
+                                          purchase.price
+                                        ).toLocaleString()}
                                       </TableCell>
                                       <TableCell className="text-right">
                                         {Number(
@@ -481,13 +743,16 @@ export const ProductShow = () => {
                                         ).toLocaleString()}
                                       </TableCell>
                                       <TableCell className="text-right">
-                                        {Number(purchase.quantity).toLocaleString()}
+                                        {Number(
+                                          purchase.quantity
+                                        ).toLocaleString()}
                                       </TableCell>
                                       <TableCell
                                         className={`text-right font-medium ${
                                           costDifference && costDifference > 0
                                             ? 'text-destructive'
-                                            : costDifference && costDifference < 0
+                                            : costDifference &&
+                                                costDifference < 0
                                               ? 'text-green-600 dark:text-green-400'
                                               : ''
                                         }`}
@@ -505,8 +770,8 @@ export const ProductShow = () => {
                                                   ? '+'
                                                   : ''}
                                                 {Number(
-                                                    costDifferencePercent
-                                                  ).toFixed(2)}
+                                                  costDifferencePercent
+                                                ).toFixed(2)}
                                                 %)
                                               </span>
                                             )}
@@ -541,23 +806,29 @@ export const ProductShow = () => {
             <CardHeader>
               <CardTitle>Ảnh theo Role</CardTitle>
               <CardDescription>
-                Các ảnh đã xử lý theo từng role (closeup, feature, package, infocard...)
+                Các ảnh đã xử lý theo từng role (closeup, feature, package,
+                infocard...)
               </CardDescription>
             </CardHeader>
             <CardContent>
               {(() => {
                 // Parse glt_images từ record
-                const gltImages = record?.glt_images as Array<{
-                  role: string;
-                  images: Record<string, {
-                    id: number;
-                    url: string;
-                    path: string;
-                    width?: number;
-                    height?: number;
-                    format?: string;
-                  }>;
-                }> | undefined;
+                const gltImages = record?.glt_images as
+                  | Array<{
+                      role: string;
+                      images: Record<
+                        string,
+                        {
+                          id: number;
+                          url: string;
+                          path: string;
+                          width?: number;
+                          height?: number;
+                          format?: string;
+                        }
+                      >;
+                    }>
+                  | undefined;
 
                 if (!gltImages || gltImages.length === 0) {
                   return (
@@ -592,16 +863,20 @@ export const ProductShow = () => {
                                 type="file"
                                 accept="image/jpeg,image/png,image/webp"
                                 className="hidden"
-                                onChange={(e) => {
+                                onChange={e => {
                                   const file = e.target.files?.[0];
                                   if (file) {
                                     handleUploadImage(role, 'display', file);
                                   }
                                   e.target.value = '';
                                 }}
-                                disabled={uploadProductImage.isPending && uploadingRoleRef.current === role}
+                                disabled={
+                                  uploadProductImage.isPending &&
+                                  uploadingRoleRef.current === role
+                                }
                               />
-                              {uploadProductImage.isPending && uploadingRoleRef.current === role ? (
+                              {uploadProductImage.isPending &&
+                              uploadingRoleRef.current === role ? (
                                 <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
                               ) : (
                                 <Upload className="h-4 w-4 text-muted-foreground hover:text-primary transition-colors" />
@@ -616,9 +891,11 @@ export const ProductShow = () => {
                                 <div className="text-xs font-medium text-muted-foreground">
                                   Display
                                 </div>
-                                <div 
+                                <div
                                   className="relative rounded-lg border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
-                                  onClick={() => window.open(displayImage.url, '_blank')}
+                                  onClick={() =>
+                                    window.open(displayImage.url, '_blank')
+                                  }
                                 >
                                   <img
                                     src={displayImage.url}
@@ -628,7 +905,8 @@ export const ProductShow = () => {
                                   {displayImage.format && (
                                     <div className="absolute bottom-1 right-1 bg-black/70 text-white text-[10px] px-1.5 py-0.5 rounded">
                                       {displayImage.format.toUpperCase()}
-                                      {displayImage.width && ` ${displayImage.width}x${displayImage.height}`}
+                                      {displayImage.width &&
+                                        ` ${displayImage.width}x${displayImage.height}`}
                                     </div>
                                   )}
                                 </div>
@@ -683,14 +961,16 @@ export const ProductShow = () => {
                   className="space-y-6"
                   noValidate
                 >
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <FormField
                       control={form.control}
                       name="glt_retail_promotion"
                       render={({ field }) => (
                         <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
                           <div className="space-y-0.5">
-                            <FormLabel className="text-base">Khuyến mãi</FormLabel>
+                            <FormLabel className="text-base">
+                              Khuyến mãi
+                            </FormLabel>
                             <p className="text-sm text-muted-foreground">
                               Bật/tắt chế độ khuyến mãi
                             </p>
@@ -720,6 +1000,44 @@ export const ProductShow = () => {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Markup giá (VND)</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              type="text"
+                              value={field.value || ''}
+                              placeholder="0"
+                              disabled={updateProduct.isPending}
+                              onChange={e => {
+                                field.onChange(e.target.value);
+                              }}
+                              onKeyDown={e => {
+                                if (e.key === 'Enter') {
+                                  e.preventDefault();
+                                  form.handleSubmit(onSubmit)();
+                                }
+                              }}
+                              onBlur={() => {
+                                form.handleSubmit(onSubmit)();
+                              }}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                          {updateProduct.isPending && (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Đang lưu...
+                            </div>
+                          )}
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="glt_extra_cost"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Extra cost (VND/kg)</FormLabel>
                           <FormControl>
                             <Input
                               {...field}
