@@ -11,6 +11,7 @@ import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useProducts, useProductCategories } from '@/hooks/useProducts';
 import { useIsAdmin } from '@/hooks/useAuth';
 import { useUpdateProductPrice } from './hooks/useUpdateProductPrice';
+import { useSyncProducts } from './hooks/useSyncProducts';
 import { ProductCardGrid } from './components/ProductCardGrid';
 import { ProductListTable } from './components/ProductListTable';
 import type { Product, ProductCard } from '@/types/product';
@@ -33,8 +34,9 @@ import {
 } from '@/components/ui/pagination';
 import { Toggle } from '@/components/ui/toggle';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Heart, LayoutGrid, List } from 'lucide-react';
+import { Heart, LayoutGrid, List, RefreshCw } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
+import { Button } from '@/components/ui/button';
 
 type ViewMode = 'card' | 'list';
 
@@ -113,6 +115,7 @@ export const ProductList = () => {
   });
 
   const updateProductPrice = useUpdateProductPrice();
+  const syncProducts = useSyncProducts();
   const [updatingPriceId, setUpdatingPriceId] = useState<number | null>(null);
 
   const handleUpdatePrice = async (kiotvietId: number) => {
@@ -287,7 +290,26 @@ export const ProductList = () => {
               <span className="font-medium">Yêu thích</span>
             </Toggle>
 
-            <div className="ml-auto">
+            {isAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="ml-auto h-10 gap-2"
+                disabled={syncProducts.isPending}
+                onClick={() => syncProducts.mutate()}
+              >
+                {syncProducts.isPending ? (
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-4 w-4" />
+                )}
+                <span className="font-medium">
+                  {syncProducts.isPending ? 'Đang đồng bộ...' : 'Đồng bộ SP'}
+                </span>
+              </Button>
+            )}
+
+            <div className={isAdmin ? '' : 'ml-auto'}>
               <ToggleGroup
                 type="single"
                 value={filters.viewMode}
