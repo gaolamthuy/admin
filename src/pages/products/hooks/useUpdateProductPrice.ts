@@ -1,7 +1,6 @@
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
+import { env } from '@/lib/env';
 
 interface UpdateProductPriceResult {
   product_code: string;
@@ -25,21 +24,26 @@ interface UpdateProductPriceResult {
 async function callUpdateProductPrice(
   kiotvietId: number
 ): Promise<UpdateProductPriceResult> {
-  if (!BACKEND_URL) {
+  const backendUrl = env.VITE_BACKEND_URL;
+  const windmillToken = env.VITE_BACKEND_TOKEN;
+
+  if (!backendUrl) {
     throw new Error('VITE_BACKEND_URL is not configured');
   }
 
-  const baseUrl = BACKEND_URL.replace(/\/$/, '');
+  if (!windmillToken) {
+    throw new Error('VITE_BACKEND_TOKEN is not configured');
+  }
+
+  const baseUrl = backendUrl.replace(/\/$/, '');
   const tokenUrl = `${baseUrl.split('/api/')[0]}`;
   const apiUrl = `${tokenUrl}/api/w/wm-fork-dev/jobs/run/p/f/frontend_admin/update_product_price_from_po`;
-
-  const WINDMILL_TOKEN = 'env.VITE_BACKEND_TOKEN';
 
   const runRes = await fetch(apiUrl, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      Authorization: `Bearer ${WINDMILL_TOKEN}`,
+      Authorization: `Bearer ${windmillToken}`,
     },
     body: JSON.stringify({ kiotviet_id: kiotvietId }),
   });
@@ -56,7 +60,7 @@ async function callUpdateProductPrice(
     await new Promise(r => setTimeout(r, 1000));
 
     const res = await fetch(resultUrl, {
-      headers: { Authorization: `Bearer ${WINDMILL_TOKEN}` },
+      headers: { Authorization: `Bearer ${windmillToken}` },
     });
 
     if (!res.ok) continue;
