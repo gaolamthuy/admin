@@ -1,14 +1,14 @@
 /**
  * Payment Types
  * Type definitions cho payment data structure
- * 
+ *
  * @module types/payment
  */
 
 /**
  * Payment interface
  * Đại diện cho một payment record trong table glt_payment
- * 
+ *
  * @interface Payment
  */
 export interface Payment {
@@ -26,14 +26,14 @@ export interface Payment {
 
 /**
  * Realtime event types từ Supabase
- * 
+ *
  * @type RealtimeEventType
  */
 export type RealtimeEventType = 'INSERT' | 'UPDATE' | 'DELETE';
 
 /**
  * Realtime payload từ Supabase
- * 
+ *
  * @interface RealtimePayload
  */
 export interface RealtimePayload<T = Payment> {
@@ -45,7 +45,7 @@ export interface RealtimePayload<T = Payment> {
 
 /**
  * Options cho usePaymentRealtime hook
- * 
+ *
  * @interface UsePaymentRealtimeOptions
  */
 export interface UsePaymentRealtimeOptions {
@@ -54,18 +54,16 @@ export interface UsePaymentRealtimeOptions {
    * Nếu không có, sẽ listen tất cả payments
    */
   paymentId?: number;
-  
+
   /**
    * Filter theo các event types muốn listen
    * Mặc định listen tất cả: INSERT, UPDATE, DELETE
    */
   eventTypes?: RealtimeEventType[];
-  
+
   /**
    * Enable/disable realtime subscription
    * Mặc định: true
    */
   enabled?: boolean;
 }
-
-

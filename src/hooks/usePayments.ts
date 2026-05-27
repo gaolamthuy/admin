@@ -34,7 +34,7 @@ export interface Payment {
 /**
  * Hook fetch danh sách thanh toán từ bảng glt_payment
  * Chỉ dùng để xem lịch sử, không tạo mới
- * 
+ *
  * ⚠️ Phân quyền:
  * - Admin: Lấy tất cả records (không limit hoặc limit cao)
  * - Staff: Chỉ lấy 20 records đầu tiên
@@ -96,4 +96,3 @@ export const usePayments = (isAdmin: boolean = false) => {
     refetchOnWindowFocus: true,
   });
 };
-

@@ -63,16 +63,16 @@ export const usePrintPriceTable = () => {
 
       if (!response.ok) {
         const text = await response.text();
-        throw new Error(
-          text || 'Không thể tạo bảng giá. Vui lòng thử lại.'
-        );
+        throw new Error(text || 'Không thể tạo bảng giá. Vui lòng thử lại.');
       }
 
       const html = await response.text();
 
       const printWindow = window.open('', '_blank');
       if (!printWindow) {
-        throw new Error('Không thể mở cửa sổ in. Vui lòng kiểm tra popup blocker.');
+        throw new Error(
+          'Không thể mở cửa sổ in. Vui lòng kiểm tra popup blocker.'
+        );
       }
 
       printWindow.document.write(html);

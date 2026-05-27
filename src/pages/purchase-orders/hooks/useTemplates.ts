@@ -53,17 +53,17 @@ interface TemplateProductRaw {
 export const useTemplates = (
   open: boolean,
   supplierId: number | null | undefined,
-      supplierData?: {
-        po_template_products?: Array<{
-          product_id: number;
-          product_code: string | null;
-          product_name: string | null;
-          last_purchase_date: string | null;
-          order_template?: string | null; // ⭐ Mới: order_template từ kv_products
-          images?: string[] | null; // Images từ kv_products
-          child_units: ChildUnit[] | null;
-        }> | null;
-      } | null
+  supplierData?: {
+    po_template_products?: Array<{
+      product_id: number;
+      product_code: string | null;
+      product_name: string | null;
+      last_purchase_date: string | null;
+      order_template?: string | null; // ⭐ Mới: order_template từ kv_products
+      images?: string[] | null; // Images từ kv_products
+      child_units: ChildUnit[] | null;
+    }> | null;
+  } | null
 ) => {
   const [templates, setTemplates] = useState<TemplateProduct[]>([]);
   const [loading, setLoading] = useState(false);
@@ -96,7 +96,10 @@ export const useTemplates = (
     const templateProductsFromSupplier = supplierData?.po_template_products;
 
     // Nếu có po_template_products từ supplier data, dùng luôn (không cần query)
-    if (templateProductsFromSupplier && templateProductsFromSupplier.length > 0) {
+    if (
+      templateProductsFromSupplier &&
+      templateProductsFromSupplier.length > 0
+    ) {
       console.log(
         '[useTemplates] Using po_template_products from supplier data:',
         templateProductsFromSupplier.length,
@@ -141,7 +144,10 @@ export const useTemplates = (
               .in('kiotviet_id', productIds);
 
             if (productsError) {
-              console.warn('[useTemplates] Error fetching master units:', productsError);
+              console.warn(
+                '[useTemplates] Error fetching master units:',
+                productsError
+              );
             } else {
               // Tạo map để lookup unit nhanh
               const unitMap = new Map<number, string>();
@@ -201,14 +207,18 @@ export const useTemplates = (
 
     (async () => {
       try {
-        console.log('[useTemplates] Starting query from kv_supplier_product_templates...');
+        console.log(
+          '[useTemplates] Starting query from kv_supplier_product_templates...'
+        );
 
         const { data, error: queryError } = await supabase
           .from('kv_supplier_product_templates')
-          .select('product_id, product_code, product_name, last_purchase_date, child_units')
+          .select(
+            'product_id, product_code, product_name, last_purchase_date, child_units'
+          )
           .eq('supplier_id', currentSupplierId)
           .order('last_purchase_date', { ascending: false });
-        
+
         // ⚠️ Note: kv_supplier_product_templates không có images field
         // Nếu dùng fallback này, images sẽ là null
 
@@ -222,7 +232,9 @@ export const useTemplates = (
         }
 
         if (!isMountedRef.current) {
-          console.log('[useTemplates] Component unmounted, skipping state update');
+          console.log(
+            '[useTemplates] Component unmounted, skipping state update'
+          );
           return;
         }
 
@@ -234,7 +246,11 @@ export const useTemplates = (
           return;
         }
 
-        console.log('[useTemplates] Raw data received:', data?.length || 0, 'items');
+        console.log(
+          '[useTemplates] Raw data received:',
+          data?.length || 0,
+          'items'
+        );
 
         const seenProductIds = new Set<number>();
         const processed: TemplateProduct[] = (data || [])
@@ -269,7 +285,10 @@ export const useTemplates = (
             .in('kiotviet_id', productIds);
 
           if (productsError) {
-            console.warn('[useTemplates] Error fetching master units:', productsError);
+            console.warn(
+              '[useTemplates] Error fetching master units:',
+              productsError
+            );
           } else {
             // Tạo map để lookup unit nhanh
             const unitMap = new Map<number, string>();

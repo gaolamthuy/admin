@@ -1,13 +1,13 @@
 /**
  * PaymentRealtimeDemo Component
  * Component demo để minh họa cách sử dụng usePaymentRealtime hook
- * 
+ *
  * @module components/payments/PaymentRealtimeDemo
- * 
+ *
  * @example
  * ```tsx
  * import { PaymentRealtimeDemo } from '@/components/payments/PaymentRealtimeDemo';
- * 
+ *
  * function App() {
  *   return <PaymentRealtimeDemo />;
  * }
@@ -17,7 +17,13 @@
 import { useState } from 'react';
 import { usePaymentRealtime } from '@/hooks/usePaymentRealtime';
 import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Wifi, WifiOff, RefreshCw, AlertCircle } from 'lucide-react';
@@ -28,17 +34,16 @@ import { Wifi, WifiOff, RefreshCw, AlertCircle } from 'lucide-react';
  */
 export function PaymentRealtimeDemo() {
   const [filterId, setFilterId] = useState<number | undefined>(undefined);
-  const [eventTypes, setEventTypes] = useState<Array<'INSERT' | 'UPDATE' | 'DELETE'>>([
-    'INSERT',
-    'UPDATE',
-    'DELETE',
-  ]);
+  const [eventTypes, setEventTypes] = useState<
+    Array<'INSERT' | 'UPDATE' | 'DELETE'>
+  >(['INSERT', 'UPDATE', 'DELETE']);
 
-  const { payments, isConnected, error, count, refetch, reconnect } = usePaymentRealtime({
-    paymentId: filterId,
-    eventTypes,
-    enabled: true,
-  });
+  const { payments, isConnected, error, count, refetch, reconnect } =
+    usePaymentRealtime({
+      paymentId: filterId,
+      eventTypes,
+      enabled: true,
+    });
 
   return (
     <div className="container mx-auto p-6 space-y-6">
@@ -76,28 +81,18 @@ export function PaymentRealtimeDemo() {
           {error && (
             <Alert variant="destructive">
               <AlertCircle className="h-4 w-4" />
-              <AlertDescription>
-                {error.message}
-              </AlertDescription>
+              <AlertDescription>{error.message}</AlertDescription>
             </Alert>
           )}
 
           {/* Controls */}
           <div className="flex flex-wrap gap-2">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => refetch()}
-            >
+            <Button variant="outline" size="sm" onClick={() => refetch()}>
               <RefreshCw className="w-4 h-4 mr-2" />
               Refetch
             </Button>
             {!isConnected && (
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => reconnect()}
-              >
+              <Button variant="outline" size="sm" onClick={() => reconnect()}>
                 Reconnect
               </Button>
             )}
@@ -118,7 +113,7 @@ export function PaymentRealtimeDemo() {
               className="w-32 px-3 py-1 border rounded-md"
               placeholder="Payment ID"
               value={filterId || ''}
-              onChange={(e) =>
+              onChange={e =>
                 setFilterId(
                   e.target.value ? parseInt(e.target.value, 10) : undefined
                 )
@@ -130,17 +125,17 @@ export function PaymentRealtimeDemo() {
           <div className="space-y-2">
             <label className="text-sm font-medium">Listen to events:</label>
             <div className="flex gap-4">
-              {(['INSERT', 'UPDATE', 'DELETE'] as const).map((eventType) => (
+              {(['INSERT', 'UPDATE', 'DELETE'] as const).map(eventType => (
                 <label key={eventType} className="flex items-center gap-2">
                   <input
                     type="checkbox"
                     checked={eventTypes.includes(eventType)}
-                    onChange={(e) => {
+                    onChange={e => {
                       if (e.target.checked) {
                         setEventTypes([...eventTypes, eventType]);
                       } else {
                         setEventTypes(
-                          eventTypes.filter((et) => et !== eventType)
+                          eventTypes.filter(et => et !== eventType)
                         );
                       }
                     }}
@@ -160,7 +155,7 @@ export function PaymentRealtimeDemo() {
               </p>
             ) : (
               <div className="space-y-2">
-                {payments.map((payment) => (
+                {payments.map(payment => (
                   <Card key={payment.id} className="p-4">
                     <div className="flex items-center justify-between">
                       <div>
@@ -180,4 +175,3 @@ export function PaymentRealtimeDemo() {
     </div>
   );
 }
-

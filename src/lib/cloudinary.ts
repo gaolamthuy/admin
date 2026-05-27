@@ -94,7 +94,13 @@ async function generateCloudinarySignature(
 export async function uploadImageToCloudinary(
   params: UploadImageParams
 ): Promise<CloudinaryUploadResult> {
-  const { file, kiotvietId, folderOverride, useSignedUpload = true, context } = params;
+  const {
+    file,
+    kiotvietId,
+    folderOverride,
+    useSignedUpload = true,
+    context,
+  } = params;
 
   // Đọc cấu hình từ env
   const cloudName = env.VITE_CLOUDINARY_CLOUD_NAME;

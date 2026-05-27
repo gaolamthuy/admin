@@ -1,24 +1,24 @@
 /**
  * usePaymentRealtime Hook
  * Hook để listen realtime changes từ table glt_payment trên Supabase
- * 
+ *
  * Sử dụng Supabase Realtime để tự động cập nhật UI khi có thay đổi trong database
- * 
+ *
  * @module hooks/usePaymentRealtime
- * 
+ *
  * @example
  * ```tsx
  * // Listen tất cả payments
  * const { payments, isConnected, error } = usePaymentRealtime();
- * 
+ *
  * // Listen một payment cụ thể
- * const { payments, isConnected } = usePaymentRealtime({ 
- *   paymentId: 123 
+ * const { payments, isConnected } = usePaymentRealtime({
+ *   paymentId: 123
  * });
- * 
+ *
  * // Chỉ listen INSERT và UPDATE events
- * const { payments } = usePaymentRealtime({ 
- *   eventTypes: ['INSERT', 'UPDATE'] 
+ * const { payments } = usePaymentRealtime({
+ *   eventTypes: ['INSERT', 'UPDATE']
  * });
  * ```
  */
@@ -26,16 +26,16 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { RealtimeChannel } from '@supabase/supabase-js';
 import { supabase } from '@/lib/supabase';
-import type { 
-  Payment, 
-  RealtimeEventType, 
+import type {
+  Payment,
+  RealtimeEventType,
   RealtimePayload,
-  UsePaymentRealtimeOptions 
+  UsePaymentRealtimeOptions,
 } from '@/types/payment';
 
 /**
  * Return type cho usePaymentRealtime hook
- * 
+ *
  * @interface UsePaymentRealtimeReturn
  */
 export interface UsePaymentRealtimeReturn {
@@ -44,29 +44,29 @@ export interface UsePaymentRealtimeReturn {
    * Tự động cập nhật khi có thay đổi từ database
    */
   payments: Payment[];
-  
+
   /**
    * Trạng thái kết nối WebSocket
    * true = đã kết nối, false = chưa kết nối hoặc đã disconnect
    */
   isConnected: boolean;
-  
+
   /**
    * Error nếu có lỗi xảy ra
    */
   error: Error | null;
-  
+
   /**
    * Số lượng payments hiện tại
    */
   count: number;
-  
+
   /**
    * Function để manually refetch payments từ database
    * Hữu ích khi muốn sync lại data sau khi mất kết nối
    */
   refetch: () => Promise<void>;
-  
+
   /**
    * Function để manually subscribe lại
    * Hữu ích khi muốn reconnect sau khi disconnect
@@ -76,10 +76,10 @@ export interface UsePaymentRealtimeReturn {
 
 /**
  * Hook để listen realtime changes từ table glt_payment
- * 
+ *
  * @param options - Options để configure realtime subscription
  * @returns Object chứa payments data, connection status, và helper functions
- * 
+ *
  * @remarks
  * - Hook này tự động subscribe khi component mount và unsubscribe khi unmount
  * - Khi có thay đổi trong database, payments array sẽ tự động cập nhật
@@ -134,7 +134,9 @@ export function usePaymentRealtime(
       }
     } catch (err) {
       if (isMountedRef.current) {
-        setError(err instanceof Error ? err : new Error('Failed to fetch payments'));
+        setError(
+          err instanceof Error ? err : new Error('Failed to fetch payments')
+        );
         console.error('Error fetching payments:', err);
       }
     }
@@ -142,65 +144,68 @@ export function usePaymentRealtime(
 
   /**
    * Xử lý khi nhận được realtime event từ Supabase
-   * 
+   *
    * @param payload - Realtime payload từ Supabase
    */
-  const handleRealtimeEvent = useCallback((payload: {
-    eventType: RealtimeEventType;
-    new?: Record<string, unknown>;
-    old?: Record<string, unknown>;
-  }) => {
-    const { eventType, new: newRecord, old: oldRecord } = payload;
+  const handleRealtimeEvent = useCallback(
+    (payload: {
+      eventType: RealtimeEventType;
+      new?: Record<string, unknown>;
+      old?: Record<string, unknown>;
+    }) => {
+      const { eventType, new: newRecord, old: oldRecord } = payload;
 
-    setPayments((currentPayments) => {
-      const updatedPayments = [...currentPayments];
+      setPayments(currentPayments => {
+        const updatedPayments = [...currentPayments];
 
-      switch (eventType) {
-        case 'INSERT':
-          // Thêm payment mới vào đầu danh sách
-          if (newRecord) {
-            // Nếu có paymentId filter, chỉ thêm nếu match
-            if (!paymentId || (newRecord.id as number) === paymentId) {
-              updatedPayments.unshift(newRecord as Payment);
+        switch (eventType) {
+          case 'INSERT':
+            // Thêm payment mới vào đầu danh sách
+            if (newRecord) {
+              // Nếu có paymentId filter, chỉ thêm nếu match
+              if (!paymentId || (newRecord.id as number) === paymentId) {
+                updatedPayments.unshift(newRecord as Payment);
+              }
             }
-          }
-          break;
+            break;
 
-        case 'UPDATE':
-          // Cập nhật payment existing
-          if (newRecord) {
-            const index = updatedPayments.findIndex(
-              (p) => p.id === (newRecord.id as number)
-            );
-            if (index !== -1) {
-              updatedPayments[index] = newRecord as Payment;
-            } else if (!paymentId || (newRecord.id as number) === paymentId) {
-              // Nếu không tìm thấy trong list hiện tại, thêm vào
-              updatedPayments.unshift(newRecord as Payment);
+          case 'UPDATE':
+            // Cập nhật payment existing
+            if (newRecord) {
+              const index = updatedPayments.findIndex(
+                p => p.id === (newRecord.id as number)
+              );
+              if (index !== -1) {
+                updatedPayments[index] = newRecord as Payment;
+              } else if (!paymentId || (newRecord.id as number) === paymentId) {
+                // Nếu không tìm thấy trong list hiện tại, thêm vào
+                updatedPayments.unshift(newRecord as Payment);
+              }
             }
-          }
-          break;
+            break;
 
-        case 'DELETE':
-          // Xóa payment khỏi danh sách
-          if (oldRecord) {
-            const index = updatedPayments.findIndex(
-              (p) => p.id === (oldRecord.id as number)
-            );
-            if (index !== -1) {
-              updatedPayments.splice(index, 1);
+          case 'DELETE':
+            // Xóa payment khỏi danh sách
+            if (oldRecord) {
+              const index = updatedPayments.findIndex(
+                p => p.id === (oldRecord.id as number)
+              );
+              if (index !== -1) {
+                updatedPayments.splice(index, 1);
+              }
             }
-          }
-          break;
-      }
+            break;
+        }
 
-      return updatedPayments;
-    });
-  }, [paymentId]);
+        return updatedPayments;
+      });
+    },
+    [paymentId]
+  );
 
   /**
    * Subscribe vào Supabase Realtime channel
-   * 
+   *
    * @returns Channel instance để có thể unsubscribe sau
    */
   const subscribe = useCallback(() => {
@@ -226,7 +231,7 @@ export function usePaymentRealtime(
           table: 'glt_payment',
           ...(paymentId && { filter: `id=eq.${paymentId}` }),
         },
-        (payload) => {
+        payload => {
           const eventType = payload.eventType as RealtimeEventType;
 
           // Chỉ xử lý nếu event type nằm trong danh sách muốn listen
@@ -239,10 +244,10 @@ export function usePaymentRealtime(
           }
         }
       )
-      .subscribe((status) => {
+      .subscribe(status => {
         if (isMountedRef.current) {
           setIsConnected(status === 'SUBSCRIBED');
-          
+
           if (status === 'SUBSCRIBED') {
             // Reset reconnect attempts khi đã connect thành công
             reconnectAttemptsRef.current = 0;
@@ -269,12 +274,17 @@ export function usePaymentRealtime(
     }
 
     // Tính delay với exponential backoff (max 30 giây)
-    const delay = Math.min(1000 * Math.pow(2, reconnectAttemptsRef.current), 30000);
+    const delay = Math.min(
+      1000 * Math.pow(2, reconnectAttemptsRef.current),
+      30000
+    );
     reconnectAttemptsRef.current += 1;
 
     reconnectTimeoutRef.current = window.setTimeout(() => {
       if (isMountedRef.current && enabled) {
-        console.log(`🔄 Attempting to reconnect... (attempt ${reconnectAttemptsRef.current})`);
+        console.log(
+          `🔄 Attempting to reconnect... (attempt ${reconnectAttemptsRef.current})`
+        );
         subscribe();
       }
     }, delay);
@@ -339,5 +349,3 @@ export function usePaymentRealtime(
     reconnect,
   };
 }
-
-

@@ -28,12 +28,12 @@ const VN_TIMEZONE = 'Asia/Ho_Chi_Minh';
 /**
  * Parse date string to UTC (database returns UTC timestamps)
  * Tất cả date operations đều dùng UTC để đảm bảo chính xác
- * 
+ *
  * ✅ Đơn giản hóa: dayjs.utc() có thể parse trực tiếp tất cả format từ database
  * - timestamp with time zone: '2026-01-08 08:56:53.354+00' ✅
  * - timestamp without time zone: '2022-08-10 04:44:38.187' ✅ (parse như UTC vì database đã lưu UTC)
  * - Date object: parse trực tiếp ✅
- * 
+ *
  * @param date - Date string or Date object (usually UTC from database)
  * @returns dayjs object in UTC, null nếu không parse được
  */
@@ -41,29 +41,29 @@ function parseToUTC(
   date: string | Date | dayjs.Dayjs | null | undefined
 ): dayjs.Dayjs | null {
   if (!date) return null;
-  
+
   // Nếu đã là dayjs object, convert về UTC
   if (dayjs.isDayjs(date)) {
     return date.utc();
   }
-  
+
   // Nếu là Date object, parse trực tiếp
   if (date instanceof Date) {
     return dayjs.utc(date);
   }
-  
+
   // Nếu là string, dayjs.utc() có thể parse trực tiếp tất cả format từ database
   // ✅ Database đã lưu UTC thực sự (kv_invoices, glt_payment đã được chuẩn hóa)
   // Format: '2026-01-08 08:56:53.354+00' hoặc '2022-08-10 04:44:38.187'
   if (typeof date === 'string') {
     const dateStr = date.trim();
-    
+
     // dayjs.utc() có thể parse trực tiếp format từ database
     const parsed = dayjs.utc(dateStr);
     if (parsed.isValid()) {
       return parsed;
     }
-    
+
     // Fallback: thử parse với Date object (tự động detect timezone)
     try {
       const dateObj = new Date(dateStr);
@@ -73,10 +73,10 @@ function parseToUTC(
     } catch {
       // Ignore
     }
-    
+
     return null;
   }
-  
+
   return null;
 }
 
@@ -198,7 +198,7 @@ export function formatTimeAgo(
   // Nhưng thực tế đây là 2 ngày khác nhau → cần so sánh YYYY-MM-DD
   const nowDateStr = now.format('YYYY-MM-DD');
   const targetDateStr = targetDate.format('YYYY-MM-DD');
-  
+
   // So sánh ngày tháng để xác định "Hôm nay", "Hôm qua" chính xác
   const isSameDay = nowDateStr === targetDateStr;
   // Clone now để tránh mutate, rồi subtract 1 ngày để lấy ngày hôm qua
@@ -211,7 +211,7 @@ export function formatTimeAgo(
   const hoursDiff = now.diff(targetDate, 'hour');
   const calendarDaysDiff = now.diff(targetDate, 'day', true); // true = floating point
   const daysDiff = Math.floor(calendarDaysDiff); // Làm tròn xuống để lấy số ngày nguyên
-  
+
   const weeksDiff = Math.floor(daysDiff / 7);
   const monthsDiff = now.diff(targetDate, 'month');
   const yearsDiff = now.diff(targetDate, 'year');

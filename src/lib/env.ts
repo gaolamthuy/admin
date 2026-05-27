@@ -28,6 +28,11 @@ const envSchema = z.object({
     .describe(
       'Backend API base URL, e.g. https://windmill.gaolamthuy.vn/api/r/main'
     ),
+  VITE_BACKEND_TOKEN: z
+    .string()
+    .min(1, 'Backend token is required')
+    .optional()
+    .describe('Windmill API token'),
 
   // Node environment
   NODE_ENV: z
