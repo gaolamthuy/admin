@@ -343,51 +343,46 @@ const ProductCardComponent: React.FC<
         </CardContent>
 
         {/* Card Footer */}
-        <CardFooter className="p-4 pt-0 flex flex-col gap-3">
-          {/* Line 1: Print Buttons - Tất cả users (In 10Kg, In 5Kg, ...) */}
-          <div className="flex gap-2 justify-end w-full">
-            {/* 10Kg Button */}
+        <CardFooter className="p-3 sm:p-4 pt-0 flex flex-col gap-2">
+          <div className="flex gap-1.5 w-full">
             <Button
               onClick={() => handleQuickPrint(10)}
               variant="default"
               size="sm"
+              className="flex-1 h-8 text-xs"
             >
-              In 10Kg
+              10Kg
             </Button>
 
-            {/* 5Kg Button */}
             <Button
               onClick={() => handleQuickPrint(5)}
               variant="outline"
               size="sm"
+              className="flex-1 h-8 text-xs"
             >
-              In 5Kg
+              5Kg
             </Button>
 
-            {/* Custom Print Button */}
             <Button
               onClick={() => setIsPrintModalOpen(true)}
               variant="ghost"
               size="sm"
+              className="h-8 w-8 px-0"
             >
               <MoreHorizontal className="h-4 w-4" />
             </Button>
-          </div>
 
-          {/* Line 2: Admin Buttons - Chỉ admin thấy (Xem) */}
-          {isAdmin && (
-            <div className="flex gap-2 justify-end w-full pt-2 border-t border-border">
-              {/* View Button */}
+            {isAdmin && (
               <Button
                 size="sm"
                 variant="outline"
                 onClick={() => onShow?.(product.id)}
+                className="h-8 w-8 px-0"
               >
-                <Eye className="h-4 w-4 mr-2" />
-                Xem
+                <Eye className="h-4 w-4" />
               </Button>
-            </div>
-          )}
+            )}
+          </div>
         </CardFooter>
       </Card>
 
