@@ -77,7 +77,7 @@ async function callUpdateProductPrice(
 export const useUpdateProductPrice = () => {
   return useMutation({
     mutationFn: callUpdateProductPrice,
-    onSuccess: (result) => {
+    onSuccess: result => {
       if (result.message && !result.updated) {
         toast.info(result.message);
       } else {

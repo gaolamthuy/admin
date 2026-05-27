@@ -65,7 +65,14 @@ export const useUploadProductImage = () => {
         throw new Error('Chưa đăng nhập');
       }
 
-      const { file, kiotvietId, role, alt, description, useCloudflareFunction = true } = params;
+      const {
+        file,
+        kiotvietId,
+        role,
+        alt,
+        description,
+        useCloudflareFunction = true,
+      } = params;
 
       // 1. Validate file
       try {
@@ -136,7 +143,8 @@ export const useUploadProductImage = () => {
 
       return {
         cloudinaryResult,
-        supabaseRecord: supabaseRecord as UploadProductImageResult['supabaseRecord'],
+        supabaseRecord:
+          supabaseRecord as UploadProductImageResult['supabaseRecord'],
       };
     },
     onSuccess: (_data, variables) => {
@@ -156,4 +164,3 @@ export const useUploadProductImage = () => {
     },
   });
 };
-

@@ -261,11 +261,7 @@ export const CustomersList = () => {
                             showEllipsisAfter = true;
                           } else if (currentPage >= totalPages - 2) {
                             // Ở cuối: hiển thị các trang cuối (không hiển thị trang cuối vì đã có showLastPage)
-                            for (
-                              let i = totalPages - 3;
-                              i < totalPages;
-                              i++
-                            ) {
+                            for (let i = totalPages - 3; i < totalPages; i++) {
                               pagesToShow.push(i);
                             }
                             showEllipsisBefore = true;

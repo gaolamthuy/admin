@@ -177,7 +177,8 @@ export const ProductImageUploadDialog = ({
             </div>
             {selectedFile && (
               <p className="text-sm text-muted-foreground">
-                {selectedFile.name} ({(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
+                {selectedFile.name} (
+                {(selectedFile.size / 1024 / 1024).toFixed(2)} MB)
               </p>
             )}
           </div>
@@ -228,4 +229,3 @@ export const ProductImageUploadDialog = ({
     </Dialog>
   );
 };
-

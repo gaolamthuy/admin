@@ -11,7 +11,11 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Loader2, Search } from 'lucide-react';
 import { usePayments, type Payment } from '@/hooks/usePayments';
-import { formatDate, formatTimeAgo, formatDateTimeWithSeconds } from '@/utils/date';
+import {
+  formatDate,
+  formatTimeAgo,
+  formatDateTimeWithSeconds,
+} from '@/utils/date';
 import { useIsAdmin } from '@/hooks/useAuth';
 import {
   Pagination,
@@ -32,7 +36,7 @@ export const PaymentsList = () => {
   // ⚠️ Phân quyền: Admin lấy full query, Staff chỉ lấy 20 records
   const { data: payments = [], isLoading } = usePayments(isAdmin);
   const [searchTerm, setSearchTerm] = useState('');
-  
+
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 20;
@@ -147,7 +151,8 @@ export const PaymentsList = () => {
       .map(([date, items]) => {
         // Lấy datetime thực tế từ payment đầu tiên để tính days ago chính xác
         const firstPayment = items[0];
-        const displayTime = firstPayment?.received_at ?? firstPayment?.created_at;
+        const displayTime =
+          firstPayment?.received_at ?? firstPayment?.created_at;
         return { date, items, displayTime: displayTime || null };
       });
   }, [paginatedPayments]);
@@ -180,7 +185,9 @@ export const PaymentsList = () => {
             </div>
           ) : filteredPayments.length === 0 ? (
             <div className="text-center py-12">
-              <p className="text-muted-foreground">Chưa có giao dịch thanh toán nào</p>
+              <p className="text-muted-foreground">
+                Chưa có giao dịch thanh toán nào
+              </p>
             </div>
           ) : (
             <>
@@ -199,15 +206,22 @@ export const PaymentsList = () => {
                     <div className="flex items-baseline justify-between">
                       <div className="flex items-center gap-2 flex-wrap">
                         {group.date === 'unknown' ? (
-                          <span className="text-sm font-semibold">Không rõ ngày</span>
-                        ) : (() => {
+                          <span className="text-sm font-semibold">
+                            Không rõ ngày
+                          </span>
+                        ) : (
+                          (() => {
                             // Format date group: dddd, dd/MM/yyyy với times ago trong badge
-                            const dateStr = group.displayTime || `${group.date}T00:00:00Z`;
-                            
+                            const dateStr =
+                              group.displayTime || `${group.date}T00:00:00Z`;
+
                             // Format với thứ trong tuần: dddd, DD/MM/YYYY
                             // dddd = tên đầy đủ của thứ (thứ hai, thứ ba, ...) với locale 'vi'
-                            let formattedDate = formatDate(dateStr, 'dddd, DD/MM/YYYY');
-                            
+                            let formattedDate = formatDate(
+                              dateStr,
+                              'dddd, DD/MM/YYYY'
+                            );
+
                             // Capitalize chữ cái đầu của weekday để đẹp hơn
                             // Ví dụ: "thứ hai" -> "Thứ Hai"
                             const parts = formattedDate.split(', ');
@@ -217,26 +231,32 @@ export const PaymentsList = () => {
                               // Capitalize từng từ trong weekday
                               const capitalizedWeekday = weekday
                                 .split(' ')
-                                .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                                .map(
+                                  word =>
+                                    word.charAt(0).toUpperCase() + word.slice(1)
+                                )
                                 .join(' ');
                               formattedDate = `${capitalizedWeekday}, ${datePart}`;
                             }
-                            
+
                             const daysAgoText = formatTimeAgo(dateStr, {
                               includeSeconds: false,
                               includeMinutes: false,
                               includeHours: false,
                             });
-                            
+
                             return (
                               <>
-                                <span className="text-sm font-semibold">{formattedDate}</span>
+                                <span className="text-sm font-semibold">
+                                  {formattedDate}
+                                </span>
                                 <Badge variant="outline" className="text-xs">
                                   {daysAgoText}
                                 </Badge>
                               </>
                             );
-                          })()}
+                          })()
+                        )}
                       </div>
                       <span className="text-xs text-muted-foreground">
                         {group.items.length} giao dịch
@@ -245,7 +265,8 @@ export const PaymentsList = () => {
 
                     <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4">
                       {group.items.map(payment => {
-                        const displayTime = payment.received_at ?? payment.created_at;
+                        const displayTime =
+                          payment.received_at ?? payment.created_at;
                         const providerInfo = getProviderInfo(payment.provider);
 
                         return (
@@ -281,7 +302,9 @@ export const PaymentsList = () => {
 
                             <div className="flex flex-col gap-1 text-xs">
                               <div className="flex items-center justify-between gap-2">
-                                <span className="text-muted-foreground">Thời gian</span>
+                                <span className="text-muted-foreground">
+                                  Thời gian
+                                </span>
                                 <span className="font-medium">
                                   {displayTime
                                     ? formatDateTimeWithSeconds(displayTime)
@@ -289,7 +312,9 @@ export const PaymentsList = () => {
                                 </span>
                               </div>
                               <div className="flex items-center justify-between gap-2">
-                                <span className="text-muted-foreground">Số tài khoản</span>
+                                <span className="text-muted-foreground">
+                                  Số tài khoản
+                                </span>
                                 <span className="font-mono">
                                   {payment.account_number || '-'}
                                 </span>
@@ -298,7 +323,9 @@ export const PaymentsList = () => {
                                 payment.balance !== null &&
                                 payment.balance !== undefined && (
                                   <div className="flex items-center justify-between gap-2">
-                                    <span className="text-muted-foreground">Số dư</span>
+                                    <span className="text-muted-foreground">
+                                      Số dư
+                                    </span>
                                     <span className="font-mono">
                                       {payment.balance.toLocaleString('vi-VN', {
                                         style: 'currency',
@@ -308,7 +335,9 @@ export const PaymentsList = () => {
                                   </div>
                                 )}
                               <div className="flex items-center justify-between gap-2">
-                                <span className="text-muted-foreground">Mã giao dịch</span>
+                                <span className="text-muted-foreground">
+                                  Mã giao dịch
+                                </span>
                                 <span className="font-mono text-[11px]">
                                   {payment.ref || '-'}
                                 </span>
@@ -336,7 +365,7 @@ export const PaymentsList = () => {
                   </section>
                 ))}
               </div>
-              
+
               {/* Pagination */}
               {totalPages > 1 && (
                 <div className="mt-6">
@@ -454,4 +483,3 @@ export const PaymentsList = () => {
 };
 
 export default PaymentsList;
-

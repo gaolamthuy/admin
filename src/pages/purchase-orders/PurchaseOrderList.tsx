@@ -50,7 +50,6 @@ export const PurchaseOrderList = () => {
     }
   }, [currentPage, totalPages]);
 
-
   return (
     <div className="container mx-auto py-6 space-y-6">
       <Card>
@@ -75,7 +74,10 @@ export const PurchaseOrderList = () => {
               {/* Card Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                 {paginatedOrders.map(order => (
-                  <Card key={order.id} className="hover:shadow-lg transition-shadow">
+                  <Card
+                    key={order.id}
+                    className="hover:shadow-lg transition-shadow"
+                  >
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
@@ -94,7 +96,9 @@ export const PurchaseOrderList = () => {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <Calendar className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-muted-foreground">Ngày mua:</span>
+                            <span className="text-muted-foreground">
+                              Ngày mua:
+                            </span>
                           </div>
                           <div className="text-right">
                             {order.purchase_date ? (
@@ -115,7 +119,9 @@ export const PurchaseOrderList = () => {
                         <div className="flex items-center justify-between">
                           <div className="flex items-center gap-2">
                             <Package className="h-4 w-4 text-muted-foreground" />
-                            <span className="text-muted-foreground">Số lượng:</span>
+                            <span className="text-muted-foreground">
+                              Số lượng:
+                            </span>
                           </div>
                           <div className="text-right font-medium">
                             {order.total_items || 0} sản phẩm
@@ -139,10 +145,13 @@ export const PurchaseOrderList = () => {
                               >
                                 <div className="flex-1 min-w-0">
                                   <p className="font-medium truncate">
-                                    {item.product_name || item.product_code || '-'}
+                                    {item.product_name ||
+                                      item.product_code ||
+                                      '-'}
                                   </p>
                                   <p className="text-xs text-muted-foreground">
-                                    {item.product_code && `Mã: ${item.product_code}`}
+                                    {item.product_code &&
+                                      `Mã: ${item.product_code}`}
                                     {item.quantity &&
                                       ` • ${Number(item.quantity).toLocaleString('vi-VN')} kg`}
                                   </p>
@@ -242,11 +251,7 @@ export const PurchaseOrderList = () => {
                             showEllipsisAfter = true;
                           } else if (currentPage >= totalPages - 2) {
                             // Ở cuối: hiển thị các trang cuối (không hiển thị trang cuối vì đã có showLastPage)
-                            for (
-                              let i = totalPages - 3;
-                              i < totalPages;
-                              i++
-                            ) {
+                            for (let i = totalPages - 3; i < totalPages; i++) {
                               pagesToShow.push(i);
                             }
                             showEllipsisBefore = true;

@@ -251,18 +251,22 @@ export const PurchaseOrderCreate = () => {
                     const lastPurchaseDates = templates
                       .map(t => t.last_purchase_date)
                       .filter((date): date is string => Boolean(date))
-                      .sort((a, b) => new Date(b).getTime() - new Date(a).getTime());
+                      .sort(
+                        (a, b) => new Date(b).getTime() - new Date(a).getTime()
+                      );
                     const latestDate = lastPurchaseDates[0];
                     return latestDate ? (
                       <p className="text-sm text-muted-foreground">
-                        Lần cuối: {formatDate(latestDate)} ({formatDaysAgo(latestDate)})
+                        Lần cuối: {formatDate(latestDate)} (
+                        {formatDaysAgo(latestDate)})
                       </p>
                     ) : null;
                   })()}
                   {/* ⭐ Mới: Hiển thị last_master_unit_quantity để gợi ý */}
                   {form.selectedSupplier.last_master_unit_quantity && (
                     <p className="text-sm text-muted-foreground">
-                      Gợi ý số lượng: {form.selectedSupplier.last_master_unit_quantity} kg
+                      Gợi ý số lượng:{' '}
+                      {form.selectedSupplier.last_master_unit_quantity} kg
                     </p>
                   )}
                   {/* ⭐ Mới: Hiển thị tổng số lượng theo child units và master unit */}
@@ -293,13 +297,10 @@ export const PurchaseOrderCreate = () => {
 
                     // Lấy master unit từ product đầu tiên (nếu có)
                     const firstProduct = selectedProducts[0];
-                    const masterUnit =
-                      firstProduct.master_unit || 'kg';
+                    const masterUnit = firstProduct.master_unit || 'kg';
 
                     // Format child units: "8 bao 50kg + 1 bao 60kg"
-                    const childUnitsText = Array.from(
-                      childUnitTotals.entries()
-                    )
+                    const childUnitsText = Array.from(childUnitTotals.entries())
                       .map(([unit, total]) => `${total} ${unit}`)
                       .join(' + ');
 

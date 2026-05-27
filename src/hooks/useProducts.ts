@@ -9,7 +9,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useSession } from '@/hooks/useAuth';
-import type { Product } from '@/types';
+import type { Product, CostAnalysis, PricingInfo } from '@/types';
 
 /**
  * Product filters interface
@@ -64,7 +64,9 @@ export const useProducts = (filters: ProductFilters = {}) => {
             cost_diff_from_latest_po,
             glt_images,
             kv_images,
-            kiotviet_status
+            kiotviet_status,
+            cost_analysis,
+            pricing_info
           `
         )
         .eq('is_active', true);
@@ -151,24 +153,29 @@ export const useProducts = (filters: ProductFilters = {}) => {
       const products: Product[] = (data || [])
         .map(p => {
           const productDetails = productMap.get(p.product_id);
-          
+
           // Parse kv_images từ JSONB (từ kv_products.images - text[] đã convert sang jsonb)
           // kv_images là array of strings (URLs từ KiotViet)
           // ⭐ Ưu tiên kv_images đầu tiên cho ProductList
           const kvImagesFromView = (p.kv_images as string[] | null) || [];
-          
+
           // Parse glt_images từ JSONB (từ glt_product_images)
           // View trả về glt_images dưới dạng JSONB array với structure:
           // [{ id, role, url, url_with_rev, path, width, height, format, rev, ... }]
           // Chúng ta chỉ cần extract URL cho Product.images (string[])
-          const gltImagesFromView = (p.glt_images as Array<{ url?: string; url_with_rev?: string }> | null) || [];
+          const gltImagesFromView =
+            (p.glt_images as Array<{
+              url?: string;
+              url_with_rev?: string;
+            }> | null) || [];
           const gltImageUrls = gltImagesFromView
             .map(img => img.url_with_rev || img.url)
             .filter((url): url is string => Boolean(url));
-          
+
           // Merge cả 2 sources: ưu tiên kv_images (từ KiotViet), fallback về glt_images (có cache busting với rev)
-          const imageUrls = kvImagesFromView.length > 0 ? kvImagesFromView : gltImageUrls;
-          
+          const imageUrls =
+            kvImagesFromView.length > 0 ? kvImagesFromView : gltImageUrls;
+
           return {
             id: Number(p.product_id),
             code: p.product_code || '',
@@ -176,7 +183,8 @@ export const useProducts = (filters: ProductFilters = {}) => {
             name: p.product_name || '',
             full_name: p.product_name || '',
             category_id: p.category_id || 0,
-            category_name: productDetails?.category_name || p.category_name || '',
+            category_name:
+              productDetails?.category_name || p.category_name || '',
             base_price: p.base_price || 0,
             weight: productDetails?.weight || 0,
             unit: productDetails?.unit || '',
@@ -200,12 +208,16 @@ export const useProducts = (filters: ProductFilters = {}) => {
             latestPurchaseCost: p.latest_total_cost_per_unit || null,
             costDiffFromLatestPo: p.cost_diff_from_latest_po || null,
             kiotviet_status: p.kiotviet_status || null,
+            cost_analysis: (p.cost_analysis as CostAnalysis) || null,
+            pricing_info: (p.pricing_info as PricingInfo) || null,
           } as Product & {
             priceDifference?: number | null;
             priceDifferencePercent?: number | null;
             latestPurchaseCost?: number | null;
             costDiffFromLatestPo?: number | null;
             kiotviet_status?: Record<string, unknown> | null;
+            cost_analysis?: CostAnalysis | null;
+            pricing_info?: PricingInfo | null;
           };
         })
         .filter(p => {

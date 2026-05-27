@@ -10,7 +10,6 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useProducts, useProductCategories } from '@/hooks/useProducts';
 import { useIsAdmin } from '@/hooks/useAuth';
-import { useProductPriceDifference } from './hooks/useProductPriceDifference';
 import { useUpdateProductPrice } from './hooks/useUpdateProductPrice';
 import { ProductCardGrid } from './components/ProductCardGrid';
 import { ProductListTable } from './components/ProductListTable';
@@ -113,11 +112,6 @@ export const ProductList = () => {
     requirePurchaseData: false,
   });
 
-  const {
-    products: priceDifferenceProducts = [],
-    loading: priceDifferenceLoading,
-  } = useProductPriceDifference(isAdmin);
-
   const updateProductPrice = useUpdateProductPrice();
   const [updatingPriceId, setUpdatingPriceId] = useState<number | null>(null);
 
@@ -133,13 +127,8 @@ export const ProductList = () => {
   const products = useMemo(() => {
     type ProductWithExtendedFields = Omit<Product, 'id'> & {
       id: string;
-      priceDifference?: number | null;
-      priceDifferencePercent?: number | null;
-      inventoryCost?: number | null;
-      latestPriceDifference?: number | null;
-      latestPriceDifferencePercent?: number | null;
-      latestPurchaseCost?: number | null;
-      costDiffFromLatestPo?: number | null;
+      cost_analysis?: import('@/types/product').CostAnalysis | null;
+      kiotviet_status?: Record<string, unknown> | null;
     };
 
     let mappedProducts: ProductWithExtendedFields[];
@@ -150,69 +139,50 @@ export const ProductList = () => {
         id: String(p.id),
       })) as unknown as ProductWithExtendedFields[];
     } else {
-      mappedProducts = productsRaw.map(product => {
-        const priceDiffData = priceDifferenceProducts.find(
-          p => p.product_id === Number(product.id)
-        );
-
-        const productWithExt = product as unknown as ProductWithExtendedFields;
-        const originalLatestPriceDifference =
-          productWithExt.priceDifference || null;
-        const originalLatestPriceDifferencePercent =
-          productWithExt.priceDifferencePercent || null;
-
-        return {
-          ...product,
-          id: String(product.id),
-          priceDifference:
-            priceDiffData?.cost_difference !== null &&
-            priceDiffData?.cost_difference !== undefined
-              ? priceDiffData.cost_difference
-              : originalLatestPriceDifference,
-          priceDifferencePercent:
-            priceDiffData?.cost_difference_percent !== null &&
-            priceDiffData?.cost_difference_percent !== undefined
-              ? priceDiffData.cost_difference_percent
-              : originalLatestPriceDifferencePercent,
-          inventoryCost: priceDiffData?.inventory_cost || null,
-          latestPriceDifference: originalLatestPriceDifference,
-          latestPriceDifferencePercent: originalLatestPriceDifferencePercent,
-          latestPurchaseCost: productWithExt.latestPurchaseCost || null,
-          costDiffFromLatestPo: productWithExt.costDiffFromLatestPo || null,
-        } as ProductWithExtendedFields;
-      });
+      mappedProducts = productsRaw.map(product => ({
+        ...product,
+        id: String(product.id),
+      })) as unknown as ProductWithExtendedFields[];
     }
 
     if (isAdmin && filters.sortByPriceDifference) {
       mappedProducts.sort((a, b) => {
         const aDiff =
-          a.costDiffFromLatestPo !== null &&
-          a.costDiffFromLatestPo !== undefined
-            ? Math.abs(Number(a.costDiffFromLatestPo))
+          a.cost_analysis?.cost_diff != null
+            ? Math.abs(a.cost_analysis.cost_diff)
             : -Infinity;
         const bDiff =
-          b.costDiffFromLatestPo !== null &&
-          b.costDiffFromLatestPo !== undefined
-            ? Math.abs(Number(b.costDiffFromLatestPo))
+          b.cost_analysis?.cost_diff != null
+            ? Math.abs(b.cost_analysis.cost_diff)
             : -Infinity;
-
         return bDiff - aDiff;
       });
     }
 
     if (isAdmin && filters.sortByKvStatus) {
       mappedProducts.sort((a, b) => {
-        const aStatus = (a as Record<string, unknown>).kiotviet_status as {
-          cost_vs_basecost?: { status?: string; difference?: number | null };
-        } | null | undefined;
-        const bStatus = (b as Record<string, unknown>).kiotviet_status as {
-          cost_vs_basecost?: { status?: string; difference?: number | null };
-        } | null | undefined;
+        const aStatus = (a as Record<string, unknown>).kiotviet_status as
+          | {
+              cost_vs_basecost?: {
+                status?: string;
+                difference?: number | null;
+              };
+            }
+          | null
+          | undefined;
+        const bStatus = (b as Record<string, unknown>).kiotviet_status as
+          | {
+              cost_vs_basecost?: {
+                status?: string;
+                difference?: number | null;
+              };
+            }
+          | null
+          | undefined;
 
         const aCostCheck = aStatus?.cost_vs_basecost;
         const bCostCheck = bStatus?.cost_vs_basecost;
 
-        // matched = 0, mismatched = 1, no data = 2
         const getStatusPriority = (status?: string) => {
           if (status === 'mismatched') return 0;
           if (status === 'matched') return 1;
@@ -224,7 +194,6 @@ export const ProductList = () => {
 
         if (aPriority !== bPriority) return aPriority - bPriority;
 
-        // Both mismatched: sort by absolute difference descending
         const aDiff = Math.abs(Number(aCostCheck?.difference ?? 0));
         const bDiff = Math.abs(Number(bCostCheck?.difference ?? 0));
         return bDiff - aDiff;
@@ -235,7 +204,6 @@ export const ProductList = () => {
   }, [
     isAdmin,
     productsRaw,
-    priceDifferenceProducts,
     filters.sortByPriceDifference,
     filters.sortByKvStatus,
   ]);
@@ -264,7 +232,7 @@ export const ProductList = () => {
     }
   }, [currentPage, totalPages]);
 
-  const isLoading = productsLoading || (isAdmin && priceDifferenceLoading);
+  const isLoading = productsLoading;
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -323,7 +291,7 @@ export const ProductList = () => {
               <ToggleGroup
                 type="single"
                 value={filters.viewMode}
-                onValueChange={(value) => {
+                onValueChange={value => {
                   if (value) {
                     setFilters(prev => ({
                       ...prev,
@@ -361,7 +329,11 @@ export const ProductList = () => {
                 />
               ) : (
                 <ProductListTable
-                  products={paginatedProducts as unknown as Parameters<typeof ProductListTable>[0]['products']}
+                  products={
+                    paginatedProducts as unknown as Parameters<
+                      typeof ProductListTable
+                    >[0]['products']
+                  }
                   loading={isLoading}
                   onShow={handleShow}
                   isAdmin={isAdmin}
@@ -412,104 +384,105 @@ export const ProductList = () => {
 
                   {totalPages > 1 && (
                     <Pagination>
-                    <PaginationContent>
-                      <PaginationItem>
-                        <PaginationPrevious
-                          onClick={() =>
-                            setCurrentPage(prev => Math.max(1, prev - 1))
-                          }
-                          className={
-                            currentPage === 1
-                              ? 'pointer-events-none opacity-50'
-                              : 'cursor-pointer'
-                          }
-                        />
-                      </PaginationItem>
+                      <PaginationContent>
+                        <PaginationItem>
+                          <PaginationPrevious
+                            onClick={() =>
+                              setCurrentPage(prev => Math.max(1, prev - 1))
+                            }
+                            className={
+                              currentPage === 1
+                                ? 'pointer-events-none opacity-50'
+                                : 'cursor-pointer'
+                            }
+                          />
+                        </PaginationItem>
 
-                      {currentPage > 3 && (
-                        <>
-                          <PaginationItem>
-                            <PaginationLink
-                              onClick={() => setCurrentPage(1)}
-                              className="cursor-pointer"
-                            >
-                              1
-                            </PaginationLink>
-                          </PaginationItem>
-                          {currentPage > 4 && (
+                        {currentPage > 3 && (
+                          <>
                             <PaginationItem>
-                              <PaginationEllipsis />
+                              <PaginationLink
+                                onClick={() => setCurrentPage(1)}
+                                className="cursor-pointer"
+                              >
+                                1
+                              </PaginationLink>
                             </PaginationItem>
-                          )}
-                        </>
-                      )}
-
-                      {Array.from({ length: totalPages }, (_, i) => i + 1)
-                        .filter(
-                          page =>
-                            page === 1 ||
-                            page === totalPages ||
-                            (page >= currentPage - 1 && page <= currentPage + 1)
-                        )
-                        .map((page, index, array) => {
-                          const prevPage = array[index - 1];
-                          const showEllipsisBefore =
-                            prevPage && page - prevPage > 1;
-
-                          return (
-                            <div key={page} className="contents">
-                              {showEllipsisBefore && (
-                                <PaginationItem>
-                                  <PaginationEllipsis />
-                                </PaginationItem>
-                              )}
+                            {currentPage > 4 && (
                               <PaginationItem>
-                                <PaginationLink
-                                  onClick={() => setCurrentPage(page)}
-                                  isActive={currentPage === page}
-                                  className="cursor-pointer"
-                                >
-                                  {page}
-                                </PaginationLink>
+                                <PaginationEllipsis />
                               </PaginationItem>
-                            </div>
-                          );
-                        })}
+                            )}
+                          </>
+                        )}
 
-                      {currentPage < totalPages - 2 && (
-                        <>
-                          {currentPage < totalPages - 3 && (
+                        {Array.from({ length: totalPages }, (_, i) => i + 1)
+                          .filter(
+                            page =>
+                              page === 1 ||
+                              page === totalPages ||
+                              (page >= currentPage - 1 &&
+                                page <= currentPage + 1)
+                          )
+                          .map((page, index, array) => {
+                            const prevPage = array[index - 1];
+                            const showEllipsisBefore =
+                              prevPage && page - prevPage > 1;
+
+                            return (
+                              <div key={page} className="contents">
+                                {showEllipsisBefore && (
+                                  <PaginationItem>
+                                    <PaginationEllipsis />
+                                  </PaginationItem>
+                                )}
+                                <PaginationItem>
+                                  <PaginationLink
+                                    onClick={() => setCurrentPage(page)}
+                                    isActive={currentPage === page}
+                                    className="cursor-pointer"
+                                  >
+                                    {page}
+                                  </PaginationLink>
+                                </PaginationItem>
+                              </div>
+                            );
+                          })}
+
+                        {currentPage < totalPages - 2 && (
+                          <>
+                            {currentPage < totalPages - 3 && (
+                              <PaginationItem>
+                                <PaginationEllipsis />
+                              </PaginationItem>
+                            )}
                             <PaginationItem>
-                              <PaginationEllipsis />
+                              <PaginationLink
+                                onClick={() => setCurrentPage(totalPages)}
+                                className="cursor-pointer"
+                              >
+                                {totalPages}
+                              </PaginationLink>
                             </PaginationItem>
-                          )}
-                          <PaginationItem>
-                            <PaginationLink
-                              onClick={() => setCurrentPage(totalPages)}
-                              className="cursor-pointer"
-                            >
-                              {totalPages}
-                            </PaginationLink>
-                          </PaginationItem>
-                        </>
-                      )}
+                          </>
+                        )}
 
-                      <PaginationItem>
-                        <PaginationNext
-                          onClick={() =>
-                            setCurrentPage(prev =>
-                              Math.min(totalPages, prev + 1)
-                            )
-                          }
-                          className={
-                            currentPage === totalPages
-                              ? 'pointer-events-none opacity-50'
-                              : 'cursor-pointer'
-                          }
-                        />
-                      </PaginationItem>
-                    </PaginationContent>
-                  </Pagination>
+                        <PaginationItem>
+                          <PaginationNext
+                            onClick={() =>
+                              setCurrentPage(prev =>
+                                Math.min(totalPages, prev + 1)
+                              )
+                            }
+                            className={
+                              currentPage === totalPages
+                                ? 'pointer-events-none opacity-50'
+                                : 'cursor-pointer'
+                            }
+                          />
+                        </PaginationItem>
+                      </PaginationContent>
+                    </Pagination>
                   )}
                 </div>
               )}

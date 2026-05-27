@@ -104,10 +104,30 @@ export interface KiotVietStatus {
   cost_vs_basecost: KiotVietCostStatus;
 }
 
-/**
- * Product with extended fields for price difference (used in ProductList)
- * @interface ProductWithPriceDifference
- */
+export interface CostAnalysisChildUnitPrice {
+  code: string;
+  full_name: string;
+  base_price: number;
+  conversion_value: number;
+  price_per_master_unit: number | null;
+}
+
+export interface CostAnalysis {
+  cost_diff: number | null;
+  cost_diff_dir: 'up' | 'down' | null;
+  inventory_cost: number | null;
+  latest_po_price: number | null;
+  latest_po_extra_cost: number | null;
+  glt_extra_cost: number | null;
+}
+
+export interface PricingInfo {
+  base_price: number;
+  glt_baseprice_markup: number;
+  new_baseprice_suggestion: number | null;
+  child_unit_prices: CostAnalysisChildUnitPrice[];
+}
+
 export interface ProductWithPriceDifference extends ProductCard {
   priceDifference?: number | null;
   priceDifferencePercent?: number | null;
@@ -117,6 +137,8 @@ export interface ProductWithPriceDifference extends ProductCard {
   latestPurchaseCost?: number | null;
   costDiffFromLatestPo?: number | null;
   kiotviet_status?: KiotVietStatus | null;
+  cost_analysis?: CostAnalysis | null;
+  pricing_info?: PricingInfo | null;
 }
 
 /**

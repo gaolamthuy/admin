@@ -5,13 +5,13 @@ import { ThemeProvider } from '@/components/app-layout/theme/theme-provider';
 import { SidebarInset, SidebarProvider } from '@/components/ui/sidebar';
 import { cn } from '@/lib/utils';
 import type { PropsWithChildren } from 'react';
-import { Sidebar } from './sidebar';
+import { AppSidebar } from './sidebar';
 
 export function Layout({ children }: PropsWithChildren) {
   return (
     <ThemeProvider>
       <SidebarProvider>
-        <Sidebar />
+        <AppSidebar />
         <SidebarInset>
           <Header />
           <main

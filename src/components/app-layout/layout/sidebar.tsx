@@ -1,30 +1,31 @@
-/**
- * Sidebar Component
- * Sử dụng hooks mới từ useAuth
- *
- * @module components/app-layout/layout/sidebar
- */
-
 'use client';
 
-import { Button } from '@/components/ui/button';
 import {
-  Sidebar as ShadcnSidebar,
-  SidebarContent as ShadcnSidebarContent,
-  SidebarHeader as ShadcnSidebarHeader,
-  SidebarRail as ShadcnSidebarRail,
-  SidebarTrigger,
-  useSidebar as useShadcnSidebar,
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarGroup,
+  SidebarGroupContent,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuButton,
+  SidebarMenuItem,
+  SidebarRail,
 } from '@/components/ui/sidebar';
-import { cn } from '@/lib/utils';
 import { useIsAdmin } from '@/hooks/useAuth';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Package, ShoppingCart, Home, Users, CreditCard } from 'lucide-react';
+import {
+  Package,
+  ShoppingCart,
+  Users,
+  CreditCard,
+  Settings,
+} from 'lucide-react';
 
 interface MenuItem {
   key: string;
   label: string;
-  icon: React.ReactNode;
+  icon: React.ElementType;
   path: string;
   adminOnly?: boolean;
 }
@@ -33,31 +34,30 @@ const menuItems: MenuItem[] = [
   {
     key: 'products',
     label: 'Sản phẩm',
-    icon: <Package className="h-4 w-4" />,
+    icon: Package,
     path: '/products',
   },
   {
     key: 'purchase-orders',
     label: 'Nhập hàng',
-    icon: <ShoppingCart className="h-4 w-4" />,
+    icon: ShoppingCart,
     path: '/purchase-orders',
   },
   {
     key: 'payments',
     label: 'Thanh toán',
-    icon: <CreditCard className="h-4 w-4" />,
+    icon: CreditCard,
     path: '/payments',
   },
   {
     key: 'customers',
     label: 'Khách hàng',
-    icon: <Users className="h-4 w-4" />,
+    icon: Users,
     path: '/customers',
   },
 ];
 
-export function Sidebar() {
-  const { open } = useShadcnSidebar();
+export function AppSidebar() {
   const { isAdmin } = useIsAdmin();
   const navigate = useNavigate();
   const location = useLocation();
@@ -67,66 +67,57 @@ export function Sidebar() {
   );
 
   return (
-    <ShadcnSidebar
-      collapsible="icon"
-      className={cn(
-        'border-r',
-        'border-sidebar-border',
-        'bg-sidebar',
-        'text-sidebar-foreground'
-      )}
-    >
-      <ShadcnSidebarRail />
-      <ShadcnSidebarHeader className="border-b border-sidebar-border">
-        <div className="flex items-center gap-2 px-2 py-2">
-          <div className="flex items-center gap-2 flex-1">
-            <Home className="h-5 w-5 text-sidebar-foreground" />
-            {open && (
-              <span className="font-semibold text-sidebar-foreground">
-                Admin Tool
-              </span>
-            )}
-          </div>
-          <SidebarTrigger className="ml-auto" />
-        </div>
-      </ShadcnSidebarHeader>
-      <ShadcnSidebarContent
-        className={cn(
-          'transition-discrete',
-          'duration-200',
-          'flex',
-          'flex-col',
-          'gap-2',
-          'pt-2',
-          'pb-2',
-          {
-            'px-3': open,
-            'px-1': !open,
-          }
-        )}
-      >
-        {filteredMenuItems.map(item => {
-          const isActive = location.pathname.startsWith(item.path);
-          return (
-            <Button
-              key={item.key}
-              variant={isActive ? 'default' : 'ghost'}
-              className={cn(
-                'w-full',
-                'justify-start',
-                'gap-2',
-                !open && 'px-2',
-                !isActive &&
-                  'text-sidebar-foreground hover:bg-sidebar-accent hover:text-sidebar-accent-foreground'
-              )}
-              onClick={() => navigate(item.path)}
-            >
-              {item.icon}
-              {open && <span>{item.label}</span>}
-            </Button>
-          );
-        })}
-      </ShadcnSidebarContent>
-    </ShadcnSidebar>
+    <Sidebar collapsible="icon">
+      <SidebarHeader className="border-b border-sidebar-border">
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton size="lg" onClick={() => navigate('/')}>
+              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
+                <Package className="size-4" />
+              </div>
+              <div className="flex flex-col gap-0.5 leading-none">
+                <span className="font-semibold">Gao Lam Thuy</span>
+                <span className="text-xs text-muted-foreground">Admin</span>
+              </div>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarHeader>
+      <SidebarContent>
+        <SidebarGroup>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {filteredMenuItems.map(item => {
+                const Icon = item.icon;
+                const isActive = location.pathname.startsWith(item.path);
+                return (
+                  <SidebarMenuItem key={item.key}>
+                    <SidebarMenuButton
+                      isActive={isActive}
+                      tooltip={item.label}
+                      onClick={() => navigate(item.path)}
+                    >
+                      <Icon />
+                      <span>{item.label}</span>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                );
+              })}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+      </SidebarContent>
+      <SidebarFooter>
+        <SidebarMenu>
+          <SidebarMenuItem>
+            <SidebarMenuButton tooltip="Cài đặt">
+              <Settings />
+              <span>Cài đặt</span>
+            </SidebarMenuButton>
+          </SidebarMenuItem>
+        </SidebarMenu>
+      </SidebarFooter>
+      <SidebarRail />
+    </Sidebar>
   );
 }

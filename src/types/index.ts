@@ -7,7 +7,15 @@
 export type { Environment } from '@/lib/env';
 
 // Product types
-export type { Product, ProductCard, Category, CategoryOption } from './product';
+export type {
+  Product,
+  ProductCard,
+  Category,
+  CategoryOption,
+  CostAnalysis,
+  PricingInfo,
+  CostAnalysisChildUnitPrice,
+} from './product';
 
 // Component prop types
 export type {

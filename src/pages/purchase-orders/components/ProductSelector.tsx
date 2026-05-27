@@ -79,8 +79,8 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
           </div>
         ) : templates.length === 0 ? (
           <div className="p-6 text-center text-sm text-muted-foreground">
-            Chưa có đơn nhập hàng nào để đề xuất sản phẩm. Bạn vẫn có thể tạo đơn
-            mới ngay trong KiotViet sau khi chọn nhà cung cấp.
+            Chưa có đơn nhập hàng nào để đề xuất sản phẩm. Bạn vẫn có thể tạo
+            đơn mới ngay trong KiotViet sau khi chọn nhà cung cấp.
           </div>
         ) : (
           <div className="divide-y">
@@ -135,7 +135,8 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
                                 className="h-full w-full object-cover"
                                 loading="lazy"
                                 onError={e => {
-                                  (e.target as HTMLImageElement).style.display = 'none';
+                                  (e.target as HTMLImageElement).style.display =
+                                    'none';
                                 }}
                               />
                             </div>
@@ -147,7 +148,8 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
                               className="w-[300px] h-[300px] object-cover rounded-md border shadow-lg"
                               loading="lazy"
                               onError={e => {
-                                (e.target as HTMLImageElement).style.display = 'none';
+                                (e.target as HTMLImageElement).style.display =
+                                  'none';
                               }}
                             />
                           </TooltipContent>
@@ -186,7 +188,8 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
                       <div className="space-y-1">
                         <Label>
                           Số lượng{' '}
-                          {template.child_units && template.child_units.length > 0
+                          {template.child_units &&
+                          template.child_units.length > 0
                             ? template.child_units[0].unit
                             : ''}
                         </Label>

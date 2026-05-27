@@ -79,7 +79,9 @@ export const useSuppliers = (open: boolean) => {
 
       // Nếu view chưa tồn tại (PGRST205), fallback về kv_supplier_stats
       if (error && error.code === 'PGRST205') {
-        console.log('[useSuppliers] v_suppliers_admin not found, falling back to kv_supplier_stats');
+        console.log(
+          '[useSuppliers] v_suppliers_admin not found, falling back to kv_supplier_stats'
+        );
         return await supabase
           .from('kv_supplier_stats')
           .select('*')
@@ -125,21 +127,28 @@ export const useSuppliers = (open: boolean) => {
             }
 
             // Map data, bao gồm po_template_products nếu có (từ v_suppliers_admin)
-            const mapped = data.map((item: SupplierOption & { po_template_products?: any; last_master_unit_quantity?: number | string | null }) => ({
-              kiotviet_id: item.kiotviet_id,
-              name: item.name,
-              code: item.code,
-              contact_number: item.contact_number,
-              address: item.address,
-              branch_id: item.branch_id,
-              total_invoice: item.total_invoice || 0,
-              last_purchase_date: item.last_purchase_date,
-              last_master_unit_quantity: item.last_master_unit_quantity
-                ? Number(item.last_master_unit_quantity)
-                : null, // ⭐ Mới: Map last_master_unit_quantity từ view
-              // ⭐ Lấy po_template_products nếu có (từ v_suppliers_admin)
-              po_template_products: item.po_template_products || null,
-            }));
+            const mapped = data.map(
+              (
+                item: SupplierOption & {
+                  po_template_products?: any;
+                  last_master_unit_quantity?: number | string | null;
+                }
+              ) => ({
+                kiotviet_id: item.kiotviet_id,
+                name: item.name,
+                code: item.code,
+                contact_number: item.contact_number,
+                address: item.address,
+                branch_id: item.branch_id,
+                total_invoice: item.total_invoice || 0,
+                last_purchase_date: item.last_purchase_date,
+                last_master_unit_quantity: item.last_master_unit_quantity
+                  ? Number(item.last_master_unit_quantity)
+                  : null, // ⭐ Mới: Map last_master_unit_quantity từ view
+                // ⭐ Lấy po_template_products nếu có (từ v_suppliers_admin)
+                po_template_products: item.po_template_products || null,
+              })
+            );
 
             if (!isCancelled && !abortController.signal.aborted) {
               setSuppliers(mapped);
