@@ -9,7 +9,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useSession } from '@/hooks/useAuth';
-import type { Product, CostAnalysis, PricingInfo } from '@/types';
+import type { Product, CostAnalysis, PricingInfo, CalculateFromPo } from '@/types';
 
 /**
  * Product filters interface
@@ -66,7 +66,9 @@ export const useProducts = (filters: ProductFilters = {}) => {
             kv_images,
             kiotviet_status,
             cost_analysis,
-            pricing_info
+            pricing_info,
+            calculate_from_po,
+            changelog
           `
         )
         .eq('is_active', true);
@@ -210,6 +212,16 @@ export const useProducts = (filters: ProductFilters = {}) => {
             kiotviet_status: p.kiotviet_status || null,
             cost_analysis: (p.cost_analysis as CostAnalysis) || null,
             pricing_info: (p.pricing_info as PricingInfo) || null,
+            calculate_from_po: (p.calculate_from_po as CalculateFromPo) || null,
+            changelog: (p.changelog as Record<string, Array<{
+              old: string;
+              new: string;
+              diff?: number;
+              pct?: number;
+              dir?: 'up' | 'down';
+              src?: string;
+              at: string;
+            }>>) || null,
           } as Product & {
             priceDifference?: number | null;
             priceDifferencePercent?: number | null;
@@ -218,6 +230,7 @@ export const useProducts = (filters: ProductFilters = {}) => {
             kiotviet_status?: Record<string, unknown> | null;
             cost_analysis?: CostAnalysis | null;
             pricing_info?: PricingInfo | null;
+            calculate_from_po?: CalculateFromPo | null;
           };
         })
         .filter(p => {

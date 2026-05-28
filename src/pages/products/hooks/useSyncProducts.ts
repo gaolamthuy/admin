@@ -1,6 +1,10 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { env } from '@/lib/env';
+import {
+  getWindmillJobRunUrl,
+  getWindmillJobResultUrl,
+} from '@/lib/windmill';
 
 interface SyncProductsResult {
   success: boolean;
@@ -21,9 +25,7 @@ async function callSyncProducts(): Promise<SyncProductsResult> {
     throw new Error('VITE_BACKEND_TOKEN is not configured');
   }
 
-  const baseUrl = backendUrl.replace(/\/$/, '');
-  const rootUrl = baseUrl.split('/api/')[0];
-  const runUrl = `${rootUrl}/api/w/main/jobs/run/f/f/kiotviet/sync_data`;
+  const runUrl = getWindmillJobRunUrl('f/f/kiotviet/sync_data');
 
   const runRes = await fetch(runUrl, {
     method: 'POST',
@@ -40,7 +42,7 @@ async function callSyncProducts(): Promise<SyncProductsResult> {
 
   const jobId = await runRes.text();
 
-  const resultUrl = `${rootUrl}/api/w/main/jobs_u/completed/get_result_maybe/${jobId}`;
+  const resultUrl = getWindmillJobResultUrl(jobId);
 
   for (let i = 0; i < 120; i++) {
     await new Promise(r => setTimeout(r, 2000));

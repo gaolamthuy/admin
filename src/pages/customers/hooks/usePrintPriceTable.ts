@@ -7,16 +7,7 @@
 
 import { useState } from 'react';
 import { useSession } from '@/hooks/useAuth';
-
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-
-const getPrintUrl = () => {
-  if (!BACKEND_URL) {
-    console.warn('VITE_BACKEND_URL is not configured');
-    return '';
-  }
-  return `${BACKEND_URL.replace(/\/$/, '')}/api/r/main/print`;
-};
+import { getPrintUrl } from '@/lib/windmill';
 
 export const usePrintPriceTable = () => {
   const { data: session } = useSession();

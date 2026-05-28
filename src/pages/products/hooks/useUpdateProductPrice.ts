@@ -1,43 +1,53 @@
 import { useMutation } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { env } from '@/lib/env';
+import {
+  getWindmillJobRunUrl,
+  getWindmillJobResultUrl,
+} from '@/lib/windmill';
 
 interface UpdateProductPriceResult {
-  product_code: string;
-  kiotviet_id: number;
-  old_base_price: number;
-  new_base_price: number;
-  old_cost: number;
-  new_cost: number;
-  dry_run: boolean;
-  updated: boolean;
-  child_updates?: Array<{
+  master: {
+    new_cost: number;
+    old_cost: number;
+    cost_changed: boolean;
+    new_baseprice: number;
+    old_baseprice: number;
+    baseprice_changed: boolean;
+  };
+  status: string;
+  changes: string[];
+  children: Array<{
+    name: string;
+    status: string;
     kiotviet_id: number;
-    code: string;
-    old_base_price: number;
-    new_base_price: number;
+    new_baseprice: number;
+    old_baseprice: number;
   }>;
-  message?: string;
-  error?: string;
+  po_source: {
+    purchase_date: string;
+    supplier_name: string;
+    purchase_order_code: string;
+    total_cost_per_unit: number;
+  };
+  kiotviet_id: number;
+  product_name: string;
+  changelog_count: number;
 }
 
 async function callUpdateProductPrice(
   kiotvietId: number
 ): Promise<UpdateProductPriceResult> {
-  const backendUrl = env.VITE_BACKEND_URL;
   const windmillToken = env.VITE_BACKEND_TOKEN;
-
-  if (!backendUrl) {
-    throw new Error('VITE_BACKEND_URL is not configured');
-  }
 
   if (!windmillToken) {
     throw new Error('VITE_BACKEND_TOKEN is not configured');
   }
 
-  const baseUrl = backendUrl.replace(/\/$/, '');
-  const tokenUrl = `${baseUrl.split('/api/')[0]}`;
-  const apiUrl = `${tokenUrl}/api/w/wm-fork-dev/jobs/run/p/f/frontend_admin/update_product_price_from_po`;
+  const apiUrl = getWindmillJobRunUrl('p/f/frontend_admin/update_product_price_from_po');
+  if (!apiUrl) {
+    throw new Error('VITE_BACKEND_URL is not configured');
+  }
 
   const runRes = await fetch(apiUrl, {
     method: 'POST',
@@ -52,9 +62,9 @@ async function callUpdateProductPrice(
     throw new Error(`Windmill API error: ${runRes.status}`);
   }
 
-  const { id: jobId } = await runRes.json();
+  const jobId = await runRes.text();
 
-  const resultUrl = `${tokenUrl}/api/w/wm-fork-dev/jobs_u/completed/get_result_maybe/${jobId}`;
+  const resultUrl = getWindmillJobResultUrl(jobId);
 
   for (let i = 0; i < 30; i++) {
     await new Promise(r => setTimeout(r, 1000));
@@ -82,13 +92,18 @@ export const useUpdateProductPrice = () => {
   return useMutation({
     mutationFn: callUpdateProductPrice,
     onSuccess: result => {
-      if (result.message && !result.updated) {
-        toast.info(result.message);
-      } else {
-        toast.success(
-          `Đã cập nhật giá: ${result.product_code} — basePrice ${Number(result.old_base_price).toLocaleString()} → ${Number(result.new_base_price).toLocaleString()}, cost ${Number(result.old_cost).toLocaleString()} → ${Number(result.new_cost).toLocaleString()}`
-        );
+      if (result.status !== 'ok') {
+        toast.error(`Cập nhật giá thất bại: ${result.status}`);
+        return;
       }
+      const { master, product_name, children } = result;
+      const childInfo =
+        children.length > 0
+          ? ` | Children: ${children.map(c => `${c.name} ${Number(c.old_baseprice).toLocaleString()}→${Number(c.new_baseprice).toLocaleString()}`).join(', ')}`
+          : '';
+      toast.success(
+        `Đã cập nhật giá: ${product_name} — basePrice ${Number(master.old_baseprice).toLocaleString()} → ${Number(master.new_baseprice).toLocaleString()}, cost ${Number(master.old_cost).toLocaleString()} → ${Number(master.new_cost).toLocaleString()}${childInfo}`
+      );
     },
     onError: (error: Error) => {
       toast.error(`Cập nhật giá thất bại: ${error.message}`);

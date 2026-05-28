@@ -244,72 +244,74 @@ export const ProductList = () => {
           <CardTitle>Danh sách sản phẩm</CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="flex flex-wrap gap-4 mb-6">
-            <Select
-              value={filters.category || 'all'}
-              onValueChange={value =>
-                setFilters(prev => ({
-                  ...prev,
-                  category: value === 'all' ? null : value,
-                }))
-              }
-              disabled={categoriesLoading}
-            >
-              <SelectTrigger className="w-[200px]">
-                <SelectValue placeholder="Chọn danh mục" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tất cả danh mục</SelectItem>
-                {categories.map(
-                  (cat: { category_id: number; category_name: string }) => (
-                    <SelectItem
-                      key={cat.category_id}
-                      value={String(cat.category_id)}
-                    >
-                      {cat.category_name}
-                    </SelectItem>
-                  )
-                )}
-              </SelectContent>
-            </Select>
-
-            <Toggle
-              aria-label="Toggle yêu thích"
-              size="sm"
-              variant="outline"
-              pressed={filters.isFavorite}
-              onPressedChange={pressed =>
-                setFilters(prev => ({
-                  ...prev,
-                  isFavorite: pressed,
-                }))
-              }
-              className="h-10 gap-2 data-[state=on]:bg-transparent data-[state=on]:*:[svg]:fill-primary data-[state=on]:*:[svg]:stroke-primary"
-            >
-              <Heart className="h-4 w-4" />
-              <span className="font-medium">Yêu thích</span>
-            </Toggle>
-
-            {isAdmin && (
-              <Button
-                variant="outline"
-                size="sm"
-                className="ml-auto h-10 gap-2"
-                disabled={syncProducts.isPending}
-                onClick={() => syncProducts.mutate()}
+          <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:gap-3 mb-6">
+            <div className="flex items-center gap-2">
+              <Select
+                value={filters.category || 'all'}
+                onValueChange={value =>
+                  setFilters(prev => ({
+                    ...prev,
+                    category: value === 'all' ? null : value,
+                  }))
+                }
+                disabled={categoriesLoading}
               >
-                {syncProducts.isPending ? (
-                  <Loader2 className="h-4 w-4 animate-spin" />
-                ) : (
-                  <RefreshCw className="h-4 w-4" />
-                )}
-                <span className="font-medium">
-                  {syncProducts.isPending ? 'Đang đồng bộ...' : 'Đồng bộ SP'}
-                </span>
-              </Button>
-            )}
+                <SelectTrigger className="w-[160px] sm:w-[200px]">
+                  <SelectValue placeholder="Chọn danh mục" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tất cả danh mục</SelectItem>
+                  {categories.map(
+                    (cat: { category_id: number; category_name: string }) => (
+                      <SelectItem
+                        key={cat.category_id}
+                        value={String(cat.category_id)}
+                      >
+                        {cat.category_name}
+                      </SelectItem>
+                    )
+                  )}
+                </SelectContent>
+              </Select>
 
-            <div className={isAdmin ? '' : 'ml-auto'}>
+              <Toggle
+                aria-label="Toggle yêu thích"
+                size="sm"
+                variant="outline"
+                pressed={filters.isFavorite}
+                onPressedChange={pressed =>
+                  setFilters(prev => ({
+                    ...prev,
+                    isFavorite: pressed,
+                  }))
+                }
+                className="h-9 gap-1.5 px-2.5 data-[state=on]:bg-transparent data-[state=on]:*:[svg]:fill-primary data-[state=on]:*:[svg]:stroke-primary"
+              >
+                <Heart className="h-4 w-4" />
+                <span className="font-medium hidden xs:inline">Yêu thích</span>
+              </Toggle>
+            </div>
+
+            <div className="flex items-center gap-2 sm:ml-auto">
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="h-9 gap-1.5"
+                  disabled={syncProducts.isPending}
+                  onClick={() => syncProducts.mutate()}
+                >
+                  {syncProducts.isPending ? (
+                    <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <RefreshCw className="h-3.5 w-3.5" />
+                  )}
+                  <span className="font-medium hidden sm:inline">
+                    {syncProducts.isPending ? 'Đang đồng bộ...' : 'Đồng bộ SP'}
+                  </span>
+                </Button>
+              )}
+
               <ToggleGroup
                 type="single"
                 value={filters.viewMode}
@@ -381,7 +383,7 @@ export const ProductList = () => {
               )}
 
               {products.length > 0 && (
-                <div className="mt-6 flex items-center justify-between">
+                <div className="mt-6 flex flex-col sm:flex-row items-center justify-between gap-3">
                   <div className="flex items-center gap-2 text-sm text-muted-foreground">
                     <span>Hiển thị</span>
                     <Select

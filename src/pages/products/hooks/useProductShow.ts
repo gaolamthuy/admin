@@ -190,6 +190,7 @@ export const useProductShow = (id: string | number) => {
         is_active: viewData.is_active,
         glt_baseprice_markup: viewData.glt_baseprice_markup,
         glt_extra_cost: viewData.glt_extra_cost ?? 0,
+        glt_baseprice_round_step: viewData.glt_baseprice_round_step ?? 1000,
         child_unit_info: viewData.child_unit_info || [],
         // Fields từ glt_custom_fields JSONB
         glt_visible: customFields.glt_visible ?? true,
@@ -379,6 +380,8 @@ export const useUpdateProduct = () => {
       fields: {
         glt_retail_promotion?: boolean;
         glt_baseprice_markup?: number;
+        glt_extra_cost?: number;
+        glt_baseprice_round_step?: number;
         glt_labelprint_favorite?: boolean;
       };
     }) => {
@@ -386,22 +389,33 @@ export const useUpdateProduct = () => {
         throw new Error('Not authenticated');
       }
 
+      console.log('[useUpdateProduct] Updating product:', id, 'with fields:', fields);
+
       const { data, error } = await supabase
         .from('kv_products')
         .update(fields)
         .eq('id', id)
-        .select('id')
+        .select('*')
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('[useUpdateProduct] Update failed:', error);
+        throw error;
+      }
+
+      console.log('[useUpdateProduct] Update succeeded:', data);
       return data;
     },
-    onSuccess: (_, variables) => {
+    onSuccess: (_data, variables) => {
+      console.log('[useUpdateProduct] onSuccess, invalidating queries...');
       // Invalidate queries để refresh data
       queryClient.invalidateQueries({
         queryKey: ['product-show', variables.id],
       });
       queryClient.invalidateQueries({ queryKey: ['products'] });
+    },
+    onError: (error) => {
+      console.error('[useUpdateProduct] Mutation error:', error);
     },
   });
 };

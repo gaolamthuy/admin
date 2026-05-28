@@ -124,8 +124,39 @@ export interface CostAnalysis {
 export interface PricingInfo {
   base_price: number;
   glt_baseprice_markup: number;
+  glt_baseprice_round_step: number;
   new_baseprice_suggestion: number | null;
   child_unit_prices: CostAnalysisChildUnitPrice[];
+}
+
+export interface CalculateFromPoChildUnit {
+  kiotviet_id: number;
+  code: string;
+  full_name: string;
+  unit: string;
+  conversion_value: number;
+  current_baseprice: number;
+  new_baseprice: number;
+  diff: number;
+  diff_per_cv: number;
+}
+
+export interface CalculateFromPo {
+  current_baseprice: number;
+  current_inventory_cost: number | null;
+  latest_purchase_order_id: number;
+  latest_purchase_date: string;
+  latest_purchase_order_code: string;
+  latest_supplier_name: string;
+  latest_raw_price: number;
+  latest_base_cost: number;
+  latest_extra_cost_per_unit: number;
+  latest_total_cost_per_unit: number;
+  product_extra_cost: number;
+  new_cost: number;
+  new_baseprice: number;
+  baseprice_diff: number;
+  child_unit_prices: CalculateFromPoChildUnit[];
 }
 
 export interface ProductWithPriceDifference extends ProductCard {
@@ -139,6 +170,16 @@ export interface ProductWithPriceDifference extends ProductCard {
   kiotviet_status?: KiotVietStatus | null;
   cost_analysis?: CostAnalysis | null;
   pricing_info?: PricingInfo | null;
+  calculate_from_po?: CalculateFromPo | null;
+  changelog?: Record<string, Array<{
+    old: string;
+    new: string;
+    diff?: number;
+    pct?: number;
+    dir?: 'up' | 'down';
+    src?: string;
+    at: string;
+  }>> | null;
 }
 
 /**
