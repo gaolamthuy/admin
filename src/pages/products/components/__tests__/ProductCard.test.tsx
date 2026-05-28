@@ -94,8 +94,8 @@ describe('ProductCard Component', () => {
 
       renderWithProviders(<ProductCard product={product} />);
 
-      expect(screen.getByText('In 10Kg')).toBeInTheDocument();
-      expect(screen.getByText('In 5Kg')).toBeInTheDocument();
+      expect(screen.getByText('10Kg')).toBeInTheDocument();
+      expect(screen.getByText('5Kg')).toBeInTheDocument();
     });
   });
 
@@ -108,8 +108,8 @@ describe('ProductCard Component', () => {
 
       renderWithProviders(<ProductCard product={product} />);
 
-      expect(screen.getByText('In 10Kg')).toBeInTheDocument();
-      expect(screen.getByText('In 5Kg')).toBeInTheDocument();
+      expect(screen.getByText('10Kg')).toBeInTheDocument();
+      expect(screen.getByText('5Kg')).toBeInTheDocument();
     });
 
     it('disables print buttons when no code provided', () => {
