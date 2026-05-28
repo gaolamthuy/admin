@@ -33,6 +33,11 @@ const envSchema = z.object({
     .min(1, 'Backend token is required')
     .optional()
     .describe('Windmill API token'),
+  VITE_BACKEND_WORKSPACE: z
+    .string()
+    .min(1, 'Workspace name is required')
+    .default('main')
+    .describe('Backend workspace, e.g. main or wm-fork-dev'),
 
   // Node environment
   NODE_ENV: z

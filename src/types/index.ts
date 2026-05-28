@@ -15,6 +15,9 @@ export type {
   CostAnalysis,
   PricingInfo,
   CostAnalysisChildUnitPrice,
+  CalculateFromPo,
+  CalculateFromPoChildUnit,
+  ProductWithPriceDifference,
 } from './product';
 
 // Component prop types

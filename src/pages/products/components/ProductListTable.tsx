@@ -27,6 +27,7 @@ import {
   ArrowUpDown,
   ArrowUp,
   ArrowDown,
+  History,
 } from 'lucide-react';
 import {
   Dialog,
@@ -38,7 +39,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ButtonGroup } from '@/components/ui/button-group';
-import type { CostAnalysis, PricingInfo } from '@/types';
+import type { CostAnalysis, PricingInfo, CalculateFromPo } from '@/types';
 
 interface ProductWithPriceDiff {
   id: string;
@@ -53,6 +54,7 @@ interface ProductWithPriceDiff {
   glt_labelprint_favorite?: boolean;
   cost_analysis?: CostAnalysis | null;
   pricing_info?: PricingInfo | null;
+  calculate_from_po?: CalculateFromPo | null;
   kiotviet_status?: {
     cost_vs_basecost?: {
       inventory_cost?: number | null;
@@ -61,6 +63,15 @@ interface ProductWithPriceDiff {
       difference?: number | null;
     };
   } | null;
+  changelog?: Record<string, Array<{
+    old: string;
+    new: string;
+    diff?: number;
+    pct?: number;
+    dir?: 'up' | 'down';
+    src?: string;
+    at: string;
+  }>> | null;
 }
 
 interface ProductListTableProps {
@@ -76,12 +87,7 @@ interface ProductListTableProps {
   onToggleKvStatusSort?: () => void;
 }
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-
-const getPrintUrl = () => {
-  if (!BACKEND_URL) return '';
-  return `${BACKEND_URL.replace(/\/$/, '')}/api/r/main/print`;
-};
+import { getPrintUrl } from '@/lib/windmill';
 
 const submitPostForm = (
   url: string,
@@ -229,226 +235,443 @@ const PrintModal: React.FC<{
   );
 };
 
-const ProductRow = React.memo<{
+const SyncPriceConfirmDialog: React.FC<{
+  isOpen: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+  isLoading: boolean;
+  productName: string;
+  productCode?: string;
+  basePrice?: number;
+  calculateFromPo?: CalculateFromPo | null;
+}> = ({ isOpen, onClose, onConfirm, isLoading, productName, productCode, basePrice, calculateFromPo }) => {
+  if (!calculateFromPo) return null;
+
+  const fmt = (n: number | null | undefined) => (n != null ? Number(n).toLocaleString() : '-');
+  const costDiff = calculateFromPo.current_inventory_cost != null
+    ? calculateFromPo.new_cost - calculateFromPo.current_inventory_cost
+    : null;
+
+  return (
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <RefreshCw className="h-4 w-4" />
+            Xác nhận cập nhật giá
+          </DialogTitle>
+          <DialogDescription>
+            <span className="font-semibold">{productName}</span>
+            {productCode && (
+              <span className="text-xs text-muted-foreground ml-2 font-mono">
+                {productCode}
+              </span>
+            )}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-3 py-2">
+          <div className="rounded-lg border p-3 space-y-2">
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Giá bán</div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Hiện tại</span>
+              <span className="font-mono font-medium">{fmt(basePrice)} VNĐ</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Mới</span>
+              <span className="font-mono font-semibold text-primary">{fmt(calculateFromPo.new_baseprice)} VNĐ</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Chênh lệch</span>
+              <span className={`font-mono font-medium ${calculateFromPo.baseprice_diff > 0 ? 'text-destructive' : calculateFromPo.baseprice_diff < 0 ? 'text-green-600 dark:text-green-400' : ''}`}>
+                {calculateFromPo.baseprice_diff > 0 ? '↑ ' : calculateFromPo.baseprice_diff < 0 ? '↓ ' : ''}{calculateFromPo.baseprice_diff > 0 ? '+' : ''}{fmt(calculateFromPo.baseprice_diff)} VNĐ
+              </span>
+            </div>
+          </div>
+
+          <div className="rounded-lg border p-3 space-y-2">
+            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Cost</div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Cost hiện tại</span>
+              <span className="font-mono font-medium">{fmt(calculateFromPo.current_inventory_cost)} VNĐ</span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-muted-foreground">Cost mới</span>
+              <span className="font-mono font-semibold text-primary">{fmt(calculateFromPo.new_cost)} VNĐ</span>
+            </div>
+            {costDiff !== null && (
+              <div className="flex justify-between text-sm">
+                <span className="text-muted-foreground">Chênh lệch cost</span>
+                <span className={`font-mono font-medium ${costDiff > 0 ? 'text-destructive' : costDiff < 0 ? 'text-green-600 dark:text-green-400' : ''}`}>
+                  {costDiff > 0 ? '↑ ' : costDiff < 0 ? '↓ ' : ''}{costDiff > 0 ? '+' : ''}{fmt(costDiff)} VNĐ
+                </span>
+              </div>
+            )}
+            <div className="border-t pt-2 space-y-1">
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Giá nhập PO ({calculateFromPo.latest_purchase_order_code})</span>
+                <span className="font-mono">{fmt(calculateFromPo.latest_raw_price)} VNĐ</span>
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Extra cost/đơn vị PO</span>
+                <span className="font-mono">+{fmt(calculateFromPo.latest_extra_cost_per_unit)} VNĐ</span>
+              </div>
+              <div className="flex justify-between text-xs text-muted-foreground">
+                <span>Extra cost sản phẩm</span>
+                <span className="font-mono">+{fmt(calculateFromPo.product_extra_cost)} VNĐ</span>
+              </div>
+            </div>
+          </div>
+
+          {calculateFromPo.child_unit_prices.length > 0 && (
+            <div className="rounded-lg border p-3 space-y-2">
+              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">Đơn vị con</div>
+              {calculateFromPo.child_unit_prices.map(cu => (
+                <div key={cu.code} className="space-y-1 pb-2 border-b last:border-b-0 last:pb-0">
+                  <div className="flex justify-between text-sm">
+                    <span className="text-muted-foreground">{cu.full_name}</span>
+                    <span className="font-mono font-medium">{fmt(cu.new_baseprice)} VNĐ</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Hiện tại</span>
+                    <span className="font-mono">{fmt(cu.current_baseprice)} VNĐ</span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Chênh lệch</span>
+                    <span className={`font-mono ${(cu.diff || 0) > 0 ? 'text-destructive' : (cu.diff || 0) < 0 ? 'text-green-600 dark:text-green-400' : ''}`}>
+                      {(cu.diff || 0) > 0 ? '↑ ' : (cu.diff || 0) < 0 ? '↓ ' : ''}{(cu.diff || 0) > 0 ? '+' : ''}{fmt(cu.diff)} VNĐ
+                    </span>
+                  </div>
+                  <div className="flex justify-between text-xs">
+                    <span className="text-muted-foreground">Per đơn vị gốc (÷{cu.conversion_value})</span>
+                    <span className={`font-mono ${(cu.diff_per_cv || 0) > 0 ? 'text-destructive' : (cu.diff_per_cv || 0) < 0 ? 'text-green-600 dark:text-green-400' : ''}`}>
+                      {(cu.diff_per_cv || 0) > 0 ? '↑ ' : (cu.diff_per_cv || 0) < 0 ? '↓ ' : ''}{(cu.diff_per_cv || 0) > 0 ? '+' : ''}{fmt(cu.diff_per_cv)} VNĐ
+                    </span>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+        <div className="flex justify-end gap-2 pt-2">
+          <Button variant="outline" onClick={onClose} disabled={isLoading}>
+            Hủy
+          </Button>
+          <Button onClick={onConfirm} disabled={isLoading}>
+            {isLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <RefreshCw className="h-4 w-4 mr-1" />}
+            Cập nhật giá
+          </Button>
+        </div>
+      </DialogContent>
+    </Dialog>
+  );
+};
+
+const ProductRow: React.FC<{
   product: ProductWithPriceDiff;
   onShow: (id: string | number) => void;
   isAdmin: boolean;
   onUpdatePrice?: (kiotvietId: number) => Promise<unknown>;
   isUpdating?: boolean;
-}>(
-  ({ product, onShow, isAdmin, onUpdatePrice, isUpdating }) => {
-    const [isPrintModalOpen, setIsPrintModalOpen] = React.useState(false);
-    const imageUrl = product.images?.[0] || '/placeholder-product.png';
+  mode?: 'mobile' | 'desktop';
+}> = ({ product, onShow, isAdmin, onUpdatePrice, isUpdating, mode = 'mobile' }) => {
+  const [isPrintModalOpen, setIsPrintModalOpen] = React.useState(false);
+  const [isSyncDialogOpen, setIsSyncDialogOpen] = React.useState(false);
+  const imageUrl = product.images?.[0] || '/placeholder-product.png';
 
-    const handleQuickPrint = (qty: number) => {
-      if (!product.kiotviet_id) return;
-      submitPostForm(getPrintUrl(), {
-        printType: 'label-product',
-        productId: String(product.kiotviet_id),
-        quantity: String(qty),
-      });
-    };
+  const handleQuickPrint = (qty: number) => {
+    if (!product.kiotviet_id) return;
+    submitPostForm(getPrintUrl(), {
+      printType: 'label-product',
+      productId: String(product.kiotviet_id),
+      quantity: String(qty),
+    });
+  };
 
-    const renderCostDiff = () => {
-      const ca = product.cost_analysis;
-      if (!ca || ca.cost_diff === null || ca.cost_diff === undefined) {
-        return <span className="text-muted-foreground">-</span>;
-      }
+  const renderCostDiff = () => {
+    const ca = product.cost_analysis;
+    if (!ca || ca.cost_diff === null || ca.cost_diff === undefined) {
+      return <span className="text-muted-foreground">-</span>;
+    }
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span
+              className={`flex items-center gap-0.5 font-medium justify-end ${
+                ca.cost_diff > 0
+                  ? 'text-green-600 dark:text-green-400'
+                  : ca.cost_diff < 0
+                    ? 'text-destructive'
+                    : 'text-muted-foreground'
+              }`}
+            >
+              {ca.cost_diff > 0 && <ArrowDown className="h-3 w-3" />}
+              {ca.cost_diff < 0 && <ArrowUp className="h-3 w-3" />}
+              {Math.abs(ca.cost_diff).toLocaleString()}
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="max-w-xs">
+            <div className="space-y-1 text-xs">
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Cost hiện tại:</span>
+                <span className="font-medium tabular-nums">
+                  {ca.inventory_cost?.toLocaleString()} đ
+                </span>
+              </div>
+              <div className="border-t pt-1" />
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Giá nhập PO:</span>
+                <span className="tabular-nums">
+                  {ca.latest_po_price?.toLocaleString()} đ
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Extra cost PO:</span>
+                <span className="tabular-nums">
+                  {ca.latest_po_extra_cost?.toLocaleString()} đ
+                </span>
+              </div>
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Extra cost:</span>
+                <span className="tabular-nums">
+                  {(ca.glt_extra_cost ?? 0).toLocaleString()} đ
+                </span>
+              </div>
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
+
+  const renderKvStatus = () => {
+    const costCheck = product.kiotviet_status?.cost_vs_basecost;
+    if (!costCheck) return <span className="text-muted-foreground">-</span>;
+
+    const status = costCheck.status;
+    const difference = costCheck.difference;
+
+    if (status === 'matched') {
       return (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span
-                className={`flex items-center gap-0.5 font-medium justify-end ${
-                  ca.cost_diff > 0
-                    ? 'text-green-600 dark:text-green-400'
-                    : ca.cost_diff < 0
-                      ? 'text-destructive'
-                      : 'text-muted-foreground'
-                }`}
-              >
-                {ca.cost_diff > 0 && <ArrowDown className="h-3 w-3" />}
-                {ca.cost_diff < 0 && <ArrowUp className="h-3 w-3" />}
-                {Math.abs(ca.cost_diff).toLocaleString()}
-              </span>
+              <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
             </TooltipTrigger>
-            <TooltipContent side="top" className="max-w-xs">
-              <div className="space-y-1 text-xs">
-                <div className="flex justify-between gap-4">
-                  <span className="text-muted-foreground">Cost hiện tại:</span>
-                  <span className="font-medium tabular-nums">
-                    {ca.inventory_cost?.toLocaleString()} đ
-                  </span>
-                </div>
-                <div className="border-t pt-1" />
-                <div className="flex justify-between gap-4">
-                  <span className="text-muted-foreground">Giá nhập PO:</span>
-                  <span className="tabular-nums">
-                    {ca.latest_po_price?.toLocaleString()} đ
-                  </span>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <span className="text-muted-foreground">Extra cost PO:</span>
-                  <span className="tabular-nums">
-                    {ca.latest_po_extra_cost?.toLocaleString()} đ
-                  </span>
-                </div>
-                <div className="flex justify-between gap-4">
-                  <span className="text-muted-foreground">Extra cost:</span>
-                  <span className="tabular-nums">
-                    {(ca.glt_extra_cost ?? 0).toLocaleString()} đ
-                  </span>
-                </div>
-              </div>
+            <TooltipContent>
+              <p>Cost khớp với basecost</p>
             </TooltipContent>
           </Tooltip>
         </TooltipProvider>
       );
-    };
+    }
 
-    const renderKvStatus = () => {
-      const costCheck = product.kiotviet_status?.cost_vs_basecost;
-      if (!costCheck) return <span className="text-muted-foreground">-</span>;
-
-      const status = costCheck.status;
-      const difference = costCheck.difference;
-
-      if (status === 'matched') {
-        return (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <CheckCircle className="h-4 w-4 text-green-600 dark:text-green-400" />
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Cost khớp với basecost</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        );
-      }
-
-      if (status === 'mismatched') {
-        return (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <div className="flex items-center gap-1">
-                  <AlertTriangle className="h-4 w-4 text-amber-500" />
-                  {difference !== null && difference !== undefined && (
-                    <span
-                      className={`flex items-center gap-0.5 text-xs font-medium tabular-nums ${
-                        difference > 0
-                          ? 'text-destructive'
-                          : 'text-green-600 dark:text-green-400'
-                      }`}
-                    >
-                      {difference > 0 && <ArrowUp className="h-3 w-3" />}
-                      {difference < 0 && <ArrowDown className="h-3 w-3" />}
-                      {Math.abs(Number(difference)).toLocaleString()}
-                    </span>
-                  )}
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Cost không khớp basecost</p>
-                {costCheck.inventory_cost !== null && (
-                  <p>Cost: {Number(costCheck.inventory_cost).toLocaleString()}</p>
-                )}
-                {costCheck.basecost_price !== null && (
-                  <p>Basecost: {Number(costCheck.basecost_price).toLocaleString()}</p>
-                )}
-                {difference !== null && difference !== undefined && (
-                  <p>
-                    Chênh lệch: {difference > 0 ? '+' : ''}
-                    {Number(difference).toLocaleString()}
-                  </p>
-                )}
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        );
-      }
-
-      return <span className="text-muted-foreground text-xs">-</span>;
-    };
-
-    const renderPrice = () => {
-      const pi = product.pricing_info;
-      if (!pi) {
-        return (
-          <span className="font-medium">
-            {Number(product.base_price).toLocaleString()} VNĐ
-          </span>
-        );
-      }
+    if (status === 'mismatched') {
       return (
         <TooltipProvider>
           <Tooltip>
             <TooltipTrigger asChild>
-              <span className="font-medium">
-                {pi.base_price.toLocaleString()} VNĐ
-              </span>
+              <div className="flex items-center gap-1">
+                <AlertTriangle className="h-4 w-4 text-amber-500" />
+                {difference !== null && difference !== undefined && (
+                  <span
+                    className={`flex items-center gap-0.5 text-xs font-medium tabular-nums ${
+                      difference > 0
+                        ? 'text-destructive'
+                        : 'text-green-600 dark:text-green-400'
+                    }`}
+                  >
+                    {difference > 0 && <ArrowUp className="h-3 w-3" />}
+                    {difference < 0 && <ArrowDown className="h-3 w-3" />}
+                    {Math.abs(Number(difference)).toLocaleString()}
+                  </span>
+                )}
+              </div>
             </TooltipTrigger>
-            <TooltipContent side="left" className="max-w-xs">
-              <div className="space-y-1 text-xs">
+            <TooltipContent>
+              <p>Cost không khớp basecost</p>
+              {costCheck.inventory_cost !== null && (
+                <p>Cost: {Number(costCheck.inventory_cost).toLocaleString()}</p>
+              )}
+              {costCheck.basecost_price !== null && (
+                <p>Basecost: {Number(costCheck.basecost_price).toLocaleString()}</p>
+              )}
+              {difference !== null && difference !== undefined && (
+                <p>
+                  Chênh lệch: {difference > 0 ? '+' : ''}
+                  {Number(difference).toLocaleString()}
+                </p>
+              )}
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+    return <span className="text-muted-foreground text-xs">-</span>;
+  };
+
+  const renderPrice = () => {
+    const pi = product.pricing_info;
+    if (!pi) {
+      return (
+        <span className="font-medium">
+          {Number(product.base_price).toLocaleString()} VNĐ
+        </span>
+      );
+    }
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <span className="font-medium">
+              {pi.base_price.toLocaleString()} VNĐ
+            </span>
+          </TooltipTrigger>
+          <TooltipContent side="left" className="max-w-xs">
+            <div className="space-y-1 text-xs">
+              <div className="flex justify-between gap-4">
+                <span className="text-muted-foreground">Giá bán:</span>
+                <span className="font-medium tabular-nums">
+                  {pi.base_price.toLocaleString()} đ
+                </span>
+              </div>
+              {pi.glt_baseprice_markup > 0 && (
                 <div className="flex justify-between gap-4">
-                  <span className="text-muted-foreground">Giá bán:</span>
-                  <span className="font-medium tabular-nums">
-                    {pi.base_price.toLocaleString()} đ
+                  <span className="text-muted-foreground">Markup:</span>
+                  <span className="tabular-nums">
+                    +{pi.glt_baseprice_markup.toLocaleString()} đ
                   </span>
                 </div>
-                {pi.glt_baseprice_markup > 0 && (
-                  <div className="flex justify-between gap-4">
-                    <span className="text-muted-foreground">Markup:</span>
-                    <span className="tabular-nums">
-                      +{pi.glt_baseprice_markup.toLocaleString()} đ
-                    </span>
-                  </div>
-                )}
-                {pi.new_baseprice_suggestion !== null && (
-                  <div className="flex justify-between gap-4 border-t pt-1">
-                    <span className="text-muted-foreground">Đề xuất:</span>
-                    <span className="font-semibold tabular-nums">
-                      {pi.new_baseprice_suggestion.toLocaleString()} đ
-                    </span>
-                  </div>
-                )}
-                {pi.child_unit_prices && pi.child_unit_prices.length > 0 && (
-                  <div className="border-t pt-1 space-y-0.5">
-                    <span className="text-muted-foreground">Đơn vị con:</span>
-                    {pi.child_unit_prices.map(cu => (
-                      <div
-                        key={cu.code}
-                        className="flex justify-between gap-4"
-                      >
-                        <span className="text-muted-foreground">{cu.code}</span>
-                        <span className="tabular-nums">
-                          {cu.base_price.toLocaleString()} đ
-                        </span>
+              )}
+              {pi.new_baseprice_suggestion !== null && (
+                <div className="flex justify-between gap-4 border-t pt-1">
+                  <span className="text-muted-foreground">Đề xuất:</span>
+                  <span className="font-semibold tabular-nums">
+                    {pi.new_baseprice_suggestion.toLocaleString()} đ
+                  </span>
+                </div>
+              )}
+              {pi.child_unit_prices && pi.child_unit_prices.length > 0 && (
+                <div className="border-t pt-1 space-y-0.5">
+                  <span className="text-muted-foreground">Đơn vị con:</span>
+                  {pi.child_unit_prices.map(cu => (
+                    <div
+                      key={cu.code}
+                      className="flex justify-between gap-4"
+                    >
+                      <span className="text-muted-foreground">{cu.code}</span>
+                      <span className="tabular-nums">
+                        {cu.base_price.toLocaleString()} đ
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
+
+  const renderChangelog = () => {
+    const changelog = product.changelog;
+    if (!changelog || Object.keys(changelog).length === 0) {
+      return (
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <span className="text-muted-foreground">
+                <History className="h-4 w-4 opacity-50" />
+              </span>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>Chưa có thay đổi</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      );
+    }
+
+    const allChanges = Object.entries(changelog)
+      .flatMap(([field, changes]) =>
+        changes.map(change => ({ field, ...change }))
+      )
+      .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime())
+      .slice(0, 3);
+
+    const latestChange = allChanges[0];
+
+    return (
+      <TooltipProvider>
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <div className="flex items-center gap-1 cursor-help">
+              <History className={`h-4 w-4 ${latestChange.dir === 'up' ? 'text-green-600 dark:text-green-400' : latestChange.dir === 'down' ? 'text-destructive' : 'text-foreground'}`} />
+              <span className="text-xs">
+                {latestChange.dir === 'up' && <ArrowUp className="h-3 w-3 inline" />}
+                {latestChange.dir === 'down' && <ArrowDown className="h-3 w-3 inline" />}
+                {latestChange.dir && ' '}
+                {latestChange.field}
+              </span>
+            </div>
+          </TooltipTrigger>
+          <TooltipContent side="left" className="max-w-xs">
+            <div className="space-y-2">
+              <p className="font-semibold text-sm">Lịch sử thay đổi</p>
+              <div className="space-y-2 text-xs">
+                {Object.entries(changelog).slice(0, 3).map(([field, changes]) => (
+                  <div key={field} className="space-y-1">
+                    <div className="font-medium text-muted-foreground">{field}</div>
+                    {changes.slice(0, 2).map((change, idx) => (
+                      <div key={idx} className="pl-2 space-y-0.5">
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">Old:</span>
+                          <span className="line-through opacity-70">{change.old}</span>
+                        </div>
+                        <div className="flex justify-between gap-4">
+                          <span className="text-muted-foreground">New:</span>
+                          <span className="font-medium">{change.new}</span>
+                        </div>
+                        {(change.diff !== undefined || change.pct !== undefined) && (
+                          <div className="flex items-center gap-1 text-muted-foreground">
+                            {change.dir === 'up' && <ArrowUp className="h-3 w-3 text-green-600" />}
+                            {change.dir === 'down' && <ArrowDown className="h-3 w-3 text-destructive" />}
+                            {change.pct !== undefined && <span>{change.pct}%</span>}
+                            {change.diff !== undefined && change.diff !== null && (
+                              <span>({change.diff.toLocaleString()})</span>
+                            )}
+                          </div>
+                        )}
+                        <div className="text-[10px] text-muted-foreground">
+                          {change.src && <span>{change.src} • </span>}
+                          {new Date(change.at).toLocaleString('vi-VN')}
+                        </div>
                       </div>
                     ))}
                   </div>
-                )}
+                ))}
               </div>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
-      );
-    };
+            </div>
+          </TooltipContent>
+        </Tooltip>
+      </TooltipProvider>
+    );
+  };
 
-    const showUpdatePrice =
-      isAdmin &&
-      onUpdatePrice &&
-      product.kiotviet_id &&
-      product.cost_analysis?.cost_diff !== null &&
-      product.cost_analysis?.cost_diff !== undefined &&
-      product.cost_analysis?.cost_diff !== 0;
+  const showUpdatePrice =
+    isAdmin &&
+    onUpdatePrice &&
+    product.kiotviet_id &&
+    product.cost_analysis?.cost_diff !== null &&
+    product.cost_analysis?.cost_diff !== undefined &&
+    product.cost_analysis?.cost_diff !== 0;
 
+  if (mode === 'mobile') {
     return (
       <>
-        {/* Mobile: Card layout */}
-        <div className="sm:hidden border rounded-lg p-3 space-y-2">
+        <div className="border rounded-lg p-3 space-y-2">
           <div className="flex items-start gap-3">
             <img
               src={imageUrl}
@@ -469,7 +692,7 @@ const ProductRow = React.memo<{
                 </div>
               )}
               <div className="text-sm font-medium mt-0.5">
-                {Number(product.base_price).toLocaleString()} VNĐ
+                {renderPrice()}
               </div>
             </div>
             {isAdmin && (
@@ -520,7 +743,7 @@ const ProductRow = React.memo<{
                 variant="secondary"
                 className="h-7 w-7 px-0"
                 disabled={isUpdating}
-                onClick={() => onUpdatePrice!(product.kiotviet_id!)}
+                onClick={() => setIsSyncDialogOpen(true)}
               >
                 {isUpdating ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -531,91 +754,6 @@ const ProductRow = React.memo<{
             )}
           </div>
         </div>
-
-        {/* Desktop: Table row */}
-        <TableRow className="hover:bg-muted/50 hidden sm:table-row">
-          <TableCell>
-            <img
-              src={imageUrl}
-              alt={product.full_name || product.name}
-              className="w-10 h-10 rounded object-cover"
-              loading="lazy"
-              onError={e => {
-                (e.target as HTMLImageElement).src = '/placeholder-product.png';
-              }}
-            />
-          </TableCell>
-          <TableCell>
-            <div className="font-medium text-sm line-clamp-1">
-              {product.full_name || product.name}
-            </div>
-            {product.code && (
-              <div className="text-xs text-muted-foreground font-mono">
-                {product.code}
-              </div>
-            )}
-          </TableCell>
-          <TableCell className="text-right tabular-nums">{renderPrice()}</TableCell>
-          {isAdmin && (
-            <>
-              <TableCell className="text-right tabular-nums">
-                {renderCostDiff()}
-              </TableCell>
-              <TableCell>{renderKvStatus()}</TableCell>
-            </>
-          )}
-          <TableCell>
-            <div
-              className="flex items-center gap-1"
-              onClick={e => e.stopPropagation()}
-            >
-              <Button
-                size="sm"
-                variant="default"
-                onClick={() => handleQuickPrint(10)}
-              >
-                10Kg
-              </Button>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => handleQuickPrint(5)}
-              >
-                5Kg
-              </Button>
-              <Button
-                size="sm"
-                variant="ghost"
-                onClick={() => setIsPrintModalOpen(true)}
-              >
-                <MoreHorizontal className="h-4 w-4" />
-              </Button>
-              {isAdmin && (
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onShow(product.id)}
-                >
-                  <Eye className="h-4 w-4" />
-                </Button>
-              )}
-              {showUpdatePrice && (
-                <Button
-                  size="sm"
-                  variant="secondary"
-                  disabled={isUpdating}
-                  onClick={() => onUpdatePrice!(product.kiotviet_id!)}
-                >
-                  {isUpdating ? (
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                  ) : (
-                    <RefreshCw className="h-3 w-3" />
-                  )}
-                </Button>
-              )}
-            </div>
-          </TableCell>
-        </TableRow>
         <PrintModal
           isOpen={isPrintModalOpen}
           onClose={() => setIsPrintModalOpen(false)}
@@ -623,19 +761,135 @@ const ProductRow = React.memo<{
           productFullName={product.full_name || ''}
           kiotvietId={product.kiotviet_id}
         />
+        <SyncPriceConfirmDialog
+          isOpen={isSyncDialogOpen}
+          onClose={() => setIsSyncDialogOpen(false)}
+          onConfirm={() => {
+            onUpdatePrice!(product.kiotviet_id!);
+            setIsSyncDialogOpen(false);
+          }}
+          isLoading={!!isUpdating}
+          productName={product.name}
+          productCode={product.code}
+          basePrice={product.base_price}
+          calculateFromPo={product.calculate_from_po}
+        />
       </>
     );
-  },
-  (prev, next) =>
-    prev.product.id === next.product.id &&
-    prev.product.base_price === next.product.base_price &&
-    prev.product.cost_analysis?.cost_diff ===
-      next.product.cost_analysis?.cost_diff &&
-    prev.isAdmin === next.isAdmin &&
-    prev.onShow === next.onShow
-);
+  }
 
-ProductRow.displayName = 'ProductRow';
+  return (
+    <>
+      <TableRow className="hover:bg-muted/50">
+        <TableCell>
+          <img
+            src={imageUrl}
+            alt={product.full_name || product.name}
+            className="w-10 h-10 rounded object-cover"
+            loading="lazy"
+            onError={e => {
+              (e.target as HTMLImageElement).src = '/placeholder-product.png';
+            }}
+          />
+        </TableCell>
+        <TableCell>
+          <div className="font-medium text-sm line-clamp-1">
+            {product.full_name || product.name}
+          </div>
+          {product.code && (
+            <div className="text-xs text-muted-foreground font-mono">
+              {product.code}
+            </div>
+          )}
+        </TableCell>
+        <TableCell className="text-right tabular-nums">{renderPrice()}</TableCell>
+        {isAdmin && (
+          <>
+            <TableCell className="text-right tabular-nums">
+              {renderCostDiff()}
+            </TableCell>
+            <TableCell>{renderKvStatus()}</TableCell>
+            <TableCell>{renderChangelog()}</TableCell>
+          </>
+        )}
+        <TableCell>
+          <div
+            className="flex items-center gap-1"
+            onClick={e => e.stopPropagation()}
+          >
+            <Button
+              size="sm"
+              variant="default"
+              onClick={() => handleQuickPrint(10)}
+            >
+              10Kg
+            </Button>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => handleQuickPrint(5)}
+            >
+              5Kg
+            </Button>
+            <Button
+              size="sm"
+              variant="ghost"
+              onClick={() => setIsPrintModalOpen(true)}
+            >
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+            {isAdmin && (
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => onShow(product.id)}
+              >
+                <Eye className="h-4 w-4" />
+              </Button>
+            )}
+            {showUpdatePrice && (
+              <Button
+                size="sm"
+                variant="secondary"
+                disabled={isUpdating}
+                onClick={() => setIsSyncDialogOpen(true)}
+              >
+                {isUpdating ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3 w-3" />
+                )}
+              </Button>
+            )}
+          </div>
+        </TableCell>
+      </TableRow>
+      <PrintModal
+        isOpen={isPrintModalOpen}
+        onClose={() => setIsPrintModalOpen(false)}
+        productName={product.name}
+        productFullName={product.full_name || ''}
+        kiotvietId={product.kiotviet_id}
+      />
+      <SyncPriceConfirmDialog
+        isOpen={isSyncDialogOpen}
+        onClose={() => setIsSyncDialogOpen(false)}
+        onConfirm={() => {
+          onUpdatePrice!(product.kiotviet_id!);
+          setIsSyncDialogOpen(false);
+        }}
+        isLoading={!!isUpdating}
+        productName={product.name}
+        productCode={product.code}
+        basePrice={product.base_price}
+        calculateFromPo={product.calculate_from_po}
+      />
+    </>
+  );
+};
+
+const ProductRowMemo = React.memo(ProductRow);
+ProductRowMemo.displayName = 'ProductRow';
 
 export const ProductListTable: React.FC<ProductListTableProps> = ({
   products,
@@ -662,6 +916,7 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
                 <>
                   <TableHead className="text-right">Chênh lệch cost</TableHead>
                   <TableHead>KV Status</TableHead>
+                  <TableHead>Changelog</TableHead>
                 </>
               )}
               <TableHead>Thao tác</TableHead>
@@ -686,6 +941,9 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
                     </TableCell>
                     <TableCell>
                       <Skeleton className="h-4 w-8" />
+                    </TableCell>
+                    <TableCell>
+                      <Skeleton className="h-4 w-16" />
                     </TableCell>
                   </>
                 )}
@@ -718,13 +976,14 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
       {/* Mobile: card list */}
       <div className="sm:hidden space-y-2">
         {products.map(product => (
-          <ProductRow
+          <ProductRowMemo
             key={product.id}
             product={product}
             onShow={onShow}
             isAdmin={isAdmin}
             onUpdatePrice={onUpdatePrice}
             isUpdating={updatingPriceId === product.kiotviet_id}
+            mode="mobile"
           />
         ))}
       </div>
@@ -761,6 +1020,7 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
                       />
                     </button>
                   </TableHead>
+                  <TableHead>Changelog</TableHead>
                 </>
               )}
               <TableHead>Thao tác</TableHead>
@@ -768,13 +1028,14 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
           </TableHeader>
           <TableBody>
             {products.map(product => (
-              <ProductRow
+              <ProductRowMemo
                 key={product.id}
                 product={product}
                 onShow={onShow}
                 isAdmin={isAdmin}
                 onUpdatePrice={onUpdatePrice}
                 isUpdating={updatingPriceId === product.kiotviet_id}
+                mode="desktop"
               />
             ))}
           </TableBody>

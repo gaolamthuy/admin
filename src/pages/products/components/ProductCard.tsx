@@ -34,15 +34,7 @@ interface ProductWithPriceDifference extends ProductCardType {
   costDiffFromLatestPo?: number | null; // inventory_cost - latest_total_cost_per_unit
 }
 
-const BACKEND_URL = import.meta.env.VITE_BACKEND_URL;
-
-const getPrintUrl = () => {
-  if (!BACKEND_URL) {
-    console.warn('VITE_BACKEND_URL is not configured');
-    return '';
-  }
-  return `${BACKEND_URL.replace(/\/$/, '')}/api/r/main/print`;
-};
+import { getPrintUrl } from '@/lib/windmill';
 
 const submitPostForm = (
   url: string,

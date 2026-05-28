@@ -31,6 +31,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Switch } from '@/components/ui/switch';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Loader2, Upload } from 'lucide-react';
 import {
@@ -124,6 +131,7 @@ export const ProductShow = () => {
       glt_retail_promotion: false,
       glt_baseprice_markup: 0,
       glt_extra_cost: 0,
+      glt_baseprice_round_step: 1000,
       glt_labelprint_favorite: false,
     },
   });
@@ -134,6 +142,7 @@ export const ProductShow = () => {
         glt_retail_promotion: record.glt_retail_promotion ?? false,
         glt_baseprice_markup: record.glt_baseprice_markup || 0,
         glt_extra_cost: record.glt_extra_cost || 0,
+        glt_baseprice_round_step: record.glt_baseprice_round_step || 1000,
         glt_labelprint_favorite: record.glt_labelprint_favorite ?? false,
       });
       hasResetForm.current = true;
@@ -145,6 +154,7 @@ export const ProductShow = () => {
     glt_retail_promotion: boolean;
     glt_baseprice_markup: number;
     glt_extra_cost: number;
+    glt_baseprice_round_step: number;
     glt_labelprint_favorite: boolean;
   }) => {
     if (!record?.id) return;
@@ -157,6 +167,7 @@ export const ProductShow = () => {
       glt_extra_cost: values.glt_extra_cost
         ? parseFloat(String(values.glt_extra_cost))
         : 0,
+      glt_baseprice_round_step: values.glt_baseprice_round_step || 1000,
       glt_labelprint_favorite: Boolean(values.glt_labelprint_favorite),
     };
 
@@ -1059,6 +1070,45 @@ export const ProductShow = () => {
                             />
                           </FormControl>
                           <FormMessage />
+                          {updateProduct.isPending && (
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                              <Loader2 className="h-3 w-3 animate-spin" />
+                              Đang lưu...
+                            </div>
+                          )}
+                        </FormItem>
+                      )}
+                    />
+
+                    <FormField
+                      control={form.control}
+                      name="glt_baseprice_round_step"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Bước làm tròn giá (VND)</FormLabel>
+                          <Select
+                            value={String(field.value || 1000)}
+                            onValueChange={value => {
+                              field.onChange(Number(value));
+                              setTimeout(() => {
+                                form.handleSubmit(onSubmit)();
+                              }, 0);
+                            }}
+                            disabled={updateProduct.isPending}
+                          >
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder="Chọn bước làm tròn" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="500">500 VNĐ</SelectItem>
+                              <SelectItem value="1000">1000 VNĐ</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            500 = làm tròn mịn, 1000 = mặc định
+                          </p>
                           {updateProduct.isPending && (
                             <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
                               <Loader2 className="h-3 w-3 animate-spin" />
