@@ -54,6 +54,7 @@ export interface Product {
   glt_updated_at: string;
   created_date: string;
   modified_date: string;
+  order_template?: string | null;
 }
 
 /**
@@ -83,6 +84,7 @@ export interface ProductCard {
   is_active?: boolean;
   glt_visible?: boolean;
   glt_labelprint_favorite?: boolean;
+  order_template?: string | null;
 }
 
 /**
