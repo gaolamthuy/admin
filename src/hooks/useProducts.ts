@@ -68,7 +68,8 @@ export const useProducts = (filters: ProductFilters = {}) => {
             cost_analysis,
             pricing_info,
             calculate_from_po,
-            changelog
+            changelog,
+            order_template
           `
         )
         .eq('is_active', true);
@@ -204,6 +205,7 @@ export const useProducts = (filters: ProductFilters = {}) => {
             glt_updated_at: productDetails?.glt_updated_at || '',
             created_date: productDetails?.created_date || '',
             modified_date: productDetails?.modified_date || '',
+            order_template: p.order_template || null,
             // Extended fields for price difference (not in Product type, but used in ProductCard)
             priceDifference: p.latest_price_difference || null,
             priceDifferencePercent: p.latest_price_difference_percent || null,

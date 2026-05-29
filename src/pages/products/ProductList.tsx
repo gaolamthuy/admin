@@ -45,6 +45,7 @@ interface FilterState {
   isFavorite: boolean;
   sortByPriceDifference: boolean;
   sortByKvStatus: boolean;
+  sortByChangelog: boolean;
   viewMode: ViewMode;
 }
 
@@ -64,6 +65,7 @@ export const ProductList = () => {
       isFavorite: favoriteParam === null ? true : favoriteParam === 'true',
       sortByPriceDifference: sortParam === 'price-diff',
       sortByKvStatus: sortParam === 'kv-status',
+      sortByChangelog: sortParam === 'changelog',
       viewMode: viewParam === 'list' ? 'list' : 'card',
     };
   };
@@ -91,6 +93,8 @@ export const ProductList = () => {
       newSearchParams.set('sort', 'price-diff');
     } else if (isAdmin && filters.sortByKvStatus) {
       newSearchParams.set('sort', 'kv-status');
+    } else if (isAdmin && filters.sortByChangelog) {
+      newSearchParams.set('sort', 'changelog');
     }
 
     if (filters.viewMode === 'list') {
@@ -203,12 +207,34 @@ export const ProductList = () => {
       });
     }
 
+    if (isAdmin && filters.sortByChangelog) {
+      mappedProducts.sort((a, b) => {
+        const getLatestChangelogTime = (product: ProductWithExtendedFields) => {
+          const changelog = (product as Record<string, unknown>).changelog as
+            | Record<string, Array<{ at: string }>>
+            | null
+            | undefined;
+          if (!changelog) return -Infinity;
+          let latest: number | null = null;
+          for (const entries of Object.values(changelog)) {
+            for (const entry of entries) {
+              const t = new Date(entry.at).getTime();
+              if (latest === null || t > latest) latest = t;
+            }
+          }
+          return latest ?? -Infinity;
+        };
+        return getLatestChangelogTime(b) - getLatestChangelogTime(a);
+      });
+    }
+
     return mappedProducts;
   }, [
     isAdmin,
     productsRaw,
     filters.sortByPriceDifference,
     filters.sortByKvStatus,
+    filters.sortByChangelog,
   ]);
 
   const handleShow = (id: string | number) => {
@@ -369,6 +395,7 @@ export const ProductList = () => {
                       ...prev,
                       sortByPriceDifference: !prev.sortByPriceDifference,
                       sortByKvStatus: false,
+                      sortByChangelog: false,
                     }))
                   }
                   sortByKvStatus={filters.sortByKvStatus}
@@ -377,6 +404,16 @@ export const ProductList = () => {
                       ...prev,
                       sortByKvStatus: !prev.sortByKvStatus,
                       sortByPriceDifference: false,
+                      sortByChangelog: false,
+                    }))
+                  }
+                  sortByChangelog={filters.sortByChangelog}
+                  onToggleChangelogSort={() =>
+                    setFilters(prev => ({
+                      ...prev,
+                      sortByChangelog: !prev.sortByChangelog,
+                      sortByPriceDifference: false,
+                      sortByKvStatus: false,
                     }))
                   }
                 />
