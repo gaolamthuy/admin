@@ -44,6 +44,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ButtonGroup } from '@/components/ui/button-group';
+import { Checkbox } from '@/components/ui/checkbox';
 import type { CostAnalysis, PricingInfo, CalculateFromPo } from '@/types';
 import { formatDateTime, formatTimeAgo } from '@/utils/date';
 
@@ -250,7 +251,7 @@ const PrintModal: React.FC<{
 const SyncPriceConfirmDialog: React.FC<{
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: (printPriceboard: boolean) => void;
   isLoading: boolean;
   productName: string;
   productCode?: string;
@@ -266,6 +267,8 @@ const SyncPriceConfirmDialog: React.FC<{
   basePrice,
   calculateFromPo,
 }) => {
+  const [printPriceboard, setPrintPriceboard] = React.useState(true);
+
   if (!calculateFromPo) return null;
 
   const fmt = (n: number | null | undefined) =>
@@ -436,11 +439,21 @@ const SyncPriceConfirmDialog: React.FC<{
             </div>
           )}
         </div>
+        <div className="flex items-center gap-2 py-2 border-t">
+          <Checkbox
+            id="print-priceboard"
+            checked={printPriceboard}
+            onCheckedChange={checked => setPrintPriceboard(checked === true)}
+          />
+          <Label htmlFor="print-priceboard" className="text-sm cursor-pointer">
+            In bảng giá bán lẻ sau khi cập nhật
+          </Label>
+        </div>
         <div className="flex justify-end gap-2 pt-2">
           <Button variant="outline" onClick={onClose} disabled={isLoading}>
             Hủy
           </Button>
-          <Button onClick={onConfirm} disabled={isLoading}>
+          <Button onClick={() => onConfirm(printPriceboard)} disabled={isLoading}>
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin mr-1" />
             ) : (
@@ -872,9 +885,18 @@ const ProductRow: React.FC<{
         <SyncPriceConfirmDialog
           isOpen={isSyncDialogOpen}
           onClose={() => setIsSyncDialogOpen(false)}
-          onConfirm={() => {
-            onUpdatePrice!(product.kiotviet_id!);
+          onConfirm={async (printPriceboard) => {
             setIsSyncDialogOpen(false);
+            try {
+              await onUpdatePrice!(product.kiotviet_id!);
+              if (printPriceboard && product.kiotviet_id) {
+                await new Promise(r => setTimeout(r, 500));
+                submitPostForm(getPrintUrl(), {
+                  printType: 'priceboard',
+                  kiotviet_id: String(product.kiotviet_id),
+                });
+              }
+            } catch {}
           }}
           isLoading={!!isUpdating}
           productName={product.name}
@@ -987,9 +1009,18 @@ const ProductRow: React.FC<{
       <SyncPriceConfirmDialog
         isOpen={isSyncDialogOpen}
         onClose={() => setIsSyncDialogOpen(false)}
-        onConfirm={() => {
-          onUpdatePrice!(product.kiotviet_id!);
+        onConfirm={async (printPriceboard) => {
           setIsSyncDialogOpen(false);
+          try {
+            await onUpdatePrice!(product.kiotviet_id!);
+            if (printPriceboard && product.kiotviet_id) {
+              await new Promise(r => setTimeout(r, 500));
+              submitPostForm(getPrintUrl(), {
+                printType: 'priceboard',
+                kiotviet_id: String(product.kiotviet_id),
+              });
+            }
+          } catch {}
         }}
         isLoading={!!isUpdating}
         productName={product.name}
