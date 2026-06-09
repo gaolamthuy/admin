@@ -1,9 +1,3 @@
-/**
- * Dialog component để upload ảnh sản phẩm
- *
- * @module pages/products/components/ProductImageUploadDialog
- */
-
 import { useState, useRef, useEffect } from 'react';
 import {
   Dialog,
@@ -16,86 +10,93 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Loader2, Upload, X } from 'lucide-react';
-import { useUploadProductImage } from '../hooks/useUploadProductImage';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Loader2, Upload, X, CheckCircle } from 'lucide-react';
+import {
+  useUploadProductImage,
+  type UploadProductPhotoResult,
+} from '../hooks/useProductShow';
 
-/**
- * Props cho ProductImageUploadDialog
- */
+const IMAGE_ROLES = [
+  { value: 'feature', label: 'Feature (ảnh chính)' },
+  { value: 'closeup', label: 'Closeup (cận cảnh)' },
+  { value: 'package', label: 'Package (đóng gói)' },
+] as const;
+
 export interface ProductImageUploadDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   kiotvietId: number;
-  role: string; // 'main-original' | 'package-original'
   productName?: string;
+  defaultRole?: string;
 }
 
-/**
- * Dialog component để upload ảnh sản phẩm
- */
 export const ProductImageUploadDialog = ({
   open,
   onOpenChange,
   kiotvietId,
-  role,
   productName,
+  defaultRole,
 }: ProductImageUploadDialogProps) => {
+  const [selectedRole, setSelectedRole] = useState(
+    defaultRole || IMAGE_ROLES[0].value
+  );
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [uploadResult, setUploadResult] =
+    useState<UploadProductPhotoResult | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const uploadMutation = useUploadProductImage();
 
-  /**
-   * Xử lý khi chọn file
-   */
+  useEffect(() => {
+    if (open) {
+      setSelectedRole(defaultRole || IMAGE_ROLES[0].value);
+      setUploadResult(null);
+    }
+  }, [open, defaultRole]);
+
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) {
       setSelectedFile(null);
       setPreviewUrl(null);
+      setUploadResult(null);
       return;
     }
 
-    // Validate file type
     if (!file.type.startsWith('image/')) {
-      alert('Vui lòng chọn file ảnh');
       return;
     }
 
     setSelectedFile(file);
+    setUploadResult(null);
 
-    // Tạo preview URL
     const url = URL.createObjectURL(file);
     setPreviewUrl(url);
   };
 
-  /**
-   * Xử lý khi click nút upload
-   */
   const handleUpload = async () => {
-    if (!selectedFile) {
-      return;
-    }
+    if (!selectedFile) return;
 
     try {
-      await uploadMutation.mutateAsync({
+      const result = await uploadMutation.mutateAsync({
         file: selectedFile,
         kiotvietId,
-        role,
+        role: selectedRole,
       });
-
-      // Reset form và đóng dialog
-      handleClose();
+      setUploadResult(result);
     } catch (error) {
-      // Error đã được handle trong hook
       console.error('Upload error:', error);
     }
   };
 
-  /**
-   * Cleanup preview URL khi component unmount hoặc file thay đổi
-   */
   useEffect(() => {
     return () => {
       if (previewUrl) {
@@ -104,30 +105,26 @@ export const ProductImageUploadDialog = ({
     };
   }, [previewUrl]);
 
-  /**
-   * Xử lý khi đóng dialog
-   */
   const handleClose = () => {
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
     }
     setSelectedFile(null);
     setPreviewUrl(null);
+    setUploadResult(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
     onOpenChange(false);
   };
 
-  /**
-   * Xử lý khi click nút xóa file đã chọn
-   */
   const handleRemoveFile = () => {
     if (previewUrl) {
       URL.revokeObjectURL(previewUrl);
     }
     setSelectedFile(null);
     setPreviewUrl(null);
+    setUploadResult(null);
     if (fileInputRef.current) {
       fileInputRef.current.value = '';
     }
@@ -135,22 +132,42 @@ export const ProductImageUploadDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[500px]">
+      <DialogContent className="sm:max-w-[520px]">
         <DialogHeader>
-          <DialogTitle>Upload ảnh sản phẩm</DialogTitle>
+          <DialogTitle className="flex items-center gap-2">
+            <Upload className="h-4 w-4" />
+            Upload ảnh sản phẩm
+          </DialogTitle>
           <DialogDescription>
-            Upload ảnh cho role <strong>{role}</strong>
             {productName && (
               <>
-                {' '}
-                của sản phẩm <strong>{productName}</strong>
+                Sản phẩm: <strong>{productName}</strong> (KV#{kiotvietId})
               </>
             )}
           </DialogDescription>
         </DialogHeader>
 
         <div className="space-y-4 py-4">
-          {/* File input */}
+          <div className="space-y-2">
+            <Label>Role</Label>
+            <Select
+              value={selectedRole}
+              onValueChange={setSelectedRole}
+              disabled={uploadMutation.isPending}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Chọn role" />
+              </SelectTrigger>
+              <SelectContent>
+                {IMAGE_ROLES.map(r => (
+                  <SelectItem key={r.value} value={r.value}>
+                    {r.label}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
           <div className="space-y-2">
             <Label htmlFor="file-upload">Chọn file ảnh</Label>
             <div className="flex items-center gap-2">
@@ -183,7 +200,6 @@ export const ProductImageUploadDialog = ({
             )}
           </div>
 
-          {/* Preview */}
           {previewUrl && (
             <div className="space-y-2">
               <Label>Preview</Label>
@@ -196,6 +212,54 @@ export const ProductImageUploadDialog = ({
               </div>
             </div>
           )}
+
+          {uploadResult && (
+            <div className="rounded-lg border p-3 space-y-2 bg-muted/50">
+              <div className="flex items-center gap-2 text-sm font-medium text-green-600 dark:text-green-400">
+                <CheckCircle className="h-4 w-4" />
+                Upload thành công — {uploadResult.product_name} (#{uploadResult.kiotviet_id})
+              </div>
+              <div className="space-y-1 text-xs">
+                <div className="flex justify-between">
+                  <span className="text-muted-foreground">Original:</span>
+                  <a
+                    href={uploadResult.original?.public_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="text-primary underline"
+                  >
+                    View
+                  </a>
+                </div>
+                {uploadResult.overlay && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Overlay:</span>
+                    <a
+                      href={uploadResult.overlay.public_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline"
+                    >
+                      View ({uploadResult.overlay.size_kb} KB)
+                    </a>
+                  </div>
+                )}
+                {uploadResult.display && (
+                  <div className="flex justify-between">
+                    <span className="text-muted-foreground">Display:</span>
+                    <a
+                      href={uploadResult.display.public_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline"
+                    >
+                      View ({uploadResult.display.size_kb} KB)
+                    </a>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
@@ -205,25 +269,27 @@ export const ProductImageUploadDialog = ({
             onClick={handleClose}
             disabled={uploadMutation.isPending}
           >
-            Hủy
+            {uploadResult ? 'Đóng' : 'Hủy'}
           </Button>
-          <Button
-            type="button"
-            onClick={handleUpload}
-            disabled={!selectedFile || uploadMutation.isPending}
-          >
-            {uploadMutation.isPending ? (
-              <>
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                Đang upload...
-              </>
-            ) : (
-              <>
-                <Upload className="mr-2 h-4 w-4" />
-                Upload
-              </>
-            )}
-          </Button>
+          {!uploadResult && (
+            <Button
+              type="button"
+              onClick={handleUpload}
+              disabled={!selectedFile || uploadMutation.isPending}
+            >
+              {uploadMutation.isPending ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Đang upload...
+                </>
+              ) : (
+                <>
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload
+                </>
+              )}
+            </Button>
+          )}
         </DialogFooter>
       </DialogContent>
     </Dialog>
