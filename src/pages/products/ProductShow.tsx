@@ -6,20 +6,19 @@
  */
 
 import { useParams, useNavigate } from 'react-router-dom';
-import { useRef, useEffect } from 'react';
+import { useRef, useEffect, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import {
   useProductShow,
   useProductPriceComparison,
   useProductInventory,
   useUpdateProduct,
-  useUploadProductImage,
   useUpdateProductPrice,
-  type HomepageImage,
   type ChildUnitInfo,
   type ChangelogEntry,
   type ProductChangelog,
 } from './hooks/useProductShow';
+import { ProductImageUploadDialog } from './components/ProductImageUploadDialog';
 import {
   Card,
   CardContent,
@@ -88,44 +87,8 @@ export const ProductShow = () => {
   // Mutation để update product
   const updateProduct = useUpdateProduct();
 
-  // Mutation để upload ảnh
-  const uploadProductImage = useUploadProductImage();
+  const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
 
-  // Track uploading state per role
-  const uploadingRoleRef = useRef<string | null>(null);
-
-  // Handler để upload ảnh cho role
-  const handleUploadImage = async (
-    role: string,
-    imageType: string,
-    file: File
-  ) => {
-    if (!record?.kiotviet_id) return;
-
-    uploadingRoleRef.current = role;
-
-    try {
-      await toast.promise(
-        uploadProductImage.mutateAsync({
-          kiotvietId: record.kiotviet_id,
-          role,
-          imageType,
-          file,
-        }),
-        {
-          loading: `Đang upload ảnh ${role}/${imageType}...`,
-          success: `Đã upload ảnh ${role}/${imageType} thành công`,
-          error: `Upload ảnh thất bại. Vui lòng thử lại.`,
-        }
-      );
-    } catch (error) {
-      console.error('Upload error:', error);
-    } finally {
-      uploadingRoleRef.current = null;
-    }
-  };
-
-  // Form cho inline editing
   const form = useForm({
     defaultValues: {
       glt_retail_promotion: false,
@@ -811,18 +774,26 @@ export const ProductShow = () => {
 
         {/* Tab Hình ảnh */}
         <TabsContent value="images" className="space-y-6">
-          {/* Section 1: Ảnh theo Role từ glt_images */}
           <Card>
             <CardHeader>
-              <CardTitle>Ảnh theo Role</CardTitle>
-              <CardDescription>
-                Các ảnh đã xử lý theo từng role (closeup, feature, package,
-                infocard...)
-              </CardDescription>
+              <div className="flex items-center justify-between">
+                <div>
+                  <CardTitle>Ảnh sản phẩm</CardTitle>
+                  <CardDescription>
+                    Upload và quản lý ảnh theo role (feature, closeup, package)
+                  </CardDescription>
+                </div>
+                <Button
+                  onClick={() => setIsUploadDialogOpen(true)}
+                  disabled={!record?.kiotviet_id}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  Upload ảnh
+                </Button>
+              </div>
             </CardHeader>
             <CardContent>
               {(() => {
-                // Parse glt_images từ record
                 const gltImages = record?.glt_images as
                   | Array<{
                       role: string;
@@ -843,7 +814,7 @@ export const ProductShow = () => {
                 if (!gltImages || gltImages.length === 0) {
                   return (
                     <div className="text-center py-12 text-sm text-muted-foreground">
-                      Chưa có ảnh nào được xử lý.
+                      Chưa có ảnh nào. Nhấn "Upload ảnh" để bắt đầu.
                     </div>
                   );
                 }
@@ -859,7 +830,6 @@ export const ProductShow = () => {
 
                       return (
                         <div key={roleIndex} className="space-y-4">
-                          {/* Role Header */}
                           <div className="flex items-center gap-2">
                             <h4 className="text-sm font-semibold uppercase tracking-wide">
                               {role}
@@ -867,34 +837,8 @@ export const ProductShow = () => {
                             <Badge variant="outline" className="text-xs">
                               {Object.keys(images).length} variants
                             </Badge>
-                            {/* Upload button */}
-                            <label className="cursor-pointer">
-                              <input
-                                type="file"
-                                accept="image/jpeg,image/png,image/webp"
-                                className="hidden"
-                                onChange={e => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    handleUploadImage(role, 'display', file);
-                                  }
-                                  e.target.value = '';
-                                }}
-                                disabled={
-                                  uploadProductImage.isPending &&
-                                  uploadingRoleRef.current === role
-                                }
-                              />
-                              {uploadProductImage.isPending &&
-                              uploadingRoleRef.current === role ? (
-                                <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
-                              ) : (
-                                <Upload className="h-4 w-4 text-muted-foreground hover:text-primary transition-colors" />
-                              )}
-                            </label>
                           </div>
 
-                          {/* Display preview + các variant còn lại dạng link */}
                           <div className="flex flex-wrap gap-4">
                             {displayImage && (
                               <div className="space-y-2">
@@ -952,6 +896,15 @@ export const ProductShow = () => {
               })()}
             </CardContent>
           </Card>
+
+          {record?.kiotviet_id && (
+            <ProductImageUploadDialog
+              open={isUploadDialogOpen}
+              onOpenChange={setIsUploadDialogOpen}
+              kiotvietId={record.kiotviet_id}
+              productName={record.full_name || record.name}
+            />
+          )}
         </TabsContent>
 
         {/* Tab Cài đặt */}

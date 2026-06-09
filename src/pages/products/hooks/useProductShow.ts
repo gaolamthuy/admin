@@ -8,6 +8,8 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useSession } from '@/hooks/useAuth';
+import { getWindmillApiUrl } from '@/lib/windmill';
+import { env } from '@/lib/env';
 
 /**
  * Interface cho product image từ bảng glt_product_images
@@ -608,12 +610,42 @@ export const useUploadBaseProductImage = () => {
   });
 };
 
-/**
- * Hook để upload ảnh cho role cụ thể (feature, closeup, package, infocard)
- * Upload trực tiếp vào glt_product_images table
- *
- * @param kiotvietId - kv_products.kiotviet_id
- */
+export interface UploadProductPhotoResult {
+  kiotviet_id: number;
+  product_name: string;
+  base_price: number;
+  role: string;
+  original: {
+    public_url: string;
+    dev_url: string;
+    updated_at: string;
+  };
+  overlay: {
+    public_url: string;
+    dev_url: string;
+    size_kb: number;
+    updated_at: string;
+  };
+  display: {
+    public_url: string;
+    dev_url: string;
+    size_kb: number;
+    updated_at: string;
+  };
+}
+
+function fileToBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      resolve(dataUrl.split(',')[1]);
+    };
+    reader.onerror = reject;
+    reader.readAsDataURL(file);
+  });
+}
+
 export const useUploadProductImage = () => {
   const queryClient = useQueryClient();
 
@@ -621,48 +653,50 @@ export const useUploadProductImage = () => {
     mutationFn: async ({
       kiotvietId,
       role,
-      imageType,
       file,
     }: {
       kiotvietId: number;
       role: string;
-      imageType: string;
       file: File;
-    }) => {
-      const { validateImageFile, uploadImageToCloudinary } =
-        await import('@/lib/cloudinary');
+    }): Promise<UploadProductPhotoResult> => {
+      const base64 = await fileToBase64(file);
 
-      validateImageFile(file);
+      const url = getWindmillApiUrl('r', 'api/upload_product_photo');
+      const token = env.VITE_BACKEND_TOKEN;
 
-      const publicId = `${kiotvietId}/${role}-${imageType}`;
-
-      const result = await uploadImageToCloudinary({
-        file,
-        kiotvietId: publicId,
-        useSignedUpload: true,
-        useCloudflareFunction: false,
-        context: {
-          kiotviet_id: String(kiotvietId),
-          role,
-          image_type: imageType,
-        },
-      });
-
-      const imageUrl = result.public_id
-        ? `https://cdn.gaolamthuy.vn/${result.public_id}`
-        : null;
-
-      if (!imageUrl) {
-        throw new Error('Failed to get image URL');
+      if (!url || !token) {
+        throw new Error(
+          'VITE_BACKEND_URL hoặc VITE_BACKEND_TOKEN chưa được cấu hình'
+        );
       }
 
-      return { imageUrl, role, imageType };
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify({
+          kiotviet_id: kiotvietId,
+          image_base64: base64,
+          image_content_type: file.type,
+          role,
+        }),
+      });
+
+      if (!response.ok) {
+        const text = await response.text();
+        throw new Error(text || 'Upload ảnh thất bại');
+      }
+
+      return (await response.json()) as UploadProductPhotoResult;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['product-show', variables.kiotvietId],
       });
       queryClient.invalidateQueries({ queryKey: ['product-images'] });
+      queryClient.invalidateQueries({ queryKey: ['products'] });
     },
   });
 };
