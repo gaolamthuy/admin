@@ -132,7 +132,7 @@ export const ProductImageUploadDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[520px]">
+      <DialogContent className="sm:max-w-[520px] max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="h-4 w-4" />
@@ -147,7 +147,7 @@ export const ProductImageUploadDialog = ({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4 py-4">
+        <div className="space-y-4 py-4 overflow-y-auto min-h-0 flex-1">
           <div className="space-y-2">
             <Label>Role</Label>
             <Select
