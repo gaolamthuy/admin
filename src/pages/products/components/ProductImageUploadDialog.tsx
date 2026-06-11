@@ -21,13 +21,13 @@ import { Loader2, Upload, X, CheckCircle } from 'lucide-react';
 import {
   useUploadProductImage,
   type UploadProductPhotoResult,
+  type ImageRole,
 } from '../hooks/useProductShow';
 
 const IMAGE_ROLES = [
-  { value: 'feature', label: 'Feature (ảnh chính)' },
   { value: 'closeup', label: 'Closeup (cận cảnh)' },
   { value: 'package', label: 'Package (đóng gói)' },
-] as const;
+] as const satisfies { value: ImageRole; label: string }[];
 
 export interface ProductImageUploadDialogProps {
   open: boolean;
@@ -44,8 +44,8 @@ export const ProductImageUploadDialog = ({
   productName,
   defaultRole,
 }: ProductImageUploadDialogProps) => {
-  const [selectedRole, setSelectedRole] = useState(
-    defaultRole || IMAGE_ROLES[0].value
+  const [selectedRole, setSelectedRole] = useState<ImageRole>(
+    (defaultRole as ImageRole) || IMAGE_ROLES[0].value
   );
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
@@ -57,7 +57,7 @@ export const ProductImageUploadDialog = ({
 
   useEffect(() => {
     if (open) {
-      setSelectedRole(defaultRole || IMAGE_ROLES[0].value);
+      setSelectedRole((defaultRole as ImageRole) || IMAGE_ROLES[0].value);
       setUploadResult(null);
     }
   }, [open, defaultRole]);
@@ -152,7 +152,7 @@ export const ProductImageUploadDialog = ({
             <Label>Role</Label>
             <Select
               value={selectedRole}
-              onValueChange={setSelectedRole}
+              onValueChange={(v) => setSelectedRole(v as ImageRole)}
               disabled={uploadMutation.isPending}
             >
               <SelectTrigger>
@@ -231,7 +231,7 @@ export const ProductImageUploadDialog = ({
                     View
                   </a>
                 </div>
-                {uploadResult.overlay && (
+                {uploadResult.overlay?.public_url && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Overlay:</span>
                     <a
@@ -244,7 +244,7 @@ export const ProductImageUploadDialog = ({
                     </a>
                   </div>
                 )}
-                {uploadResult.display && (
+                {uploadResult.display?.public_url && (
                   <div className="flex justify-between">
                     <span className="text-muted-foreground">Display:</span>
                     <a

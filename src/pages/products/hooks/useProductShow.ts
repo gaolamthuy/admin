@@ -610,6 +610,8 @@ export const useUploadBaseProductImage = () => {
   });
 };
 
+export type ImageRole = 'closeup' | 'package';
+
 export interface UploadProductPhotoResult {
   kiotviet_id: number;
   product_name: string;
@@ -625,26 +627,16 @@ export interface UploadProductPhotoResult {
     dev_url: string;
     size_kb: number;
     updated_at: string;
-  };
+  } | null;
   display: {
     public_url: string;
     dev_url: string;
     size_kb: number;
     updated_at: string;
-  };
+  } | null;
 }
 
-function fileToBase64(file: File): Promise<string> {
-  return new Promise((resolve, reject) => {
-    const reader = new FileReader();
-    reader.onload = () => {
-      const dataUrl = reader.result as string;
-      resolve(dataUrl.split(',')[1]);
-    };
-    reader.onerror = reject;
-    reader.readAsDataURL(file);
-  });
-}
+const PRODUCT_IMAGES_BUCKET = 'product-images';
 
 export const useUploadProductImage = () => {
   const queryClient = useQueryClient();
@@ -656,40 +648,30 @@ export const useUploadProductImage = () => {
       file,
     }: {
       kiotvietId: number;
-      role: string;
+      role: ImageRole;
       file: File;
     }): Promise<UploadProductPhotoResult> => {
-      const base64 = await fileToBase64(file);
-
-      const url = getWindmillApiUrl('r', 'api/upload_product_photo');
       const token = env.VITE_BACKEND_TOKEN;
+      if (!token) throw new Error('VITE_BACKEND_TOKEN chưa được cấu hình');
 
-      if (!url || !token) {
-        throw new Error(
-          'VITE_BACKEND_URL hoặc VITE_BACKEND_TOKEN chưa được cấu hình'
-        );
-      }
+      const storagePath = `products/${kiotvietId}/${role}-original`;
+      const { error: uploadError } = await supabase.storage
+        .from(PRODUCT_IMAGES_BUCKET)
+        .upload(storagePath, file, {
+          upsert: true,
+          contentType: file.type || 'image/jpeg',
+        });
+      if (uploadError) throw new Error(`Upload ảnh thất bại: ${uploadError.message}`);
 
-      const response = await fetch(url, {
+      const processUrl = getWindmillApiUrl('r', 'upload_product_photo');
+      const processRes = await fetch(processUrl, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify({
-          kiotviet_id: kiotvietId,
-          image_base64: base64,
-          image_content_type: file.type,
-          role,
-        }),
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        body: JSON.stringify({ kiotviet_id: kiotvietId, role }),
       });
+      if (!processRes.ok) throw new Error((await processRes.text()) || 'Xử lý ảnh thất bại');
 
-      if (!response.ok) {
-        const text = await response.text();
-        throw new Error(text || 'Upload ảnh thất bại');
-      }
-
-      return (await response.json()) as UploadProductPhotoResult;
+      return (await processRes.json()) as UploadProductPhotoResult;
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({
