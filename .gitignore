@@ -120,6 +120,10 @@ downloads/
 scripts/
 .cursor/
 
+.agents/
+.kilo/
+skills-lock.json
+
 .mcp/docs/kiotviet-http/*.md
 *.token
 *.key
