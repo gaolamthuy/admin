@@ -209,8 +209,9 @@ export function formatTimeAgo(
   const secondsDiff = now.diff(targetDate, 'second');
   const minutesDiff = now.diff(targetDate, 'minute');
   const hoursDiff = now.diff(targetDate, 'hour');
-  const calendarDaysDiff = now.diff(targetDate, 'day', true); // true = floating point
-  const daysDiff = Math.floor(calendarDaysDiff); // Làm tròn xuống để lấy số ngày nguyên
+  const daysDiff = now
+    .startOf('day')
+    .diff(targetDate.startOf('day'), 'day');
 
   const weeksDiff = Math.floor(daysDiff / 7);
   const monthsDiff = now.diff(targetDate, 'month');
