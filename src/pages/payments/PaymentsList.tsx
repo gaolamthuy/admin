@@ -9,7 +9,13 @@ import { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
-import { Loader2, Search } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Loader2, Search, CalendarDays, Infinity, Copy, Check } from 'lucide-react';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { usePayments, type Payment } from '@/hooks/usePayments';
 import {
   formatDate,
@@ -27,23 +33,45 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 
+function CopyButton({ value }: { value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <button
+      onClick={handleCopy}
+      className="shrink-0 rounded p-0.5 text-muted-foreground hover:text-foreground transition-colors"
+      aria-label="Sao chép"
+    >
+      {copied ? (
+        <Check className="h-3 w-3 text-green-600" />
+      ) : (
+        <Copy className="h-3 w-3" />
+      )}
+    </button>
+  );
+}
+
 /**
  * PaymentsList Component
  * Chỉ xem lịch sử, không có hành động tạo/sửa/xoá
  */
 export const PaymentsList = () => {
   const { isAdmin } = useIsAdmin();
-  // ⚠️ Phân quyền: Admin lấy full query, Staff chỉ lấy 20 records
-  const { data: payments = [], isLoading } = usePayments(isAdmin);
+  const [showAll, setShowAll] = useState(false);
+  const { data: payments = [], isLoading } = usePayments({
+    isAdmin,
+    showAll: isAdmin && showAll,
+  });
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
-  const itemsPerPage = 20;
 
-  /**
-   * Helper: Chuẩn hoá thông tin provider (logo, màu, label hiển thị)
-   */
   const getProviderInfo = (providerRaw: string | null | undefined) => {
     const provider = (providerRaw ?? '').toLowerCase().trim();
 
@@ -106,30 +134,13 @@ export const PaymentsList = () => {
   }, [payments, searchTerm]);
 
   /**
-   * Group các giao dịch theo ngày (YYYY-MM-DD) dựa trên received_at / created_at
-   * Sau đó sort ngày mới nhất trước
+   * Group TẤT CẢ giao dịch theo ngày, sau đó paginate theo nhóm ngày
+   * → mỗi ngày không bị xé qua trang
    */
-  // Pagination: Chia filteredPayments thành các page
-  const paginatedPayments = useMemo(() => {
-    const startIndex = (currentPage - 1) * itemsPerPage;
-    const endIndex = startIndex + itemsPerPage;
-    return filteredPayments.slice(startIndex, endIndex);
-  }, [filteredPayments, currentPage, itemsPerPage]);
-
-  // Total pages
-  const totalPages = Math.ceil(filteredPayments.length / itemsPerPage);
-
-  // Reset to page 1 when filtered payments change
-  useEffect(() => {
-    if (currentPage > totalPages && totalPages > 0) {
-      setCurrentPage(1);
-    }
-  }, [currentPage, totalPages]);
-
-  const groupedPayments = useMemo(() => {
+  const allGroups = useMemo(() => {
     const groups: Record<string, Payment[]> = {};
 
-    paginatedPayments.forEach(payment => {
+    filteredPayments.forEach(payment => {
       const displayTime = payment.received_at ?? payment.created_at;
       if (!displayTime) {
         const key = 'unknown';
@@ -138,7 +149,6 @@ export const PaymentsList = () => {
         return;
       }
 
-      // Dùng formatDate để lấy date key theo UTC (database đã lưu UTC)
       const dateKey = formatDate(displayTime, 'YYYY-MM-DD');
       if (!groups[dateKey]) {
         groups[dateKey] = [];
@@ -147,23 +157,58 @@ export const PaymentsList = () => {
     });
 
     return Object.entries(groups)
-      .sort(([a], [b]) => (a < b ? 1 : -1)) // ngày mới trước
+      .sort(([a], [b]) => (a < b ? 1 : -1))
       .map(([date, items]) => {
-        // Lấy datetime thực tế từ payment đầu tiên để tính days ago chính xác
         const firstPayment = items[0];
         const displayTime =
           firstPayment?.received_at ?? firstPayment?.created_at;
         return { date, items, displayTime: displayTime || null };
       });
-  }, [paginatedPayments]);
+  }, [filteredPayments]);
+
+  const daysPerPage = 7;
+  const totalPages = Math.ceil(allGroups.length / daysPerPage);
+
+  useEffect(() => {
+    if (currentPage > totalPages && totalPages > 0) {
+      setCurrentPage(1);
+    }
+  }, [currentPage, totalPages]);
+
+  const groupedPayments = useMemo(() => {
+    const start = (currentPage - 1) * daysPerPage;
+    return allGroups.slice(start, start + daysPerPage);
+  }, [allGroups, currentPage]);
 
   return (
     <div className="container mx-auto py-6 space-y-6">
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-            <CardTitle>Lịch sử thanh toán</CardTitle>
-            {/* ⚠️ Search box chỉ hiển thị cho admin */}
+            <div className="flex items-center gap-2 flex-wrap">
+              <CardTitle>Lịch sử thanh toán</CardTitle>
+              {isAdmin && (
+                <Button
+                  variant={showAll ? 'default' : 'outline'}
+                  size="sm"
+                  onClick={() => setShowAll(prev => !prev)}
+                  className="h-7 gap-1.5 text-xs"
+                >
+                  {showAll ? (
+                    <Infinity className="h-3.5 w-3.5" />
+                  ) : (
+                    <CalendarDays className="h-3.5 w-3.5" />
+                  )}
+                  {showAll ? 'Tất cả' : '7 ngày'}
+                </Button>
+              )}
+              {!isAdmin && (
+                <Badge variant="secondary" className="text-xs">
+                  <CalendarDays className="mr-1 h-3 w-3" />
+                  7 ngày gần nhất
+                </Badge>
+              )}
+            </div>
             {isAdmin && (
               <div className="w-full max-w-md relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
@@ -191,15 +236,6 @@ export const PaymentsList = () => {
             </div>
           ) : (
             <>
-              {/* Thông tin số lượng records - Đã ẩn theo yêu cầu */}
-              {/* <div className="mb-4 text-sm text-muted-foreground">
-                Hiển thị {paginatedPayments.length} / {filteredPayments.length} giao dịch
-                {!isAdmin && (
-                  <span className="ml-2 text-xs">
-                    (Staff chỉ xem được 20 records đầu tiên)
-                  </span>
-                )}
-              </div> */}
               <div className="space-y-6">
                 {groupedPayments.map(group => (
                   <section key={group.date} className="space-y-3">
@@ -211,24 +247,18 @@ export const PaymentsList = () => {
                           </span>
                         ) : (
                           (() => {
-                            // Format date group: dddd, dd/MM/yyyy với times ago trong badge
                             const dateStr =
                               group.displayTime || `${group.date}T00:00:00Z`;
 
-                            // Format với thứ trong tuần: dddd, DD/MM/YYYY
-                            // dddd = tên đầy đủ của thứ (thứ hai, thứ ba, ...) với locale 'vi'
                             let formattedDate = formatDate(
                               dateStr,
                               'dddd, DD/MM/YYYY'
                             );
 
-                            // Capitalize chữ cái đầu của weekday để đẹp hơn
-                            // Ví dụ: "thứ hai" -> "Thứ Hai"
                             const parts = formattedDate.split(', ');
                             if (parts.length === 2) {
                               const weekday = parts[0];
                               const datePart = parts[1];
-                              // Capitalize từng từ trong weekday
                               const capitalizedWeekday = weekday
                                 .split(' ')
                                 .map(
@@ -336,10 +366,22 @@ export const PaymentsList = () => {
                                 )}
                               <div className="flex items-center justify-between gap-2">
                                 <span className="text-muted-foreground">
-                                  Mã giao dịch
+                                  Mô tả
                                 </span>
-                                <span className="font-mono text-[11px]">
-                                  {payment.ref || '-'}
+                                <span className="inline-flex items-center gap-1 font-mono text-[11px]">
+                                  <Tooltip delayDuration={0}>
+                                    <TooltipTrigger asChild>
+                                      <span className="truncate max-w-[120px] cursor-default">{payment.ref || '-'}</span>
+                                    </TooltipTrigger>
+                                    {payment.ref && (
+                                      <TooltipContent side="top" align="start" className="max-w-xs break-all text-xs">
+                                        {payment.ref}
+                                      </TooltipContent>
+                                    )}
+                                  </Tooltip>
+                                  {payment.ref && (
+                                    <CopyButton value={payment.ref} />
+                                  )}
                                 </span>
                               </div>
                             </div>
@@ -366,7 +408,6 @@ export const PaymentsList = () => {
                 ))}
               </div>
 
-              {/* Pagination */}
               {totalPages > 1 && (
                 <div className="mt-6">
                   <Pagination>
@@ -384,7 +425,6 @@ export const PaymentsList = () => {
                         />
                       </PaginationItem>
 
-                      {/* First page */}
                       {currentPage > 3 && (
                         <>
                           <PaginationItem>
@@ -403,7 +443,6 @@ export const PaymentsList = () => {
                         </>
                       )}
 
-                      {/* Page numbers around current page */}
                       {Array.from({ length: totalPages }, (_, i) => i + 1)
                         .filter(
                           page =>
@@ -412,7 +451,6 @@ export const PaymentsList = () => {
                             (page >= currentPage - 1 && page <= currentPage + 1)
                         )
                         .map((page, index, array) => {
-                          // Add ellipsis if there's a gap
                           const prevPage = array[index - 1];
                           const showEllipsisBefore =
                             prevPage && page - prevPage > 1;
@@ -437,7 +475,6 @@ export const PaymentsList = () => {
                           );
                         })}
 
-                      {/* Last page */}
                       {currentPage < totalPages - 2 && (
                         <>
                           {currentPage < totalPages - 3 && (

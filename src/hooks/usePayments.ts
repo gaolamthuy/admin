@@ -31,22 +31,28 @@ export interface Payment {
   handle_note: string | null;
 }
 
+export interface UsePaymentsOptions {
+  isAdmin?: boolean;
+  showAll?: boolean;
+}
+
 /**
  * Hook fetch danh sách thanh toán từ bảng glt_payment
  * Chỉ dùng để xem lịch sử, không tạo mới
  *
  * ⚠️ Phân quyền:
- * - Admin: Lấy tất cả records (không limit hoặc limit cao)
- * - Staff: Chỉ lấy 20 records đầu tiên
+ * - Staff: Chỉ xem 7 ngày gần nhất (ko toggle)
+ * - Admin: Mặc định 7 ngày, có thể bật showAll để xem toàn bộ
  *
- * @param isAdmin - Có phải admin không (mặc định: false)
+ * @param options - isAdmin, showAll
  * @returns Danh sách payments đã sort mới nhất trước
  */
-export const usePayments = (isAdmin: boolean = false) => {
+export const usePayments = (options: UsePaymentsOptions = {}) => {
+  const { isAdmin = false, showAll = false } = options;
   const { data: session } = useSession();
 
   return useQuery({
-    queryKey: ['payments', isAdmin],
+    queryKey: ['payments', isAdmin, showAll],
     queryFn: async (): Promise<Payment[]> => {
       if (!session) {
         throw new Error('Not authenticated');
@@ -74,15 +80,18 @@ export const usePayments = (isAdmin: boolean = false) => {
           handle_note
         `
         )
-        // Ưu tiên giao dịch thật, bỏ qua test nếu cần
         .order('received_at', { ascending: false, nullsFirst: false });
 
-      // ⚠️ Phân quyền: Admin lấy tất cả, Staff chỉ lấy 20 records đầu
-      if (!isAdmin) {
-        query = query.limit(20);
-      } else {
-        // Admin có thể lấy nhiều hơn, nhưng vẫn giới hạn để tránh quá tải
+      if (isAdmin && showAll) {
         query = query.limit(5000);
+      } else {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        sevenDaysAgo.setHours(0, 0, 0, 0);
+
+        query = query
+          .gte('received_at', sevenDaysAgo.toISOString())
+          .limit(1000);
       }
 
       const { data, error } = await query;
