@@ -12,25 +12,6 @@ import { getWindmillApiUrl } from '@/lib/windmill';
 import { env } from '@/lib/env';
 
 /**
- * Interface cho product image từ bảng glt_product_images
- */
-export interface ProductImage {
-  id: number;
-  product_id: number | null;
-  url: string | null;
-  path: string | null;
-  role: string | null;
-  width: number | null;
-  height: number | null;
-  format: string | null;
-  alt: string | null;
-  description: string | null;
-  rev: number | null;
-  created_at: string;
-  updated_at: string | null;
-}
-
-/**
  * Interface cho image trong glt_images_homepage
  */
 export interface HomepageImage {
@@ -211,87 +192,6 @@ export const useProductShow = (id: string | number) => {
     },
     enabled: !!session && !!id,
     staleTime: 5 * 60 * 1000, // 5 phút
-  });
-};
-
-/**
- * Hook để fetch product images từ v_products_admin
- * Tối ưu: Sử dụng images JSONB từ view thay vì query riêng glt_product_images
- * Images đã được sort theo role priority trong view (feature → closeup → package → infocard)
- *
- * @param productId - kv_products.id (không phải kiotviet_id)
- */
-export const useProductImages = (productId: number | null | undefined) => {
-  const { data: session } = useSession();
-
-  return useQuery({
-    queryKey: ['product-images', productId],
-    queryFn: async (): Promise<ProductImage[]> => {
-      if (!session || !productId) {
-        return [];
-      }
-
-      // Query từ v_products_admin để lấy glt_images đã được aggregate sẵn
-      const { data, error } = await supabase
-        .from('v_products_admin')
-        .select('glt_images, kiotviet_id')
-        .eq('product_id', productId)
-        .single();
-
-      if (error) {
-        // Nếu không tìm thấy trong view, fallback về query trực tiếp
-        if (error.code === 'PGRST116') {
-          // No rows returned - có thể product chưa có trong view
-          // Fallback: query trực tiếp từ glt_product_images (cần kiotviet_id)
-          console.warn(
-            'Product not found in v_products_admin, falling back to direct query'
-          );
-          return [];
-        }
-        console.error('Error fetching product images:', error);
-        return [];
-      }
-
-      // Parse glt_images từ JSONB array (từ glt_product_images)
-      const images = (data.glt_images || []) as Array<{
-        id: number;
-        role: string;
-        url: string | null;
-        url_with_rev: string | null;
-        url_r2_dev: string | null;
-        path: string | null;
-        width: number | null;
-        height: number | null;
-        format: string | null;
-        rev: number | null;
-        rev_datetime: string | null;
-        updated_at: string | null;
-      }>;
-
-      // Map sang ProductImage interface
-      // Sử dụng url_with_rev nếu có (cho cache busting), fallback về url
-      return images.map(
-        img =>
-          ({
-            id: img.id,
-            product_id: data.kiotviet_id,
-            url: img.url_with_rev || img.url || null,
-            path: img.path,
-            role: img.role,
-            width: img.width,
-            height: img.height,
-            format: img.format,
-            rev: img.rev,
-            updated_at: img.updated_at,
-            created_at:
-              img.rev_datetime || img.updated_at || new Date().toISOString(),
-            alt: null,
-            description: null,
-          }) as ProductImage
-      );
-    },
-    enabled: !!session && !!productId,
-    staleTime: 5 * 60 * 1000,
   });
 };
 
@@ -502,8 +402,6 @@ export const useRegenerateProductImages = () => {
       return await response.json();
     },
     onSuccess: () => {
-      // Invalidate queries để refresh images
-      queryClient.invalidateQueries({ queryKey: ['product-images'] });
       queryClient.invalidateQueries({ queryKey: ['product-show'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
     },
@@ -577,7 +475,6 @@ export const useUploadProductImage = () => {
       queryClient.invalidateQueries({
         queryKey: ['product-show', variables.kiotvietId],
       });
-      queryClient.invalidateQueries({ queryKey: ['product-images'] });
       queryClient.invalidateQueries({ queryKey: ['products'] });
     },
   });
