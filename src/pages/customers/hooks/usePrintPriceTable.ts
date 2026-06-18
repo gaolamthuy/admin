@@ -35,8 +35,8 @@ export const usePrintPriceTable = () => {
     try {
       const body: Record<string, string> = {
         printType: 'pricetable',
-        outputType: 'html',
-        pricetableType: 'whole',
+        format: 'print',
+        market: 'wholesale',
         customer_kiotviet_id: customerKiotvietId.toString(),
       };
 
