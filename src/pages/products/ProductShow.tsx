@@ -803,6 +803,7 @@ export const ProductShow = () => {
                           id: number;
                           url: string;
                           path: string;
+                          rev?: number;
                           width?: number;
                           height?: number;
                           format?: string;
@@ -848,11 +849,20 @@ export const ProductShow = () => {
                                 <div
                                   className="relative rounded-lg border overflow-hidden cursor-pointer hover:ring-2 hover:ring-primary/50 transition-all"
                                   onClick={() =>
-                                    window.open(displayImage.url, '_blank')
+                                    window.open(
+                                      displayImage.rev
+                                        ? `${displayImage.url}?v=${displayImage.rev}`
+                                        : displayImage.url,
+                                      '_blank'
+                                    )
                                   }
                                 >
                                   <img
-                                    src={displayImage.url}
+                                    src={
+                                      displayImage.rev
+                                        ? `${displayImage.url}?v=${displayImage.rev}`
+                                        : displayImage.url
+                                    }
                                     alt={`${role} display`}
                                     className="w-[200px] h-[267px] object-cover"
                                   />
@@ -873,7 +883,11 @@ export const ProductShow = () => {
                               {linkVariants.map(([imageType, imageData]) => (
                                 <a
                                   key={imageType}
-                                  href={imageData.url}
+                                  href={
+                                    imageData.rev
+                                      ? `${imageData.url}?v=${imageData.rev}`
+                                      : imageData.url
+                                  }
                                   target="_blank"
                                   rel="noopener noreferrer"
                                   className="inline-flex items-center gap-1 text-xs text-muted-foreground hover:text-primary underline underline-offset-2"
