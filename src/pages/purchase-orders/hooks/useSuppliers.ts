@@ -14,6 +14,7 @@ export interface SupplierOption {
   last_purchase_date: string | null;
   last_master_unit_quantity: number | null; // ⭐ Mới: Tổng kg từ PO gần nhất
   po_template_products?: PoTemplateProduct[] | null; // Field mới từ v_suppliers_admin
+  is_favorite?: boolean; // ⭐ Bookmark (merge từ glt_supplier_favorites)
 }
 
 /**

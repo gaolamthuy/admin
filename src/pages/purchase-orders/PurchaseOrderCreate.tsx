@@ -7,19 +7,33 @@
  * @module pages/purchase-orders/PurchaseOrderCreate
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePurchaseOrderForm } from './hooks/usePurchaseOrderForm';
 import { useSuppliers } from './hooks/useSuppliers';
 import { useTemplates } from './hooks/useTemplates';
 import { useCreatePurchaseOrder } from './hooks/useCreatePurchaseOrder';
+import { useSupplierCostDefaults, useUpsertSupplierCostDefault } from './hooks/useSupplierCostDefaults';
+import {
+  useSupplierFavorites,
+  useToggleSupplierFavorite,
+} from './hooks/useSupplierFavorites';
 import { SupplierSelector } from './components/SupplierSelector';
 import { ProductSelector } from './components/ProductSelector';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, ArrowRight, Loader2 } from 'lucide-react';
+import { CurrencyInput } from '@/components/ui/currency-input';
+import { Label } from '@/components/ui/label';
+import { toast } from 'sonner';
+import { ArrowLeft, ArrowRight, Loader2, Pencil, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDate, formatDaysAgo } from '@/utils/date';
+
+// Các loại chi phí nhập hàng (mã CHK* từ KiotViet — route vào ex_return_third_party)
+const SURCHARGE_TYPES = [
+  { code: 'CHK000002', label: 'Cước xe' },
+  { code: 'CHK000001', label: 'Xuống gạo' },
+] as const;
 
 /**
  * Purchase Order Create Page Component với step-based flow
@@ -38,6 +52,39 @@ export const PurchaseOrderCreate = () => {
     loading: suppliersLoading,
     error: suppliersError,
   } = useSuppliers(isOpen);
+
+  // Favorites — merge is_favorite + sort favorites lên đầu
+  const { data: favoriteIds = [] } = useSupplierFavorites();
+  const favoriteSet = useMemo(
+    () => new Set(favoriteIds),
+    [favoriteIds]
+  );
+  const enrichedSuppliers = useMemo(() => {
+    return suppliers
+      .map(s => ({ ...s, is_favorite: favoriteSet.has(s.kiotviet_id) }))
+      .sort(
+        (a, b) =>
+          Number(Boolean(b.is_favorite)) - Number(Boolean(a.is_favorite))
+      );
+  }, [suppliers, favoriteSet]);
+
+  const toggleFavorite = useToggleSupplierFavorite();
+
+  const handleToggleFavorite = (supplier: typeof form.selectedSupplier) => {
+    if (!supplier) return;
+    toggleFavorite.mutate(
+      {
+        supplierKiotvietId: supplier.kiotviet_id,
+        favorite: !supplier.is_favorite,
+      },
+      {
+        onError: e =>
+          toast.error('Không cập nhật được yêu thích', {
+            description: String(e),
+          }),
+      }
+    );
+  };
 
   // Tìm supplier data từ suppliers list để lấy po_template_products
   const selectedSupplierData = suppliers.find(
@@ -62,6 +109,74 @@ export const PurchaseOrderCreate = () => {
     errorMessage,
   } = useCreatePurchaseOrder();
 
+  // Default surcharges của supplier đã chọn (cước xe, xuống gạo...)
+  const { data: costDefaults = [] } = useSupplierCostDefaults(
+    form.selectedSupplier?.kiotviet_id
+  );
+  const upsertDefault = useUpsertSupplierCostDefault();
+
+  // State giá trị surcharge (editable) — prefill từ defaults khi supplier đổi
+  const [surchargeValues, setSurchargeValues] = useState<
+    Record<string, number>
+  >({});
+  const [editingSurcharges, setEditingSurcharges] = useState(false);
+  const [savingSurcharges, setSavingSurcharges] = useState(false);
+
+  // Phụ thuộc vào nội dung (string key) thay vì ref array để tránh render loop
+  const costDefaultsKey = costDefaults
+    .map(d => `${d.cost_type_code}:${d.default_value}`)
+    .join('|');
+
+  useEffect(() => {
+    const next: Record<string, number> = {};
+    SURCHARGE_TYPES.forEach(t => {
+      const def = costDefaults.find(d => d.cost_type_code === t.code);
+      next[t.code] = def ? Number(def.default_value) || 0 : 0;
+    });
+    setSurchargeValues(next);
+    setEditingSurcharges(false);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [costDefaultsKey]);
+
+  const totalSurcharges = Object.values(surchargeValues).reduce(
+    (sum, v) => sum + (Number(v) || 0),
+    0
+  );
+
+  // Lưu giá trị surcharge về Supabase (trở thành default cho supplier)
+  const handleSaveSurcharges = async () => {
+    if (!form.selectedSupplier?.kiotviet_id) return;
+    setSavingSurcharges(true);
+    try {
+      await Promise.all(
+        SURCHARGE_TYPES.map(t =>
+          upsertDefault.mutateAsync({
+            supplier_kiotviet_id: form.selectedSupplier!.kiotviet_id!,
+            cost_type_code: t.code,
+            default_value: Number(surchargeValues[t.code]) || 0,
+          })
+        )
+      );
+      toast.success('Đã lưu chi phí nhập mặc định cho supplier');
+      setEditingSurcharges(false);
+    } catch (e) {
+      toast.error('Lưu chi phí thất bại', { description: String(e) });
+    } finally {
+      setSavingSurcharges(false);
+    }
+  };
+
+  // Hủy edit — revert về giá trị từ DB
+  const handleCancelEditSurcharges = () => {
+    const next: Record<string, number> = {};
+    SURCHARGE_TYPES.forEach(t => {
+      const def = costDefaults.find(d => d.cost_type_code === t.code);
+      next[t.code] = def ? Number(def.default_value) || 0 : 0;
+    });
+    setSurchargeValues(next);
+    setEditingSurcharges(false);
+  };
+
   // Auto-select all products khi templates load xong
   useEffect(() => {
     if (
@@ -78,16 +193,20 @@ export const PurchaseOrderCreate = () => {
 
   /**
    * Xử lý chọn supplier và chuyển sang step 2
+   * Clear selectedProducts để tránh sót items của supplier trước đó
    */
   const handleSupplierSelect = (supplier: typeof form.selectedSupplier) => {
+    form.removeAll();
     form.setSelectedSupplier(supplier);
     form.setStep(2);
   };
 
   /**
    * Xử lý quay lại step 1
+   * Clear selectedProducts để khi chọn supplier mới không sót items cũ
    */
   const handleBackToStep1 = () => {
+    form.removeAll();
     form.setStep(1);
   };
 
@@ -113,18 +232,20 @@ export const PurchaseOrderCreate = () => {
     }
 
     try {
-      // Build payload cho webhook n8n
+      // Build payload cho Windmill flow create_purchase_order
+      // Giá nhập KHÔNG gửi — script tự lấy latest PO price phía server.
+      // is_draft luôn = 1 (nháp) — admin duyệt trên KiotViet portal.
+      const surcharges = SURCHARGE_TYPES.map(t => ({
+        code: t.code,
+        name: t.label,
+        value: Number(surchargeValues[t.code]) || 0,
+        isSupplierExpense: false,
+      })).filter(s => s.value > 0);
+
       const payload = {
-        branchId: form.selectedSupplier.branch_id || 0, // Fallback to 0 nếu không có
-        supplier: {
-          id: form.selectedSupplier.kiotviet_id,
-          code: form.selectedSupplier.code,
-          name: form.selectedSupplier.name,
-          contactNumber: form.selectedSupplier.contact_number,
-          address: form.selectedSupplier.address,
-        },
-        purchaseOrderDetails: form.selectedProductList.map(product => {
-          // ⭐ Convert quantity từ số bao (child unit) sang kg (master unit)
+        supplier_code: form.selectedSupplier.code ?? '',
+        items: form.selectedProductList.map(product => {
+          // Convert quantity từ số bao (child unit) sang kg (master unit)
           // Nếu có child_units[0]: quantity (số bao) * conversion_value = kg
           // Nếu không có child_units: quantity giữ nguyên
           const quantityInKg =
@@ -133,16 +254,12 @@ export const PurchaseOrderCreate = () => {
               : product.quantity;
 
           return {
-            productId: product.product_id,
-            productCode: product.product_code,
-            productName: product.product_name,
+            kiotviet_id: product.product_id,
             quantity: quantityInKg, // Gửi kg (master unit)
-            price: product.price,
-            discount: null,
           };
         }),
-        description: '',
-        isDraft: false,
+        branch_id: form.selectedSupplier.branch_id ?? undefined,
+        ...(surcharges.length > 0 ? { surcharges } : {}),
       };
 
       await createPurchaseOrder(payload);
@@ -211,11 +328,12 @@ export const PurchaseOrderCreate = () => {
           {form.step === 1 && (
             <div className="space-y-6">
               <SupplierSelector
-                suppliers={suppliers}
+                suppliers={enrichedSuppliers}
                 loading={suppliersLoading}
                 error={suppliersError}
                 selectedSupplier={form.selectedSupplier}
                 onSelect={handleSupplierSelect}
+                onToggleFavorite={handleToggleFavorite}
               />
 
               <div className="flex justify-end">
@@ -335,6 +453,90 @@ export const PurchaseOrderCreate = () => {
                 onRemoveAll={form.removeAll}
                 onQuantityChange={form.updateQuantity}
               />
+
+              {/* Chi phí nhập hàng (surcharges) — prefill từ default, cho override */}
+              <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+                <div className="flex items-center justify-between gap-2">
+                  <p className="text-sm font-medium">Chi phí nhập hàng</p>
+                  <div className="flex items-center gap-3">
+                    {totalSurcharges > 0 && (
+                      <span className="text-sm text-muted-foreground">
+                        Tổng:{' '}
+                        <span className="font-medium text-foreground">
+                          {totalSurcharges.toLocaleString('vi-VN')}đ
+                        </span>
+                      </span>
+                    )}
+                    {editingSurcharges ? (
+                      <div className="flex gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-green-600"
+                          onClick={handleSaveSurcharges}
+                          disabled={savingSurcharges}
+                          title="Lưu làm mặc định"
+                        >
+                          {savingSurcharges ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Check className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-muted-foreground"
+                          onClick={handleCancelEditSurcharges}
+                          disabled={savingSurcharges}
+                          title="Hủy"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="h-7 w-7"
+                        onClick={() => setEditingSurcharges(true)}
+                        disabled={isSubmitting}
+                        title="Chỉnh sửa chi phí"
+                      >
+                        <Pencil className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  {SURCHARGE_TYPES.map(t => (
+                    <div key={t.code} className="space-y-1">
+                      <Label htmlFor={`surcharge-${t.code}`} className="text-xs">
+                        {t.label}
+                      </Label>
+                      <CurrencyInput
+                        id={`surcharge-${t.code}`}
+                        value={surchargeValues[t.code] ?? 0}
+                        onValueChange={n =>
+                          setSurchargeValues(prev => ({
+                            ...prev,
+                            [t.code]: n,
+                          }))
+                        }
+                        disabled={isSubmitting || !editingSurcharges}
+                        readOnly={!editingSurcharges}
+                        className={
+                          !editingSurcharges ? 'bg-transparent border-none focus-visible:ring-0 cursor-default' : ''
+                        }
+                      />
+                    </div>
+                  ))}
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  Bấm bút chì để sửa. Check để lưu làm mặc định cho supplier. Số 0
+                  = không áp dụng.
+                </p>
+              </div>
 
               <div className="flex justify-between">
                 <Button

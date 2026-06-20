@@ -10,10 +10,14 @@ export function getWindmillWorkspace(): string {
   return env.VITE_BACKEND_WORKSPACE;
 }
 
-export function getWindmillApiUrl(apiType: 'w' | 'r', path: string): string {
+export function getWindmillApiUrl(
+  apiType: 'w' | 'r',
+  path: string,
+  workspace?: string
+): string {
   const root = getWindmillRootUrl();
   if (!root) return '';
-  const ws = getWindmillWorkspace();
+  const ws = workspace ?? getWindmillWorkspace();
   return `${root}/api/${apiType}/${ws}/${path}`;
 }
 
