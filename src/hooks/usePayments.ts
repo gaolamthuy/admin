@@ -6,8 +6,14 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
+import dayjs from 'dayjs';
+import utc from 'dayjs/plugin/utc';
+import timezone from 'dayjs/plugin/timezone';
 import { supabase } from '@/lib/supabase';
 import { useSession } from '@/hooks/useAuth';
+
+dayjs.extend(utc);
+dayjs.extend(timezone);
 
 /**
  * Kiểu dữ liệu cho bản ghi thanh toán trong bảng glt_payment
@@ -85,12 +91,16 @@ export const usePayments = (options: UsePaymentsOptions = {}) => {
       if (isAdmin && showAll) {
         query = query.limit(5000);
       } else {
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        sevenDaysAgo.setHours(0, 0, 0, 0);
+        const VN_TIMEZONE = 'Asia/Ho_Chi_Minh';
+        const sevenDaysAgo = dayjs()
+          .tz(VN_TIMEZONE)
+          .subtract(7, 'day')
+          .startOf('day')
+          .utc()
+          .toISOString();
 
         query = query
-          .gte('received_at', sevenDaysAgo.toISOString())
+          .gte('received_at', sevenDaysAgo)
           .limit(1000);
       }
 
