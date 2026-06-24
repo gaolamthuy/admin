@@ -192,30 +192,32 @@ export function formatTimeAgo(
 
   const now = dayjs.utc();
 
-  // ⚠️ QUAN TRỌNG: So sánh ngày tháng (YYYY-MM-DD) thay vì dùng diff('day')
-  // vì diff('day') tính theo số giờ chênh lệch, không phải theo ngày tháng
-  // Ví dụ: 10/01 17:00 và 11/01 12:00 chỉ cách 19 giờ → daysDiff = 0 (SAI)
-  // Nhưng thực tế đây là 2 ngày khác nhau → cần so sánh YYYY-MM-DD
-  const nowDateStr = now.format('YYYY-MM-DD');
-  const targetDateStr = targetDate.format('YYYY-MM-DD');
+  // ⚠️ QUAN TRỌNG: So sánh ngày tháng theo timezone Việt Nam (Asia/Ho_Chi_Minh)
+  // để nhất quán với formatDate() hiển thị ngày theo GMT+7
+  // Ví dụ: 00:44 VN (25/06) = 17:44 UTC (24/06) → UTC sai, cần dùng VN timezone
+  const nowVN = now.tz(VN_TIMEZONE);
+  const targetVN = targetDate.tz(VN_TIMEZONE);
+
+  const nowDateStr = nowVN.format('YYYY-MM-DD');
+  const targetDateStr = targetVN.format('YYYY-MM-DD');
 
   // So sánh ngày tháng để xác định "Hôm nay", "Hôm qua" chính xác
   const isSameDay = nowDateStr === targetDateStr;
-  // Clone now để tránh mutate, rồi subtract 1 ngày để lấy ngày hôm qua
-  const yesterdayDateStr = now.clone().subtract(1, 'day').format('YYYY-MM-DD');
+  // Clone nowVN để tránh mutate, rồi subtract 1 ngày để lấy ngày hôm qua
+  const yesterdayDateStr = nowVN.clone().subtract(1, 'day').format('YYYY-MM-DD');
   const isYesterday = targetDateStr === yesterdayDateStr;
 
   // Tính các khoảng thời gian (sau khi đã xác định isSameDay và isYesterday)
   const secondsDiff = now.diff(targetDate, 'second');
   const minutesDiff = now.diff(targetDate, 'minute');
   const hoursDiff = now.diff(targetDate, 'hour');
-  const daysDiff = now
+  const daysDiff = nowVN
     .startOf('day')
-    .diff(targetDate.startOf('day'), 'day');
+    .diff(targetVN.startOf('day'), 'day');
 
   const weeksDiff = Math.floor(daysDiff / 7);
-  const monthsDiff = now.diff(targetDate, 'month');
-  const yearsDiff = now.diff(targetDate, 'year');
+  const monthsDiff = nowVN.diff(targetVN, 'month');
+  const yearsDiff = nowVN.diff(targetVN, 'year');
 
   // ⚠️ Handle negative values (tương lai) - không nên xảy ra với transaction dates
   // Nhưng nếu có, hiển thị thông báo phù hợp
