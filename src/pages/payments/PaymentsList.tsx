@@ -79,9 +79,6 @@ export const PaymentsList = () => {
       return {
         label: 'MoMo',
         logoSrc: '/logo/momo-symbol.svg',
-        fillAvatar: false,
-        badgeClass:
-          'bg-pink-100 text-pink-800 dark:bg-pink-900/40 dark:text-pink-100',
       };
     }
 
@@ -89,9 +86,6 @@ export const PaymentsList = () => {
       return {
         label: 'ACB',
         logoSrc: '/logo/acb-200x200.png',
-        fillAvatar: true,
-        badgeClass:
-          'bg-sky-100 text-sky-800 dark:bg-sky-900/40 dark:text-sky-100',
       };
     }
 
@@ -99,9 +93,6 @@ export const PaymentsList = () => {
       return {
         label: 'Vietcombank',
         logoSrc: '/logo/vietcombank-200x200.png',
-        fillAvatar: true,
-        badgeClass:
-          'bg-emerald-100 text-emerald-800 dark:bg-emerald-900/40 dark:text-emerald-100',
       };
     }
 
@@ -113,18 +104,12 @@ export const PaymentsList = () => {
       return {
         label: 'Techcombank',
         logoSrc: '/logo/techcombank-symbol.svg',
-        fillAvatar: false,
-        badgeClass:
-          'bg-red-100 text-red-800 dark:bg-red-900/40 dark:text-red-100',
       };
     }
 
     return {
       label: providerRaw || 'Khác',
       logoSrc: undefined as string | undefined,
-      fillAvatar: false,
-      badgeClass:
-        'bg-muted text-muted-foreground dark:bg-muted/40 dark:text-muted-foreground',
     };
   };
 
@@ -325,21 +310,11 @@ export const PaymentsList = () => {
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex items-center gap-2">
                                 {providerInfo.logoSrc && (
-                                  <span
-                                    className={`flex h-8 w-8 shrink-0 items-center justify-center overflow-hidden rounded-full ${
-                                      providerInfo.fillAvatar
-                                        ? ''
-                                        : providerInfo.badgeClass
-                                    }`}
-                                  >
+                                  <span className="flex h-8 w-8 shrink-0 items-center justify-center">
                                     <img
                                       src={providerInfo.logoSrc}
                                       alt={providerInfo.label}
-                                      className={
-                                        providerInfo.fillAvatar
-                                          ? 'h-full w-full object-cover'
-                                          : 'h-5 w-5 object-contain'
-                                      }
+                                      className="h-full w-full object-contain"
                                     />
                                   </span>
                                 )}
@@ -424,7 +399,7 @@ export const PaymentsList = () => {
                                   </span>
                                 )}
                                 {payment.test_trans && (
-                                  <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-[10px] font-medium text-yellow-800 dark:bg-yellow-900/40 dark:text-yellow-100">
+                                  <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
                                     Giao dịch TEST
                                   </span>
                                 )}

@@ -72,9 +72,11 @@ export function AppSidebar() {
         <SidebarMenu>
           <SidebarMenuItem>
             <SidebarMenuButton size="lg" onClick={() => navigate('/')}>
-              <div className="flex aspect-square size-8 items-center justify-center rounded-lg bg-sidebar-primary text-sidebar-primary-foreground">
-                <Package className="size-4" />
-              </div>
+              <img
+                src="/android-chrome-512x512.png"
+                alt="Gao Lam Thuy"
+                className="size-12 rounded-lg object-cover"
+              />
               <div className="flex flex-col gap-0.5 leading-none">
                 <span className="font-semibold">Gao Lam Thuy</span>
                 <span className="text-xs text-muted-foreground">Admin</span>
