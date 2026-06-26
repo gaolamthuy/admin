@@ -10,14 +10,8 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Loader2, Upload, X, CheckCircle } from 'lucide-react';
+import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
+import { Loader2, Upload, X, CheckCircle, Check } from 'lucide-react';
 import {
   useUploadProductImage,
   type UploadProductPhotoResult,
@@ -150,22 +144,21 @@ export const ProductImageUploadDialog = ({
         <div className="space-y-4 py-4 overflow-y-auto min-h-0 flex-1">
           <div className="space-y-2">
             <Label>Role</Label>
-            <Select
+            <ToggleGroup
+              type="single"
               value={selectedRole}
-              onValueChange={(v) => setSelectedRole(v as ImageRole)}
+              onValueChange={(v) => v && setSelectedRole(v as ImageRole)}
               disabled={uploadMutation.isPending}
+              variant="outline"
+              className="w-full"
             >
-              <SelectTrigger>
-                <SelectValue placeholder="Chọn role" />
-              </SelectTrigger>
-              <SelectContent>
-                {IMAGE_ROLES.map(r => (
-                  <SelectItem key={r.value} value={r.value}>
-                    {r.label}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+              {IMAGE_ROLES.map(r => (
+                <ToggleGroupItem key={r.value} value={r.value} className="flex-1 gap-1.5">
+                  {selectedRole === r.value && <Check className="h-4 w-4 text-primary" />}
+                  {r.label}
+                </ToggleGroupItem>
+              ))}
+            </ToggleGroup>
           </div>
 
           <div className="space-y-2">
