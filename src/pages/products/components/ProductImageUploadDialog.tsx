@@ -126,13 +126,13 @@ export const ProductImageUploadDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-[520px] max-h-[90vh] flex flex-col">
+      <DialogContent className="w-[95vw] sm:max-w-[520px] max-h-[90vh] flex flex-col p-4 sm:p-6">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Upload className="h-4 w-4" />
             Upload ảnh sản phẩm
           </DialogTitle>
-          <DialogDescription>
+          <DialogDescription className="break-words">
             {productName && (
               <>
                 Sản phẩm: <strong>{productName}</strong> (KV#{kiotvietId})
@@ -153,9 +153,9 @@ export const ProductImageUploadDialog = ({
               className="w-full"
             >
               {IMAGE_ROLES.map(r => (
-                <ToggleGroupItem key={r.value} value={r.value} className="flex-1 gap-1.5">
-                  {selectedRole === r.value && <Check className="h-4 w-4 text-primary" />}
-                  {r.label}
+                <ToggleGroupItem key={r.value} value={r.value} className="flex-1 gap-1.5 text-xs sm:text-sm">
+                  {selectedRole === r.value && <Check className="h-4 w-4 shrink-0 text-primary" />}
+                  <span className="truncate">{r.label}</span>
                 </ToggleGroupItem>
               ))}
             </ToggleGroup>
@@ -171,13 +171,14 @@ export const ProductImageUploadDialog = ({
                 accept="image/jpeg,image/png,image/webp"
                 onChange={handleFileChange}
                 disabled={uploadMutation.isPending}
-                className="cursor-pointer"
+                className="cursor-pointer min-w-0 flex-1 text-xs sm:text-sm"
               />
               {selectedFile && (
                 <Button
                   type="button"
                   variant="ghost"
                   size="icon"
+                  className="shrink-0"
                   onClick={handleRemoveFile}
                   disabled={uploadMutation.isPending}
                 >
@@ -200,7 +201,7 @@ export const ProductImageUploadDialog = ({
                 <img
                   src={previewUrl}
                   alt="Preview"
-                  className="w-full h-auto max-h-[300px] object-contain"
+                  className="w-full h-auto max-h-[200px] sm:max-h-[300px] object-contain"
                 />
               </div>
             </div>
@@ -255,12 +256,13 @@ export const ProductImageUploadDialog = ({
           )}
         </div>
 
-        <DialogFooter>
+        <DialogFooter className="flex-col gap-2 sm:flex-row">
           <Button
             type="button"
             variant="outline"
             onClick={handleClose}
             disabled={uploadMutation.isPending}
+            className="w-full sm:w-auto"
           >
             {uploadResult ? 'Đóng' : 'Hủy'}
           </Button>
@@ -269,6 +271,7 @@ export const ProductImageUploadDialog = ({
               type="button"
               onClick={handleUpload}
               disabled={!selectedFile || uploadMutation.isPending}
+              className="w-full sm:w-auto"
             >
               {uploadMutation.isPending ? (
                 <>
