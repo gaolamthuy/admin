@@ -85,7 +85,7 @@ export const PaymentsList = () => {
     if (provider.includes('acb')) {
       return {
         label: 'ACB',
-        logoSrc: '/logo/acb-200x200.png',
+        logoSrc: '/logo/acb-symbol.png',
       };
     }
 

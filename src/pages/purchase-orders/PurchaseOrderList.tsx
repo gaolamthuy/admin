@@ -81,9 +81,16 @@ export const PurchaseOrderList = () => {
                     <CardHeader className="pb-3">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <CardTitle className="text-lg font-semibold">
-                            {order.code || `#${order.id}`}
-                          </CardTitle>
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <CardTitle className="text-lg font-semibold">
+                              {order.code || `#${order.id}`}
+                            </CardTitle>
+                            {order.description?.includes('[TEST]') && (
+                              <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                                TEST
+                              </span>
+                            )}
+                          </div>
                           <p className="text-sm text-muted-foreground mt-1">
                             {order.supplier_name || 'Chưa có nhà cung cấp'}
                           </p>

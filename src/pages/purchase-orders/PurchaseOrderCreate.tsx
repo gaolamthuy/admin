@@ -14,6 +14,7 @@ import { useSuppliers } from './hooks/useSuppliers';
 import { useTemplates } from './hooks/useTemplates';
 import { useCreatePurchaseOrder } from './hooks/useCreatePurchaseOrder';
 import { useSupplierCostDefaults, useUpsertSupplierCostDefault } from './hooks/useSupplierCostDefaults';
+import { useIsAdmin } from '@/hooks/useAuth';
 import {
   useSupplierFavorites,
   useToggleSupplierFavorite,
@@ -24,6 +25,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CurrencyInput } from '@/components/ui/currency-input';
 import { Label } from '@/components/ui/label';
+import { Switch } from '@/components/ui/switch';
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipTrigger,
+} from '@/components/ui/tooltip';
 import { toast } from 'sonner';
 import { ArrowLeft, ArrowRight, Loader2, Pencil, Check, X } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -40,6 +47,7 @@ const SURCHARGE_TYPES = [
  */
 export const PurchaseOrderCreate = () => {
   const navigate = useNavigate();
+  const { isAdmin } = useIsAdmin();
   // eslint-disable-next-line @typescript-eslint/no-unused-vars
   const [isOpen] = useState(true);
 
@@ -121,6 +129,7 @@ export const PurchaseOrderCreate = () => {
   >({});
   const [editingSurcharges, setEditingSurcharges] = useState(false);
   const [savingSurcharges, setSavingSurcharges] = useState(false);
+  const [isTestSwitch, setIsTestSwitch] = useState(false);
 
   // Phụ thuộc vào nội dung (string key) thay vì ref array để tránh render loop
   const costDefaultsKey = costDefaults
@@ -260,6 +269,7 @@ export const PurchaseOrderCreate = () => {
         }),
         branch_id: form.selectedSupplier.branch_id ?? undefined,
         ...(surcharges.length > 0 ? { surcharges } : {}),
+        ...(isTestSwitch ? { is_test: true } : {}),
       };
 
       await createPurchaseOrder(payload);
@@ -538,15 +548,37 @@ export const PurchaseOrderCreate = () => {
                 </p>
               </div>
 
-              <div className="flex justify-between">
-                <Button
-                  variant="outline"
-                  onClick={handleBackToStep1}
-                  disabled={isSubmitting}
-                >
-                  <ArrowLeft className="mr-2 h-4 w-4" />
-                  Quay lại
-                </Button>
+              <div className="flex justify-between items-center">
+                <div className="flex items-center gap-3">
+                  <Button
+                    variant="outline"
+                    onClick={handleBackToStep1}
+                    disabled={isSubmitting}
+                  >
+                    <ArrowLeft className="mr-2 h-4 w-4" />
+                    Quay lại
+                  </Button>
+                  {isAdmin && (
+                    <Tooltip>
+                      <TooltipTrigger asChild>
+                        <div className="flex items-center gap-2">
+                          <Switch
+                            id="po-test-switch"
+                            checked={isTestSwitch}
+                            onCheckedChange={setIsTestSwitch}
+                            disabled={isSubmitting}
+                          />
+                          <Label htmlFor="po-test-switch" className="text-sm font-medium cursor-pointer">
+                            PO test
+                          </Label>
+                        </div>
+                      </TooltipTrigger>
+                      <TooltipContent>
+                        Bật khi test — không gửi thông báo Zalo
+                      </TooltipContent>
+                    </Tooltip>
+                  )}
+                </div>
                 <div className="flex gap-2">
                   <Button
                     variant="outline"

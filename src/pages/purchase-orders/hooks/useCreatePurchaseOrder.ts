@@ -27,6 +27,7 @@ export interface CreatePurchaseOrderPayload {
   branch_id?: number;
   description?: string;
   surcharges?: Surcharge[];
+  is_test?: boolean;
 }
 
 export interface PurchaseOrderLine {
@@ -37,6 +38,9 @@ export interface PurchaseOrderLine {
   unit_price: number;
   line_total: number;
   price_source_po: string;
+  child_unit: { unit: string; conversion_value: number } | null;
+  display_name: string;
+  display_quantity: number;
 }
 
 export interface CreatePurchaseOrderResult {
@@ -96,6 +100,7 @@ export const useCreatePurchaseOrder = () => {
             ...(payload.surcharges && payload.surcharges.length > 0
               ? { surcharges: payload.surcharges }
               : {}),
+            ...(payload.is_test ? { is_test: payload.is_test } : {}),
             is_draft: 1,
             auto_sync: true,
           }),
