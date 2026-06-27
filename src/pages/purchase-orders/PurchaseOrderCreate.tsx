@@ -397,58 +397,6 @@ export const PurchaseOrderCreate = () => {
                       {form.selectedSupplier.last_master_unit_quantity} kg
                     </p>
                   )}
-                  {/* ⭐ Mới: Hiển thị tổng số lượng theo child units và master unit */}
-                  {(() => {
-                    const selectedProducts = form.selectedProductList;
-                    if (selectedProducts.length === 0) return null;
-
-                    // Tính tổng theo từng child unit (ví dụ: 5 bao 50kg, 3 bao 60kg)
-                    const childUnitTotals = new Map<string, number>();
-                    let totalMasterUnit = 0;
-
-                    selectedProducts.forEach(product => {
-                      if (
-                        product.child_units &&
-                        product.child_units.length > 0
-                      ) {
-                        const childUnit = product.child_units[0];
-                        const unit = childUnit.unit;
-                        const quantity = product.quantity || 0;
-                        const currentTotal = childUnitTotals.get(unit) || 0;
-                        childUnitTotals.set(unit, currentTotal + quantity);
-
-                        // Tính tổng master unit (kg)
-                        totalMasterUnit +=
-                          quantity * childUnit.conversion_value;
-                      }
-                    });
-
-                    // Lấy master unit từ product đầu tiên (nếu có)
-                    const firstProduct = selectedProducts[0];
-                    const masterUnit = firstProduct.master_unit || 'kg';
-
-                    // Format child units: "8 bao 50kg + 1 bao 60kg"
-                    const childUnitsText = Array.from(childUnitTotals.entries())
-                      .map(([unit, total]) => `${total} ${unit}`)
-                      .join(' + ');
-
-                    return (
-                      <div className="pt-2 border-t">
-                        <p className="text-sm font-medium">
-                          Tổng số lượng:{' '}
-                          {totalMasterUnit > 0 ? (
-                            <span className="font-normal text-muted-foreground">
-                              {totalMasterUnit} {masterUnit} = {childUnitsText}
-                            </span>
-                          ) : (
-                            <span className="font-normal text-muted-foreground">
-                              {childUnitsText}
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                    );
-                  })()}
                 </div>
               )}
 
@@ -547,6 +495,57 @@ export const PurchaseOrderCreate = () => {
                   = không áp dụng.
                 </p>
               </div>
+
+              {(() => {
+                const selectedProducts = form.selectedProductList;
+                if (selectedProducts.length === 0) return null;
+
+                const childUnitTotals = new Map<string, number>();
+                let totalMasterUnit = 0;
+
+                selectedProducts.forEach(product => {
+                  if (
+                    product.child_units &&
+                    product.child_units.length > 0
+                  ) {
+                    const childUnit = product.child_units[0];
+                    const unit = childUnit.unit;
+                    const quantity = product.quantity || 0;
+                    const currentTotal = childUnitTotals.get(unit) || 0;
+                    childUnitTotals.set(unit, currentTotal + quantity);
+                    totalMasterUnit +=
+                      quantity * childUnit.conversion_value;
+                  }
+                });
+
+                const firstProduct = selectedProducts[0];
+                const masterUnit = firstProduct.master_unit || 'kg';
+
+                const childUnitsText = Array.from(childUnitTotals.entries())
+                  .map(([unit, total]) => `${total} ${unit}`)
+                  .join(' + ');
+
+                return (
+                  <div className="rounded-lg border bg-primary/5 p-4 flex items-center justify-between">
+                    <span className="text-sm font-medium text-primary">
+                      Tổng số lượng
+                    </span>
+                    <div className="text-right">
+                      {totalMasterUnit > 0 ? (
+                        <p className="text-lg font-semibold">
+                          {totalMasterUnit.toLocaleString('vi-VN')}{' '}
+                          {masterUnit}
+                        </p>
+                      ) : null}
+                      {childUnitsText && (
+                        <p className="text-sm text-muted-foreground">
+                          {childUnitsText}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
 
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
