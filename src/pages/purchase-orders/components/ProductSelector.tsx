@@ -7,12 +7,6 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { X, RotateCcw } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import {
-  Tooltip,
-  TooltipContent,
-  TooltipProvider,
-  TooltipTrigger,
-} from '@/components/ui/tooltip';
 
 interface ProductSelectorProps {
   templates: TemplateProduct[];
@@ -119,36 +113,18 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
                     )}
 
                     {template.images && template.images.length > 0 && (
-                      <TooltipProvider>
-                        <Tooltip>
-                          <TooltipTrigger asChild>
-                            <div className="relative h-16 w-16 flex-shrink-0 rounded-md border overflow-hidden bg-muted cursor-pointer">
-                              <img
-                                src={template.images[0]}
-                                alt={template.product_name || 'Product'}
-                                className="h-full w-full object-cover"
-                                loading="lazy"
-                                onError={e => {
-                                  (e.target as HTMLImageElement).style.display =
-                                    'none';
-                                }}
-                              />
-                            </div>
-                          </TooltipTrigger>
-                          <TooltipContent className="w-[300px] h-[300px] p-0 border-0 bg-transparent shadow-none">
-                            <img
-                              src={template.images[0]}
-                              alt={template.product_name || 'Product'}
-                              className="w-[300px] h-[300px] object-cover rounded-md border shadow-lg"
-                              loading="lazy"
-                              onError={e => {
-                                (e.target as HTMLImageElement).style.display =
-                                  'none';
-                              }}
-                            />
-                          </TooltipContent>
-                        </Tooltip>
-                      </TooltipProvider>
+                      <div className="relative h-16 w-16 flex-shrink-0 rounded-md border overflow-hidden bg-muted">
+                        <img
+                          src={template.images[0]}
+                          alt={template.product_name || 'Product'}
+                          className="h-full w-full object-cover"
+                          loading="lazy"
+                          onError={e => {
+                            (e.target as HTMLImageElement).style.display =
+                              'none';
+                          }}
+                        />
+                      </div>
                     )}
 
                     <div className="flex-1 min-w-0">

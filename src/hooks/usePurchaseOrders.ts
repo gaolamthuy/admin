@@ -109,7 +109,7 @@ export const usePurchaseOrders = () => {
       const { data, error } = await supabase
         .from('v_purchase_orders')
         .select('*')
-        .eq('status', 3) // Chỉ lấy status = 3
+        .in('status', [1, 3]) // status 1 = nháp, status 3 = hoàn thành
         .order('created_at', { ascending: false });
 
       if (error) throw error;

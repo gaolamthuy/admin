@@ -9,6 +9,7 @@ import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePurchaseOrders } from '@/hooks/usePurchaseOrders';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
   Pagination,
@@ -85,10 +86,22 @@ export const PurchaseOrderList = () => {
                             <CardTitle className="text-lg font-semibold">
                               {order.code || `#${order.id}`}
                             </CardTitle>
+                            {order.status === 1 && (
+                              <Badge variant="outline" className="text-[10px]">
+                                Nháp
+                              </Badge>
+                            )}
+                            {order.created_at &&
+                              Date.now() - new Date(order.created_at).getTime() <
+                                24 * 60 * 60 * 1000 && (
+                                <Badge variant="default" className="text-[10px]">
+                                  Mới
+                                </Badge>
+                              )}
                             {order.description?.includes('[TEST]') && (
-                              <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
+                              <Badge variant="outline" className="text-[10px]">
                                 TEST
-                              </span>
+                              </Badge>
                             )}
                           </div>
                           <p className="text-sm text-muted-foreground mt-1">

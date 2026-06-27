@@ -412,6 +412,57 @@ export const PurchaseOrderCreate = () => {
                 onQuantityChange={form.updateQuantity}
               />
 
+              {(() => {
+                const selectedProducts = form.selectedProductList;
+                if (selectedProducts.length === 0) return null;
+
+                const childUnitTotals = new Map<string, number>();
+                let totalMasterUnit = 0;
+
+                selectedProducts.forEach(product => {
+                  if (
+                    product.child_units &&
+                    product.child_units.length > 0
+                  ) {
+                    const childUnit = product.child_units[0];
+                    const unit = childUnit.unit;
+                    const quantity = product.quantity || 0;
+                    const currentTotal = childUnitTotals.get(unit) || 0;
+                    childUnitTotals.set(unit, currentTotal + quantity);
+                    totalMasterUnit +=
+                      quantity * childUnit.conversion_value;
+                  }
+                });
+
+                const firstProduct = selectedProducts[0];
+                const masterUnit = firstProduct.master_unit || 'kg';
+
+                const childUnitsText = Array.from(childUnitTotals.entries())
+                  .map(([unit, total]) => `${total} ${unit}`)
+                  .join(' + ');
+
+                return (
+                  <div className="rounded-lg border bg-primary/5 p-4 flex items-center justify-between">
+                    <span className="text-sm font-medium text-primary">
+                      Tổng số lượng
+                    </span>
+                    <div className="text-right">
+                      {totalMasterUnit > 0 ? (
+                        <p className="text-lg font-semibold">
+                          {totalMasterUnit.toLocaleString('vi-VN')}{' '}
+                          {masterUnit}
+                        </p>
+                      ) : null}
+                      {childUnitsText && (
+                        <p className="text-sm text-muted-foreground">
+                          {childUnitsText}
+                        </p>
+                      )}
+                    </div>
+                  </div>
+                );
+              })()}
+
               {/* Chi phí nhập hàng (surcharges) — prefill từ default, cho override */}
               <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
                 <div className="flex items-center justify-between gap-2">
@@ -495,57 +546,6 @@ export const PurchaseOrderCreate = () => {
                   = không áp dụng.
                 </p>
               </div>
-
-              {(() => {
-                const selectedProducts = form.selectedProductList;
-                if (selectedProducts.length === 0) return null;
-
-                const childUnitTotals = new Map<string, number>();
-                let totalMasterUnit = 0;
-
-                selectedProducts.forEach(product => {
-                  if (
-                    product.child_units &&
-                    product.child_units.length > 0
-                  ) {
-                    const childUnit = product.child_units[0];
-                    const unit = childUnit.unit;
-                    const quantity = product.quantity || 0;
-                    const currentTotal = childUnitTotals.get(unit) || 0;
-                    childUnitTotals.set(unit, currentTotal + quantity);
-                    totalMasterUnit +=
-                      quantity * childUnit.conversion_value;
-                  }
-                });
-
-                const firstProduct = selectedProducts[0];
-                const masterUnit = firstProduct.master_unit || 'kg';
-
-                const childUnitsText = Array.from(childUnitTotals.entries())
-                  .map(([unit, total]) => `${total} ${unit}`)
-                  .join(' + ');
-
-                return (
-                  <div className="rounded-lg border bg-primary/5 p-4 flex items-center justify-between">
-                    <span className="text-sm font-medium text-primary">
-                      Tổng số lượng
-                    </span>
-                    <div className="text-right">
-                      {totalMasterUnit > 0 ? (
-                        <p className="text-lg font-semibold">
-                          {totalMasterUnit.toLocaleString('vi-VN')}{' '}
-                          {masterUnit}
-                        </p>
-                      ) : null}
-                      {childUnitsText && (
-                        <p className="text-sm text-muted-foreground">
-                          {childUnitsText}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                );
-              })()}
 
               <div className="flex justify-between items-center">
                 <div className="flex items-center gap-3">
