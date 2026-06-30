@@ -96,6 +96,7 @@ export const ProductShow = () => {
       glt_extra_cost: 0,
       glt_baseprice_round_step: 1000,
       glt_labelprint_favorite: false,
+      glt_supplier_name: '',
     },
   });
 
@@ -107,6 +108,7 @@ export const ProductShow = () => {
         glt_extra_cost: record.glt_extra_cost || 0,
         glt_baseprice_round_step: record.glt_baseprice_round_step || 1000,
         glt_labelprint_favorite: record.glt_labelprint_favorite ?? false,
+        glt_supplier_name: (record as Record<string, unknown>).glt_supplier_name as string ?? '',
       });
       hasResetForm.current = true;
     }
@@ -119,6 +121,7 @@ export const ProductShow = () => {
     glt_extra_cost: number;
     glt_baseprice_round_step: number;
     glt_labelprint_favorite: boolean;
+    glt_supplier_name: string;
   }) => {
     if (!record?.id) return;
 
@@ -132,6 +135,7 @@ export const ProductShow = () => {
         : 0,
       glt_baseprice_round_step: values.glt_baseprice_round_step || 1000,
       glt_labelprint_favorite: Boolean(values.glt_labelprint_favorite),
+      glt_supplier_name: values.glt_supplier_name?.trim() || null,
     };
 
     const promise = updateProduct.mutateAsync({
@@ -938,6 +942,46 @@ export const ProductShow = () => {
                   className="space-y-6"
                   noValidate
                 >
+                  {/* Tên gọi NCC / nội bộ */}
+                  <FormField
+                    control={form.control}
+                    name="glt_supplier_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Tên gọi NCC / nội bộ</FormLabel>
+                        <FormControl>
+                          <Input
+                            {...field}
+                            value={field.value || ''}
+                            placeholder="Để trống = dùng tên gốc"
+                            disabled={updateProduct.isPending}
+                            onChange={e => {
+                              field.onChange(e.target.value);
+                            }}
+                            onKeyDown={e => {
+                              if (e.key === 'Enter') {
+                                e.preventDefault();
+                                form.handleSubmit(onSubmit)();
+                              }
+                            }}
+                            onBlur={() => {
+                              form.handleSubmit(onSubmit)();
+                            }}
+                          />
+                        </FormControl>
+                        <p className="text-xs text-muted-foreground">
+                          Tên thay thế khi gửi thông báo PO (Zalo/Discord). Trống = dùng tên đầy đủ.
+                        </p>
+                        {updateProduct.isPending && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                            Đang lưu...
+                          </div>
+                        )}
+                      </FormItem>
+                    )}
+                  />
+
                   <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                     <FormField
                       control={form.control}
