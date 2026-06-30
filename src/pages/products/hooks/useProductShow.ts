@@ -285,6 +285,7 @@ export const useUpdateProduct = () => {
         glt_extra_cost?: number;
         glt_baseprice_round_step?: number;
         glt_labelprint_favorite?: boolean;
+        glt_supplier_name?: string | null;
       };
     }) => {
       if (!session) {
