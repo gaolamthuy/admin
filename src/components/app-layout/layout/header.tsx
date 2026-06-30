@@ -27,11 +27,12 @@ function DesktopHeader() {
         'border-b',
         'border-border',
         'bg-sidebar',
-        'pr-3',
-        'justify-end',
+        'px-3',
         'z-40'
       )}
     >
+      <SidebarTrigger className="text-muted-foreground" />
+      <div className="flex-1" />
       <ThemeToggle />
       <UserDropdown />
     </header>

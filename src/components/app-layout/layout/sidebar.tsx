@@ -75,7 +75,7 @@ export function AppSidebar() {
               <img
                 src="/android-chrome-512x512.png"
                 alt="Gao Lam Thuy"
-                className="size-12 rounded-lg object-cover"
+                className="size-8 shrink-0 rounded-lg object-cover group-data-[collapsible=icon]:size-8"
               />
               <div className="flex flex-col gap-0.5 leading-none">
                 <span className="font-semibold">Gao Lam Thuy</span>
