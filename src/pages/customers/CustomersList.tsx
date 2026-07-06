@@ -25,9 +25,15 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import { ArrowDown, Loader2, Printer, Search, X } from 'lucide-react';
+import { ArrowDown, ChevronDown, Loader2, Printer, Search, X } from 'lucide-react';
 import { formatTimeAgo } from '@/utils/date';
 import { Button } from '@/components/ui/button';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { usePrintPriceTable } from './hooks/usePrintPriceTable';
 import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
@@ -81,16 +87,16 @@ export const CustomersList = () => {
   const handlePrintPriceTable = async (customer: {
     kiotviet_id: number;
     name: string | null;
-  }) => {
+  }, simplified?: boolean) => {
     if (!customer.kiotviet_id) {
       toast.error('Không tìm thấy thông tin khách hàng');
       return;
     }
 
     try {
-      await printPriceTable(customer.kiotviet_id);
+      await printPriceTable(customer.kiotviet_id, { simplified });
       toast.success('Đang mở bảng giá để in', {
-        description: `Bảng giá cho ${customer.name || 'khách hàng'}`,
+        description: `Bảng giá${simplified ? ' giản lược' : ''} cho ${customer.name || 'khách hàng'}`,
       });
     } catch (error) {
       const message =
@@ -195,16 +201,29 @@ export const CustomersList = () => {
                         <div className="flex items-center justify-end gap-2">
                           {/* Chỉ hiển thị nút "In bảng giá" khi customer có groups (không null) */}
                           {customer.groups !== null && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => handlePrintPriceTable(customer)}
-                              disabled={isPrinting || !customer.kiotviet_id}
-                              title="In bảng giá cho khách hàng này"
-                            >
-                              <Printer className="mr-2 h-4 w-4" />
-                              {isPrinting ? 'Đang xử lý...' : 'In bảng giá'}
-                            </Button>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  disabled={isPrinting || !customer.kiotviet_id}
+                                >
+                                  <Printer className="mr-1 h-4 w-4" />
+                                  {isPrinting ? 'Đang xử lý...' : 'In bảng giá'}
+                                  <ChevronDown className="ml-1 h-3 w-3" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                <DropdownMenuItem onClick={() => handlePrintPriceTable(customer, false)}>
+                                  <Printer className="mr-2 h-4 w-4" />
+                                  Đầy đủ
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handlePrintPriceTable(customer, true)}>
+                                  <Printer className="mr-2 h-4 w-4" />
+                                  Giản lược
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           )}
                         </div>
                       </TableCell>
