@@ -63,6 +63,8 @@ export interface PurchaseOrder {
   total_payment: number | null;
   discount: number | null;
   discount_ratio: number | null;
+  ex_return_suppliers: number | null;
+  ex_return_third_party: number | null;
   status: number | null;
   created_at: string | null;
   updated_at: string | null;
@@ -123,6 +125,7 @@ export const usePurchaseOrders = () => {
 
 /**
  * Hook fetch single purchase order by ID
+ * Query từ v_purchase_orders view (có aggregate data: total_items, details JSONB...)
  *
  * @param id - Purchase order ID
  * @returns Query result với purchase order data
@@ -138,7 +141,7 @@ export const usePurchaseOrder = (id: string | number) => {
       }
 
       const { data, error } = await supabase
-        .from('kv_purchase_orders')
+        .from('v_purchase_orders')
         .select('*')
         .eq('id', id)
         .single();

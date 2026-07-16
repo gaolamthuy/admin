@@ -31,6 +31,9 @@ export interface PurchaseOrder {
   created_at: string | null;
   updated_at: string | null;
   created_date: string | null;
+  total_items: number | null;
+  total_quantity: number | null;
+  details?: PurchaseOrderDetail[];
 }
 
 /**

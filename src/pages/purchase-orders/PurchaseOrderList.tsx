@@ -8,6 +8,7 @@
 import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePurchaseOrders } from '@/hooks/usePurchaseOrders';
+import { useIsAdmin } from '@/hooks/useAuth';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -20,8 +21,17 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import { Loader2, Plus, Package, Calendar } from 'lucide-react';
+import { Loader2, Plus, Package, Calendar, Receipt } from 'lucide-react';
 import { formatDate, formatDaysAgo } from '@/utils/date';
+
+const STATUS_MAP: Record<number, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+  1: { label: 'Nháp', variant: 'secondary' },
+  3: { label: 'Hoàn thành', variant: 'default' },
+  4: { label: 'Đã hủy', variant: 'destructive' },
+};
+
+const formatVND = (value: number | null | undefined) =>
+  value ? Number(value).toLocaleString('vi-VN') + 'đ' : '-';
 
 /**
  * Purchase Order List Page Component - Card View
@@ -29,6 +39,7 @@ import { formatDate, formatDaysAgo } from '@/utils/date';
 export const PurchaseOrderList = () => {
   const navigate = useNavigate();
   const { data: purchaseOrders = [], isLoading } = usePurchaseOrders();
+  const { isAdmin } = useIsAdmin();
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -86,9 +97,14 @@ export const PurchaseOrderList = () => {
                             <CardTitle className="text-lg font-semibold">
                               {order.code || `#${order.id}`}
                             </CardTitle>
-                            {order.status === 1 && (
+                            {order.status != null && STATUS_MAP[order.status] && (
+                              <Badge variant={STATUS_MAP[order.status].variant} className="text-[10px]">
+                                {STATUS_MAP[order.status].label}
+                              </Badge>
+                            )}
+                            {order.status == null && (
                               <Badge variant="outline" className="text-[10px]">
-                                Nháp
+                                Chưa xác định
                               </Badge>
                             )}
                             {order.created_at &&
@@ -149,6 +165,27 @@ export const PurchaseOrderList = () => {
                               ` (${Number(order.total_quantity).toLocaleString('vi-VN')} kg)`}
                           </div>
                         </div>
+
+                        {order.ex_return_third_party != null && Number(order.ex_return_third_party) > 0 && (
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-2">
+                              <Receipt className="h-4 w-4 text-muted-foreground" />
+                              <span className="text-muted-foreground">Chi phí nhập:</span>
+                            </div>
+                            <div className="text-right font-medium text-orange-600">
+                              {formatVND(order.ex_return_third_party)}
+                            </div>
+                          </div>
+                        )}
+
+                        {isAdmin && order.total != null && Number(order.total) > 0 && (
+                          <div className="flex items-center justify-between">
+                            <span className="text-muted-foreground">Tổng tiền:</span>
+                            <div className="text-right font-medium">
+                              {formatVND(order.total)}
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* Danh sách sản phẩm */}
