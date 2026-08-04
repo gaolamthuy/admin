@@ -16,7 +16,7 @@ export const usePrintPriceTable = () => {
 
   const printPriceTable = async (
     customerKiotvietId: number,
-    options?: { categoryId?: number; simplified?: boolean },
+    options?: { categoryId?: number; simplified?: boolean; withChangelog?: boolean },
   ) => {
     if (!session) {
       throw new Error('Not authenticated');
@@ -45,6 +45,10 @@ export const usePrintPriceTable = () => {
       }
       if (options?.simplified) {
         body.simplified = 'true';
+      }
+      if (options?.withChangelog) {
+        body.simplified = 'true';
+        body.withChangelog = 'true';
       }
 
       const response = await fetch(printUrl, {

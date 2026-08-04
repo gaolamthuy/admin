@@ -87,16 +87,17 @@ export const CustomersList = () => {
   const handlePrintPriceTable = async (customer: {
     kiotviet_id: number;
     name: string | null;
-  }, simplified?: boolean) => {
+  }, simplified?: boolean, withChangelog?: boolean) => {
     if (!customer.kiotviet_id) {
       toast.error('Không tìm thấy thông tin khách hàng');
       return;
     }
 
     try {
-      await printPriceTable(customer.kiotviet_id, { simplified });
+      await printPriceTable(customer.kiotviet_id, { simplified, withChangelog });
+      const label = withChangelog ? ' giản lược (có cập nhật)' : simplified ? ' giản lược' : '';
       toast.success('Đang mở bảng giá để in', {
-        description: `Bảng giá${simplified ? ' giản lược' : ''} cho ${customer.name || 'khách hàng'}`,
+        description: `Bảng giá${label} cho ${customer.name || 'khách hàng'}`,
       });
     } catch (error) {
       const message =
@@ -221,6 +222,10 @@ export const CustomersList = () => {
                                 <DropdownMenuItem onClick={() => handlePrintPriceTable(customer, true)}>
                                   <Printer className="mr-2 h-4 w-4" />
                                   Giản lược
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => handlePrintPriceTable(customer, false, true)}>
+                                  <Printer className="mr-2 h-4 w-4" />
+                                  Giản lược (có cập nhật)
                                 </DropdownMenuItem>
                               </DropdownMenuContent>
                             </DropdownMenu>
