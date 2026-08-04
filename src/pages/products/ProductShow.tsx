@@ -55,7 +55,7 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { formatDaysAgo, formatDate, formatTimeAgo } from '@/utils/date';
+import { formatDaysAgo, formatDate, formatDateTime, formatTimeAgo } from '@/utils/date';
 import { toast } from 'sonner';
 
 /**
@@ -630,6 +630,12 @@ export const ProductShow = () => {
                               >
                                 ({costDiffPercent > 0 ? '+' : ''}
                                 {Number(costDiffPercent).toFixed(2)}%)
+                              </div>
+                            )}
+                            {priceComparison.latest_purchase_date && (
+                              <div className="text-xs text-muted-foreground mt-1">
+                                PO {priceComparison.latest_purchase_date ? formatDateTime(priceComparison.latest_purchase_date) : ''}{' '}
+                                ({formatTimeAgo(priceComparison.latest_purchase_date)})
                               </div>
                             )}
                           </>
