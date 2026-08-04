@@ -69,7 +69,8 @@ export const useProducts = (filters: ProductFilters = {}) => {
             pricing_info,
             calculate_from_po,
             changelog,
-            order_template
+            order_template,
+            modified_date
           `
         )
         .eq('is_active', true);

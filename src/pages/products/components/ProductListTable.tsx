@@ -60,6 +60,7 @@ interface ProductWithPriceDiff {
   is_active?: boolean;
   glt_labelprint_favorite?: boolean;
   order_template?: string | null;
+  modified_date?: string | null;
   cost_analysis?: CostAnalysis | null;
   pricing_info?: PricingInfo | null;
   calculate_from_po?: CalculateFromPo | null;
@@ -486,6 +487,14 @@ const ProductRow: React.FC<{
   const [isSyncDialogOpen, setIsSyncDialogOpen] = React.useState(false);
   const imageUrl = product.images?.[0] || '/placeholder-product.png';
 
+  // Check nếu sản phẩm được KV cập nhật trong 24h gần nhất
+  const isRecentlyModified = (() => {
+    if (!product.modified_date) return false;
+    const modifiedTime = new Date(product.modified_date).getTime();
+    const now = Date.now();
+    return now - modifiedTime < 24 * 60 * 60 * 1000; // 24h
+  })();
+
   const handleQuickPrint = (qty: number) => {
     if (!product.kiotviet_id) return;
     submitPostForm(getPrintUrl(), {
@@ -544,6 +553,28 @@ const ProductRow: React.FC<{
                 {(ca.glt_extra_cost ?? 0).toLocaleString()} đ
               </span>
             </div>
+            {product.calculate_from_po?.latest_purchase_date && (
+              <>
+                <div className="border-t pt-1" />
+                <div className="flex justify-between gap-4">
+                  <span className="text-muted-foreground">Ngày nhập PO:</span>
+                  <div className="text-right tabular-nums">
+                    <div className="font-medium">
+                      {formatDateTime(product.calculate_from_po.latest_purchase_date)}
+                    </div>
+                    <div className="text-[10px] text-muted-foreground">
+                      {formatTimeAgo(product.calculate_from_po.latest_purchase_date)}
+                    </div>
+                  </div>
+                </div>
+                <div className="flex justify-between gap-4">
+                  <span className="text-muted-foreground">Mã PO:</span>
+                  <span className="tabular-nums">
+                    {product.calculate_from_po.latest_purchase_order_code}
+                  </span>
+                </div>
+              </>
+            )}
           </div>
         </HoverCardContent>
       </HoverCard>
@@ -801,8 +832,14 @@ const ProductRow: React.FC<{
               }}
             />
             <div className="flex-1 min-w-0">
-              <div className="font-medium text-sm line-clamp-1">
+              <div className="font-medium text-sm line-clamp-1 flex items-center gap-1.5">
                 {product.full_name || product.name}
+                {isRecentlyModified && (
+                  <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950 px-1.5 py-0.5 rounded-full shrink-0">
+                    <RefreshCw className="h-2.5 w-2.5" />
+                    Mới
+                  </span>
+                )}
               </div>
               {product.order_template ? (
                 <div className="text-xs text-muted-foreground line-clamp-1">
@@ -888,12 +925,48 @@ const ProductRow: React.FC<{
           onConfirm={async (printPriceboard) => {
             setIsSyncDialogOpen(false);
             try {
-              await onUpdatePrice!(product.kiotviet_id!);
-              if (printPriceboard && product.kiotviet_id) {
-                await new Promise(r => setTimeout(r, 500));
+              const result = (await onUpdatePrice!(product.kiotviet_id!)) as
+                | {
+                    master: { new_baseprice: number; new_cost: number };
+                    children: Array<{
+                      code: string;
+                      full_name: string;
+                      unit: string;
+                      conversion_value: number;
+                      current_baseprice: number;
+                      new_baseprice: number;
+                      diff: number;
+                      diff_per_cv: number;
+                    }>;
+                  }
+                | undefined;
+              if (printPriceboard && product.kiotviet_id && result) {
+                const master = result.master;
+                const children = result.children || [];
+                const calcFromPo = product.calculate_from_po;
+
+                // Chuẩn bị child_unit_info format giống DB (cho template in)
+                const childUnitInfo = children.map(c => ({
+                  kiotviet_id: product.kiotviet_id,
+                  code: c.code,
+                  full_name: c.full_name,
+                  unit: c.unit,
+                  base_price: c.new_baseprice,
+                  conversion_value: c.conversion_value,
+                  price_per_master_unit:
+                    c.conversion_value > 0
+                      ? Math.round(c.new_baseprice / c.conversion_value)
+                      : null,
+                }));
+
                 submitPostForm(getPrintUrl(), {
                   printType: 'priceboard',
                   kiotviet_id: String(product.kiotviet_id),
+                  base_price: String(master.new_baseprice),
+                  ...(calcFromPo?.latest_purchase_order_code && {
+                    order_template: calcFromPo.latest_purchase_order_code,
+                  }),
+                  child_unit_info: JSON.stringify(childUnitInfo),
                 });
               }
             } catch {}
@@ -923,8 +996,14 @@ const ProductRow: React.FC<{
           />
         </TableCell>
         <TableCell>
-          <div className="font-medium text-sm line-clamp-1">
+          <div className="font-medium text-sm line-clamp-1 flex items-center gap-1.5">
             {product.full_name || product.name}
+            {isRecentlyModified && (
+              <Badge variant="outline" >
+                <RefreshCw className="h-2.5 w-2.5" />
+                Recently updated
+              </Badge>
+            )}
           </div>
           {product.order_template ? (
             <div className="text-xs text-muted-foreground line-clamp-1">
@@ -1009,19 +1088,55 @@ const ProductRow: React.FC<{
       <SyncPriceConfirmDialog
         isOpen={isSyncDialogOpen}
         onClose={() => setIsSyncDialogOpen(false)}
-        onConfirm={async (printPriceboard) => {
-          setIsSyncDialogOpen(false);
-          try {
-            await onUpdatePrice!(product.kiotviet_id!);
-            if (printPriceboard && product.kiotviet_id) {
-              await new Promise(r => setTimeout(r, 500));
-              submitPostForm(getPrintUrl(), {
-                printType: 'priceboard',
-                kiotviet_id: String(product.kiotviet_id),
-              });
-            }
-          } catch {}
-        }}
+          onConfirm={async (printPriceboard) => {
+            setIsSyncDialogOpen(false);
+            try {
+              const result = (await onUpdatePrice!(product.kiotviet_id!)) as
+                | {
+                    master: { new_baseprice: number; new_cost: number };
+                    children: Array<{
+                      code: string;
+                      full_name: string;
+                      unit: string;
+                      conversion_value: number;
+                      current_baseprice: number;
+                      new_baseprice: number;
+                      diff: number;
+                      diff_per_cv: number;
+                    }>;
+                  }
+                | undefined;
+              if (printPriceboard && product.kiotviet_id && result) {
+                const master = result.master;
+                const children = result.children || [];
+                const calcFromPo = product.calculate_from_po;
+
+                // Chuẩn bị child_unit_info format giống DB (cho template in)
+                const childUnitInfo = children.map(c => ({
+                  kiotviet_id: product.kiotviet_id,
+                  code: c.code,
+                  full_name: c.full_name,
+                  unit: c.unit,
+                  base_price: c.new_baseprice,
+                  conversion_value: c.conversion_value,
+                  price_per_master_unit:
+                    c.conversion_value > 0
+                      ? Math.round(c.new_baseprice / c.conversion_value)
+                      : null,
+                }));
+
+                submitPostForm(getPrintUrl(), {
+                  printType: 'priceboard',
+                  kiotviet_id: String(product.kiotviet_id),
+                  base_price: String(master.new_baseprice),
+                  ...(calcFromPo?.latest_purchase_order_code && {
+                    order_template: calcFromPo.latest_purchase_order_code,
+                  }),
+                  child_unit_info: JSON.stringify(childUnitInfo),
+                });
+              }
+            } catch {}
+          }}
         isLoading={!!isUpdating}
         productName={product.name}
         productCode={product.code}
