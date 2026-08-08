@@ -15,10 +15,12 @@ import { useIsAdmin } from '@/hooks/useAuth';
 import { useNavigate, useLocation } from 'react-router-dom';
 import {
   Package,
-  ShoppingCart,
+  Download,
   Users,
-  CreditCard,
+  DollarSign,
+  ClipboardList,
   Settings,
+  Headphones,
 } from 'lucide-react';
 
 interface MenuItem {
@@ -39,13 +41,13 @@ const menuItems: MenuItem[] = [
   {
     key: 'purchase-orders',
     label: 'Nhập hàng',
-    icon: ShoppingCart,
+    icon: Download,
     path: '/purchase-orders',
   },
   {
     key: 'payments',
     label: 'Thanh toán',
-    icon: CreditCard,
+    icon: DollarSign,
     path: '/payments',
   },
   {
@@ -53,6 +55,18 @@ const menuItems: MenuItem[] = [
     label: 'Khách hàng',
     icon: Users,
     path: '/customers',
+  },
+  {
+    key: 'invoices',
+    label: 'Hóa đơn',
+    icon: ClipboardList,
+    path: '/invoices',
+  },
+  {
+    key: 'soundbox',
+    label: 'SoundBox',
+    icon: Headphones,
+    path: '/soundbox',
   },
 ];
 

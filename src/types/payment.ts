@@ -12,16 +12,23 @@
  * @interface Payment
  */
 export interface Payment {
-  id: number;
-  // Thêm các fields khác của table glt_payment ở đây
-  // Ví dụ:
-  // order_id?: number | null;
-  // amount?: number | null;
-  // status?: string | null;
-  // payment_method?: string | null;
-  // created_at?: string | null;
-  // updated_at?: string | null;
-  [key: string]: unknown; // Tạm thời dùng unknown cho các fields chưa biết
+  id: string;
+  provider: string;
+  account_number: string | null;
+  amount: number | null;
+  currency: string | null;
+  transaction_type: string | null;
+  balance: number | null;
+  ref: string | null;
+  momo_ref: string | null;
+  received_at: string | null;
+  raw_body: unknown;
+  created_at: string | null;
+  test_trans: boolean | null;
+  handle_status: string;
+  handle_ref: string | null;
+  handle_note: string | null;
+  momo_extrafield: Record<string, unknown> | null;
 }
 
 /**
@@ -53,7 +60,7 @@ export interface UsePaymentRealtimeOptions {
    * Filter theo payment ID cụ thể
    * Nếu không có, sẽ listen tất cả payments
    */
-  paymentId?: number;
+  paymentId?: string;
 
   /**
    * Filter theo các event types muốn listen
@@ -66,4 +73,16 @@ export interface UsePaymentRealtimeOptions {
    * Mặc định: true
    */
   enabled?: boolean;
+
+  /**
+   * Callback khi có INSERT event mới
+   */
+  onNewPayment?: (payment: Payment) => void;
+
+  /**
+   * Có hiển thị giao dịch test (test_trans = true) không
+   * Mặc định: true (admin)
+   * Staff nên set false
+   */
+  showTestPayments?: boolean;
 }

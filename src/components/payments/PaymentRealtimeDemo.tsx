@@ -33,7 +33,7 @@ import { Wifi, WifiOff, RefreshCw, AlertCircle } from 'lucide-react';
  * Hiển thị danh sách payments và tự động cập nhật khi có thay đổi
  */
 export function PaymentRealtimeDemo() {
-  const [filterId, setFilterId] = useState<number | undefined>(undefined);
+  const [filterId, setFilterId] = useState<string | undefined>(undefined);
   const [eventTypes, setEventTypes] = useState<
     Array<'INSERT' | 'UPDATE' | 'DELETE'>
   >(['INSERT', 'UPDATE', 'DELETE']);
@@ -115,7 +115,7 @@ export function PaymentRealtimeDemo() {
               value={filterId || ''}
               onChange={e =>
                 setFilterId(
-                  e.target.value ? parseInt(e.target.value, 10) : undefined
+                  e.target.value ? String(e.target.value) : undefined
                 )
               }
             />

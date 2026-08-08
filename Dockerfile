@@ -1,47 +1,34 @@
-FROM node:20-alpine AS deps
-RUN corepack enable && corepack prepare pnpm@10.11.0 --activate
+# Build stage
+FROM node:20-alpine AS builder
+
 WORKDIR /app
+
+# Copy package files
 COPY package.json pnpm-lock.yaml ./
+
+# Install pnpm
+RUN corepack enable pnpm
+
+# Install dependencies
 RUN pnpm install --frozen-lockfile
 
-FROM node:20-alpine AS builder
-RUN corepack enable && corepack prepare pnpm@10.11.0 --activate
-WORKDIR /app
-COPY --from=deps /app/node_modules ./node_modules
+# Copy source code
 COPY . .
 
-ARG VITE_SUPABASE_URL
-ARG VITE_SUPABASE_ANON_KEY
-ARG VITE_CLOUDINARY_CLOUD_NAME
-ARG VITE_CLOUDINARY_API_KEY
-ARG VITE_CLOUDINARY_API_SECRET
-ARG VITE_CLOUDINARY_UPLOAD_PRESET
-ARG VITE_CLOUDINARY_FOLDER
-ARG VITE_N8N_WEBHOOK_URL
-ARG VITE_N8N_WEBHOOK_BASIC_AUTH
-ARG VITE_N8N_WEBHOOK_HEADER_KEY
-ARG VITE_N8N_WEBHOOK_HEADER_VALUE
-ARG VITE_N8N_ACCESS_TOKEN
-
+# Build application
 RUN pnpm run build
 
+# Production stage
 FROM nginx:alpine
+
+# Copy built assets from builder
 COPY --from=builder /app/dist /usr/share/nginx/html
-COPY <<'EOF' /etc/nginx/conf.d/default.conf
-server {
-    listen 80;
-    root /usr/share/nginx/html;
-    index index.html;
 
-    location / {
-        try_files $uri $uri/ /index.html;
-    }
+# Copy nginx configuration
+COPY nginx.conf /etc/nginx/conf.d/default.conf
 
-    location ~* \.(?:js|css|svg|png|jpg|jpeg|gif|ico|woff2?)$ {
-        expires 1y;
-        add_header Cache-Control "public, immutable";
-    }
-}
-EOF
+# Expose port
 EXPOSE 80
+
+# Start nginx
 CMD ["nginx", "-g", "daemon off;"]

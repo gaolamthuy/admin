@@ -20,6 +20,8 @@ import { PurchaseOrderCreate } from '@/pages/purchase-orders/PurchaseOrderCreate
 import { PurchaseOrderShow } from '@/pages/purchase-orders/PurchaseOrderShow';
 import { CustomersList } from '@/pages/customers/CustomersList';
 import { PaymentsList } from '@/pages/payments/PaymentsList';
+import { InvoicesList } from '@/pages/invoices/InvoicesList';
+import SoundBox from '@/pages/soundbox/SoundBox';
 import { Toaster } from '@/components/ui/sonner';
 import './App.css';
 
@@ -106,6 +108,28 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <PaymentsList />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/invoices"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <InvoicesList />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/soundbox"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <SoundBox />
                   </Layout>
                 </ProtectedRoute>
               }
