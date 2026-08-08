@@ -5,14 +5,15 @@ import {
   Receipt,
   CalendarDays,
   LayoutList,
-  Settings,
+  Volume2,
+  VolumeX,
+  Play,
 } from 'lucide-react';
 import { usePaymentRealtime } from '@/hooks/usePaymentRealtime';
 import { usePaymentAnnouncer } from '@/hooks/usePaymentAnnouncer';
 import { useIsAdmin } from '@/hooks/useAuth';
 import { Clock } from './components/Clock';
-import { MuteToggle } from './components/MuteToggle';
-import { SettingsDialog } from './components/SettingsDialog';
+import { isMuted } from './components/MuteToggle';
 import { Button } from '@/components/ui/button';
 import {
   Card,
@@ -39,7 +40,7 @@ import { cn } from '@/lib/utils';
 function SoundBox() {
   const [filterToday, setFilterToday] = useState(true);
   const [highlightedIds, setHighlightedIds] = useState<Set<string>>(new Set());
-  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [muted, setMuted] = useState(isMuted());
   const highlightTimeouts = useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map()
   );
@@ -105,6 +106,13 @@ function SoundBox() {
     });
   };
 
+  const handleToggleMute = () => {
+    const next = !muted;
+    setMuted(next);
+    localStorage.setItem('soundbox-muted', String(next));
+    window.dispatchEvent(new Event('mute-change'));
+  };
+
   return (
     <div className="vietnamese-text flex h-full flex-col">
       <div className="flex items-center justify-between px-4 py-2 border-b">
@@ -114,15 +122,23 @@ function SoundBox() {
             Payment Notifier
           </span>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <Clock />
-          <MuteToggle />
           <Button
             variant="ghost"
             size="icon"
-            onClick={() => setSettingsOpen(true)}
+            onClick={handleTestVoice}
+            title="Test âm thanh"
           >
-            <Settings className="h-4 w-4" />
+            <Play className="h-4 w-4" />
+          </Button>
+          <Button
+            variant="ghost"
+            size="icon"
+            onClick={handleToggleMute}
+            title={muted ? 'Bật tiếng' : 'Tắt tiếng'}
+          >
+            {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
           </Button>
         </div>
       </div>
@@ -149,28 +165,18 @@ function SoundBox() {
               <div className="flex items-center gap-3">
                 <div className="flex items-center rounded-md border border-border bg-muted/50 p-1">
                   <Button
-                    variant="ghost"
+                    variant={filterToday ? 'default' : 'ghost'}
                     size="sm"
-                    className={cn(
-                      'h-8 px-3',
-                      filterToday
-                        ? 'bg-primary text-primary-foreground'
-                        : ''
-                    )}
+                    className="h-8 px-3"
                     onClick={() => setFilterToday(true)}
                   >
                     <CalendarDays className="h-3.5 w-3.5 mr-2" />
                     Hôm nay
                   </Button>
                   <Button
-                    variant="ghost"
+                    variant={!filterToday ? 'default' : 'ghost'}
                     size="sm"
-                    className={cn(
-                      'h-8 px-3',
-                      !filterToday
-                        ? 'bg-primary text-primary-foreground'
-                        : ''
-                    )}
+                    className="h-8 px-3"
                     onClick={() => setFilterToday(false)}
                   >
                     <LayoutList className="h-3.5 w-3.5 mr-2" />
@@ -219,12 +225,6 @@ function SoundBox() {
           </CardContent>
         </Card>
       </div>
-
-      <SettingsDialog
-        isOpen={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        onTestVoice={handleTestVoice}
-      />
     </div>
   );
 }

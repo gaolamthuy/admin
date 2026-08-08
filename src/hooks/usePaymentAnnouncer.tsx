@@ -9,6 +9,7 @@ import { toast } from 'sonner';
 import { tts } from '@/lib/tts';
 import { numberToVietnamese } from '@/lib/numberToVietnamese';
 import { mapProviderName } from '@/lib/providerMapper';
+import { isMuted } from '@/pages/soundbox/components/MuteToggle';
 import { CheckCircle2 } from 'lucide-react';
 import type { Payment } from '@/types/payment';
 
@@ -25,6 +26,11 @@ function playNotificationSound(): Promise<void> {
 
 export function usePaymentAnnouncer() {
   const announcePayment = useCallback(async (payment: Payment) => {
+    if (isMuted()) {
+      console.log('🔇 SoundBox is muted, skipping announcement');
+      return;
+    }
+
     if (!payment.amount || payment.amount <= 0) {
       console.warn('⚠️ Invalid payment amount:', payment.amount);
       return;
