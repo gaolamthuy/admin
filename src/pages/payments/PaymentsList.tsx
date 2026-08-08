@@ -23,6 +23,7 @@ import {
   VolumeX,
   Play,
   Radio,
+  X,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -170,6 +171,7 @@ export const PaymentsList = () => {
     showTest: isAdmin ? showTest : false,
   });
   const [searchTerm, setSearchTerm] = useState('');
+  const [searchOpen, setSearchOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [muted, setMuted] = useState(isMuted());
   const [soundboxOpen, setSoundboxOpen] = useState(false);
@@ -379,30 +381,60 @@ export const PaymentsList = () => {
 
             <div className="flex items-center gap-2">
               {isAdmin && (
-                <div className="w-full max-w-md relative">
-                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                  <Input
-                    placeholder="Tìm theo provider, số TK, ref..."
-                    className="pl-10"
-                    value={searchTerm}
-                    onChange={event => setSearchTerm(event.target.value)}
-                    aria-label="Tìm kiếm thanh toán"
-                  />
-                </div>
+                <>
+                  {searchOpen ? (
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                      <Input
+                        autoFocus
+                        placeholder="Tìm theo provider, số TK, ref..."
+                        className="h-9 w-64 pl-10 pr-8"
+                        value={searchTerm}
+                        onChange={event => setSearchTerm(event.target.value)}
+                        onBlur={() => {
+                          if (!searchTerm) setSearchOpen(false);
+                        }}
+                        aria-label="Tìm kiếm thanh toán"
+                      />
+                      {searchTerm && (
+                        <button
+                          onClick={() => {
+                            setSearchTerm('');
+                            setSearchOpen(false);
+                          }}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-0.5 text-muted-foreground hover:text-foreground"
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </button>
+                      )}
+                    </div>
+                  ) : (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => setSearchOpen(true)}
+                      title="Tìm kiếm"
+                    >
+                      <Search className="h-4 w-4" />
+                    </Button>
+                  )}
+                </>
               )}
 
               {/* SoundBox status button */}
               <Button
                 variant="outline"
-                size="icon"
+                size="sm"
                 onClick={() => setSoundboxOpen(true)}
                 title="SoundBox"
+                className="gap-2"
               >
                 {isConnected ? (
-                  <div className="h-3 w-3 rounded-full bg-green-500 animate-pulse" />
+                  <div className="h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse" />
                 ) : (
-                  <div className="h-3 w-3 rounded-full bg-red-500" />
+                  <div className="h-2.5 w-2.5 rounded-full bg-red-500" />
                 )}
+                <span className="text-xs">Loa chuyển khoản</span>
               </Button>
             </div>
           </div>
