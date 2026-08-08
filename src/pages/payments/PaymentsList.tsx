@@ -524,13 +524,15 @@ export const PaymentsList = () => {
                                 <span className="text-muted-foreground">
                                   Thời gian
                                 </span>
-                                <span className="font-medium">
-                                  {displayTime
-                                    ? formatDateTimeWithSeconds(displayTime)
-                                    : '-'}
+                                <span className="text-right">
+                                  <span className="font-medium">
+                                    {displayTime
+                                      ? formatDateTimeWithSeconds(displayTime)
+                                      : '-'}
+                                  </span>
                                   {displayTime?.startsWith(todayStr) && (
-                                    <span className="ml-1.5 text-muted-foreground">
-                                      ({formatTimeAgo(displayTime)})
+                                    <span className="block text-muted-foreground">
+                                      {formatTimeAgo(displayTime)}
                                     </span>
                                   )}
                                 </span>
