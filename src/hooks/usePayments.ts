@@ -11,31 +11,12 @@ import utc from 'dayjs/plugin/utc';
 import timezone from 'dayjs/plugin/timezone';
 import { supabase } from '@/lib/supabase';
 import { useSession } from '@/hooks/useAuth';
+import type { Payment } from '@/types/payment';
+
+export type { Payment };
 
 dayjs.extend(utc);
 dayjs.extend(timezone);
-
-/**
- * Kiểu dữ liệu cho bản ghi thanh toán trong bảng glt_payment
- */
-export interface Payment {
-  id: string;
-  provider: string;
-  account_number: string | null;
-  amount: number | null;
-  currency: string | null;
-  transaction_type: string | null;
-  balance: number | null;
-  ref: string | null;
-  momo_ref: string | null;
-  received_at: string | null;
-  raw_body: unknown;
-  created_at: string | null;
-  test_trans: boolean | null;
-  handle_status: string;
-  handle_ref: string | null;
-  handle_note: string | null;
-}
 
 export interface UsePaymentsOptions {
   isAdmin?: boolean;
@@ -83,7 +64,8 @@ export const usePayments = (options: UsePaymentsOptions = {}) => {
           test_trans,
           handle_status,
           handle_ref,
-          handle_note
+          handle_note,
+          momo_extrafield
         `
         )
         .order('received_at', { ascending: false, nullsFirst: false });

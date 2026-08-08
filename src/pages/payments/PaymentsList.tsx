@@ -1,28 +1,47 @@
 /**
  * Payments List Page
- * Trang hiển thị lịch sử thanh toán từ glt_payment (chỉ đọc)
+ * Trang hiển thị lịch sử thanh toán từ glt_payment
+ * Tích hợp SoundBox: realtime, voice notification, summary cards
  *
  * @module pages/payments/PaymentsList
  */
 
-import { useMemo, useState, useEffect } from 'react';
+import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { Loader2, Search, CalendarDays, Infinity, Copy, Check } from 'lucide-react';
+import { cn } from '@/lib/utils';
+import {
+  Loader2,
+  Search,
+  CalendarDays,
+  Infinity as InfinityIcon,
+  Copy,
+  Check,
+  TrendingUp,
+  Receipt,
+  Volume2,
+  VolumeX,
+  Play,
+} from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { usePayments, type Payment } from '@/hooks/usePayments';
+import { usePaymentRealtime } from '@/hooks/usePaymentRealtime';
+import { usePaymentAnnouncer } from '@/hooks/usePaymentAnnouncer';
 import {
   formatDate,
   formatTimeAgo,
   formatDateTimeWithSeconds,
 } from '@/utils/date';
+import { formatVND } from '@/lib/format';
 import { useIsAdmin } from '@/hooks/useAuth';
+import { Clock } from '@/pages/soundbox/components/Clock';
+import { isMuted } from '@/pages/soundbox/components/MuteToggle';
 import {
   Pagination,
   PaginationContent,
@@ -57,9 +76,65 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
+function SummaryCard({
+  icon,
+  title,
+  value,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  value: string;
+}) {
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {icon}
+            <span>{title}</span>
+          </div>
+          <div className="text-2xl font-bold tabular-nums text-foreground">
+            {value}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+function StatusCard({ isConnected }: { isConnected: boolean }) {
+  return (
+    <Card>
+      <CardContent className="pt-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm text-muted-foreground">
+            {isConnected ? (
+              <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                <div className="h-2.5 w-2.5 bg-primary-foreground rounded-full animate-pulse" />
+              </div>
+            ) : (
+              <div className="h-5 w-5 rounded-full bg-destructive flex items-center justify-center">
+                <div className="h-2.5 w-2.5 bg-destructive-foreground rounded-full" />
+              </div>
+            )}
+            <span>Trạng thái</span>
+          </div>
+          <div
+            className={cn(
+              'text-2xl font-bold tabular-nums',
+              isConnected ? 'text-primary' : 'text-destructive'
+            )}
+          >
+            {isConnected ? 'Đã kết nối' : 'Ngắt kết nối'}
+          </div>
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
 /**
  * PaymentsList Component
- * Chỉ xem lịch sử, không có hành động tạo/sửa/xoá
  */
 export const PaymentsList = () => {
   const { isAdmin } = useIsAdmin();
@@ -69,33 +144,98 @@ export const PaymentsList = () => {
     showAll: isAdmin && showAll,
   });
   const [searchTerm, setSearchTerm] = useState('');
-
   const [currentPage, setCurrentPage] = useState(1);
+  const [muted, setMuted] = useState(isMuted());
+  const [highlightedIds, setHighlightedIds] = useState<Set<string>>(new Set());
+  const highlightTimeouts = useRef<Map<string, ReturnType<typeof setTimeout>>>(
+    new Map()
+  );
+
+  const { announcePayment } = usePaymentAnnouncer();
+
+  const handleNewPayment = useCallback(
+    (payment: Payment) => {
+      announcePayment(payment);
+
+      setHighlightedIds(prev => new Set(prev).add(payment.id));
+      const existing = highlightTimeouts.current.get(payment.id);
+      if (existing) clearTimeout(existing);
+      highlightTimeouts.current.set(
+        payment.id,
+        setTimeout(() => {
+          setHighlightedIds(prev => {
+            const next = new Set(prev);
+            next.delete(payment.id);
+            return next;
+          });
+          highlightTimeouts.current.delete(payment.id);
+        }, 4000)
+      );
+    },
+    [announcePayment]
+  );
+
+  const { isConnected } = usePaymentRealtime({
+    enabled: true,
+    onNewPayment: handleNewPayment,
+    showTestPayments: isAdmin,
+  });
+
+  const handleToggleMute = () => {
+    const next = !muted;
+    setMuted(next);
+    localStorage.setItem('soundbox-muted', String(next));
+    window.dispatchEvent(new Event('mute-change'));
+  };
+
+  const handleTestVoice = () => {
+    announcePayment({
+      id: 'test',
+      provider: 'TCB',
+      account_number: null,
+      amount: 1500000,
+      currency: 'VND',
+      transaction_type: 'credit',
+      balance: null,
+      ref: 'TEST123',
+      momo_ref: null,
+      received_at: new Date().toISOString(),
+      raw_body: {},
+      created_at: new Date().toISOString(),
+      test_trans: true,
+      handle_status: 'pending',
+      handle_ref: null,
+      handle_note: null,
+      momo_extrafield: null,
+    });
+  };
+
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayPayments = useMemo(
+    () =>
+      payments.filter(p => p.received_at?.startsWith(todayStr)),
+    [payments, todayStr]
+  );
+  const todayTotal = todayPayments.reduce(
+    (sum, p) => sum + (p.amount || 0),
+    0
+  );
 
   const getProviderInfo = (providerRaw: string | null | undefined) => {
     const provider = (providerRaw ?? '').toLowerCase().trim();
 
     if (provider.includes('momo')) {
-      return {
-        label: 'MoMo',
-        logoSrc: '/logo/momo-symbol.svg',
-      };
+      return { label: 'MoMo', logoSrc: '/logo/momo-symbol.svg' };
     }
-
     if (provider.includes('acb')) {
-      return {
-        label: 'ACB',
-        logoSrc: '/logo/acb-symbol.png',
-      };
+      return { label: 'ACB', logoSrc: '/logo/acb-symbol.png' };
     }
-
     if (provider.includes('vietcom') || provider.includes('vcb')) {
       return {
         label: 'Vietcombank',
         logoSrc: '/logo/vietcombank-200x200.png',
       };
     }
-
     if (
       provider.includes('techcom') ||
       provider.includes('tcb') ||
@@ -136,10 +276,6 @@ export const PaymentsList = () => {
     });
   }, [payments, searchTerm]);
 
-  /**
-   * Group TẤT CẢ giao dịch theo ngày, sau đó paginate theo nhóm ngày
-   * → mỗi ngày không bị xé qua trang
-   */
   const allGroups = useMemo(() => {
     const groups: Record<string, Payment[]> = {};
 
@@ -184,7 +320,23 @@ export const PaymentsList = () => {
   }, [allGroups, currentPage]);
 
   return (
-    <div className="container mx-auto py-6 space-y-6">
+    <div className="space-y-6">
+      {/* Summary cards */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+        <SummaryCard
+          icon={<TrendingUp className="h-5 w-5 text-primary" />}
+          title="Tổng tiền hôm nay"
+          value={formatVND(todayTotal)}
+        />
+        <SummaryCard
+          icon={<Receipt className="h-5 w-5 text-primary" />}
+          title="Giao dịch hôm nay"
+          value={String(todayPayments.length)}
+        />
+        <StatusCard isConnected={isConnected} />
+      </div>
+
+      {/* Payments history */}
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -198,7 +350,7 @@ export const PaymentsList = () => {
                   className="h-7 gap-1.5 text-xs"
                 >
                   {showAll ? (
-                    <Infinity className="h-3.5 w-3.5" />
+                    <InfinityIcon className="h-3.5 w-3.5" />
                   ) : (
                     <CalendarDays className="h-3.5 w-3.5" />
                   )}
@@ -212,18 +364,42 @@ export const PaymentsList = () => {
                 </Badge>
               )}
             </div>
-            {isAdmin && (
-              <div className="w-full max-w-md relative">
-                <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Tìm theo provider, số TK, ref, nội dung..."
-                  className="pl-10"
-                  value={searchTerm}
-                  onChange={event => setSearchTerm(event.target.value)}
-                  aria-label="Tìm kiếm thanh toán"
-                />
-              </div>
-            )}
+
+            <div className="flex items-center gap-2">
+              {isAdmin && (
+                <div className="w-full max-w-md relative">
+                  <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+                  <Input
+                    placeholder="Tìm theo provider, số TK, ref, nội dung..."
+                    className="pl-10"
+                    value={searchTerm}
+                    onChange={event => setSearchTerm(event.target.value)}
+                    aria-label="Tìm kiếm thanh toán"
+                  />
+                </div>
+              )}
+              <Clock variant="time" />
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleTestVoice}
+                title="Test âm thanh"
+              >
+                <Play className="h-4 w-4" />
+              </Button>
+              <Button
+                variant="ghost"
+                size="icon"
+                onClick={handleToggleMute}
+                title={muted ? 'Bật tiếng' : 'Tắt tiếng'}
+              >
+                {muted ? (
+                  <VolumeX className="h-4 w-4" />
+                ) : (
+                  <Volume2 className="h-4 w-4" />
+                )}
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -251,7 +427,8 @@ export const PaymentsList = () => {
                         ) : (
                           (() => {
                             const dateStr =
-                              group.displayTime || `${group.date}T00:00:00Z`;
+                              group.displayTime ||
+                              `${group.date}T00:00:00Z`;
 
                             let formattedDate = formatDate(
                               dateStr,
@@ -301,11 +478,19 @@ export const PaymentsList = () => {
                         const displayTime =
                           payment.received_at ?? payment.created_at;
                         const providerInfo = getProviderInfo(payment.provider);
+                        const isNew = displayTime
+                          ? Date.now() - new Date(displayTime).getTime() <
+                            10 * 60 * 1000
+                          : false;
 
                         return (
                           <div
                             key={payment.id}
-                            className="flex flex-col gap-3 rounded-lg border bg-card p-3 text-card-foreground shadow-sm"
+                            className={cn(
+                              'flex flex-col gap-3 rounded-lg border bg-card p-3 text-card-foreground shadow-sm transition-colors',
+                              highlightedIds.has(payment.id) &&
+                                'animate-highlight border-primary/40'
+                            )}
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex items-center gap-2">
@@ -376,10 +561,16 @@ export const PaymentsList = () => {
                                 <span className="inline-flex items-center gap-1 font-mono text-[11px]">
                                   <Tooltip delayDuration={0}>
                                     <TooltipTrigger asChild>
-                                      <span className="truncate max-w-[120px] cursor-default">{payment.ref || '-'}</span>
+                                      <span className="truncate max-w-[120px] cursor-default">
+                                        {payment.ref || '-'}
+                                      </span>
                                     </TooltipTrigger>
                                     {payment.ref && (
-                                      <TooltipContent side="top" align="start" className="max-w-xs break-all text-xs">
+                                      <TooltipContent
+                                        side="top"
+                                        align="start"
+                                        className="max-w-xs break-all text-xs"
+                                      >
                                         {payment.ref}
                                       </TooltipContent>
                                     )}
@@ -393,15 +584,23 @@ export const PaymentsList = () => {
 
                             <div className="mt-1 flex flex-col gap-1">
                               <div className="flex flex-wrap items-center gap-2">
+                                {isNew && (
+                                  <Badge variant="default" className="text-[10px]">
+                                    mới
+                                  </Badge>
+                                )}
                                 {payment.handle_ref && (
                                   <span className="rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground">
                                     Ref: {payment.handle_ref}
                                   </span>
                                 )}
                                 {payment.test_trans && (
-                                  <span className="rounded-full border border-border px-2 py-0.5 text-[10px] font-medium text-muted-foreground">
-                                    Giao dịch TEST
-                                  </span>
+                                  <Badge
+                                    variant="outline"
+                                    className="text-[10px]"
+                                  >
+                                    TEST
+                                  </Badge>
                                 )}
                               </div>
                             </div>
@@ -453,7 +652,8 @@ export const PaymentsList = () => {
                           page =>
                             page === 1 ||
                             page === totalPages ||
-                            (page >= currentPage - 1 && page <= currentPage + 1)
+                            (page >= currentPage - 1 &&
+                              page <= currentPage + 1)
                         )
                         .map((page, index, array) => {
                           const prevPage = array[index - 1];

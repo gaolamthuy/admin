@@ -20,7 +20,6 @@ import {
   DollarSign,
   ClipboardList,
   Settings,
-  Headphones,
 } from 'lucide-react';
 
 interface MenuItem {
@@ -61,12 +60,6 @@ const menuItems: MenuItem[] = [
     label: 'Hóa đơn',
     icon: ClipboardList,
     path: '/invoices',
-  },
-  {
-    key: 'soundbox',
-    label: 'SoundBox',
-    icon: Headphones,
-    path: '/soundbox',
   },
 ];
 
