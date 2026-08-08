@@ -18,28 +18,29 @@ export type { Payment };
 dayjs.extend(utc);
 dayjs.extend(timezone);
 
+export type DateRange = 'today' | '7days' | 'all';
+
 export interface UsePaymentsOptions {
   isAdmin?: boolean;
-  showAll?: boolean;
+  dateRange?: DateRange;
+  showTest?: boolean;
 }
+
+const VN_TIMEZONE = 'Asia/Ho_Chi_Minh';
 
 /**
  * Hook fetch danh sách thanh toán từ bảng glt_payment
- * Chỉ dùng để xem lịch sử, không tạo mới
- *
- * ⚠️ Phân quyền:
- * - Staff: Chỉ xem 7 ngày gần nhất (ko toggle)
- * - Admin: Mặc định 7 ngày, có thể bật showAll để xem toàn bộ
- *
- * @param options - isAdmin, showAll
- * @returns Danh sách payments đã sort mới nhất trước
  */
 export const usePayments = (options: UsePaymentsOptions = {}) => {
-  const { isAdmin = false, showAll = false } = options;
+  const {
+    isAdmin = false,
+    dateRange = 'today',
+    showTest = true,
+  } = options;
   const { data: session } = useSession();
 
   return useQuery({
-    queryKey: ['payments', isAdmin, showAll],
+    queryKey: ['payments', isAdmin, dateRange, showTest],
     queryFn: async (): Promise<Payment[]> => {
       if (!session) {
         throw new Error('Not authenticated');
@@ -70,20 +71,27 @@ export const usePayments = (options: UsePaymentsOptions = {}) => {
         )
         .order('received_at', { ascending: false, nullsFirst: false });
 
-      if (isAdmin && showAll) {
-        query = query.limit(5000);
-      } else {
-        const VN_TIMEZONE = 'Asia/Ho_Chi_Minh';
+      if (dateRange === 'today') {
+        const startOfToday = dayjs()
+          .tz(VN_TIMEZONE)
+          .startOf('day')
+          .utc()
+          .toISOString();
+        query = query.gte('received_at', startOfToday).limit(500);
+      } else if (dateRange === '7days') {
         const sevenDaysAgo = dayjs()
           .tz(VN_TIMEZONE)
           .subtract(7, 'day')
           .startOf('day')
           .utc()
           .toISOString();
+        query = query.gte('received_at', sevenDaysAgo).limit(1000);
+      } else {
+        query = query.limit(5000);
+      }
 
-        query = query
-          .gte('received_at', sevenDaysAgo)
-          .limit(1000);
+      if (!showTest) {
+        query = query.eq('test_trans', false);
       }
 
       const { data, error } = await query;

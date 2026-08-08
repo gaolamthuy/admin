@@ -1,7 +1,7 @@
 /**
  * Payments List Page
  * Trang hiển thị lịch sử thanh toán từ glt_payment
- * Tích hợp SoundBox: realtime, voice notification, summary cards
+ * Tích hợp SoundBox: realtime voice notification
  *
  * @module pages/payments/PaymentsList
  */
@@ -19,18 +19,26 @@ import {
   Infinity as InfinityIcon,
   Copy,
   Check,
-  TrendingUp,
-  Receipt,
   Volume2,
   VolumeX,
   Play,
+  Radio,
 } from 'lucide-react';
 import {
   Tooltip,
   TooltipContent,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-import { usePayments, type Payment } from '@/hooks/usePayments';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Switch } from '@/components/ui/switch';
+import { Separator } from '@/components/ui/separator';
+import { usePayments, type DateRange, type Payment } from '@/hooks/usePayments';
 import { usePaymentRealtime } from '@/hooks/usePaymentRealtime';
 import { usePaymentAnnouncer } from '@/hooks/usePaymentAnnouncer';
 import {
@@ -38,9 +46,7 @@ import {
   formatTimeAgo,
   formatDateTimeWithSeconds,
 } from '@/utils/date';
-import { formatVND } from '@/lib/format';
 import { useIsAdmin } from '@/hooks/useAuth';
-import { Clock } from '@/pages/soundbox/components/Clock';
 import { isMuted } from '@/pages/soundbox/components/MuteToggle';
 import {
   Pagination,
@@ -76,76 +82,97 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
-function SummaryCard({
-  icon,
-  title,
-  value,
+function SoundBoxDialog({
+  isOpen,
+  onClose,
+  isConnected,
+  muted,
+  onToggleMute,
+  onTestVoice,
 }: {
-  icon: React.ReactNode;
-  title: string;
-  value: string;
+  isOpen: boolean;
+  onClose: () => void;
+  isConnected: boolean;
+  muted: boolean;
+  onToggleMute: () => void;
+  onTestVoice: () => void;
 }) {
   return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            {icon}
-            <span>{title}</span>
-          </div>
-          <div className="text-2xl font-bold tabular-nums text-foreground">
-            {value}
-          </div>
-        </div>
-      </CardContent>
-    </Card>
-  );
-}
+    <Dialog open={isOpen} onOpenChange={onClose}>
+      <DialogContent className="sm:max-w-md">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Radio className="h-5 w-5" />
+            SoundBox
+          </DialogTitle>
+          <DialogDescription>
+            Thông báo giọng đọc chuyển khoản
+          </DialogDescription>
+        </DialogHeader>
 
-function StatusCard({ isConnected }: { isConnected: boolean }) {
-  return (
-    <Card>
-      <CardContent className="pt-6">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            {isConnected ? (
-              <div className="h-5 w-5 rounded-full bg-primary flex items-center justify-center">
-                <div className="h-2.5 w-2.5 bg-primary-foreground rounded-full animate-pulse" />
+        <div className="space-y-4">
+          <div className="flex items-center justify-between rounded-lg border p-3">
+            <div className="flex items-center gap-3">
+              {isConnected ? (
+                <div className="h-3 w-3 rounded-full bg-green-500 animate-pulse" />
+              ) : (
+                <div className="h-3 w-3 rounded-full bg-red-500" />
+              )}
+              <div>
+                <div className="text-sm font-medium">
+                  {isConnected ? 'Đã kết nối' : 'Ngắt kết nối'}
+                </div>
+                <div className="text-xs text-muted-foreground">
+                  Realtime Supabase
+                </div>
               </div>
-            ) : (
-              <div className="h-5 w-5 rounded-full bg-destructive flex items-center justify-center">
-                <div className="h-2.5 w-2.5 bg-destructive-foreground rounded-full" />
-              </div>
-            )}
-            <span>Trạng thái</span>
+            </div>
           </div>
-          <div
-            className={cn(
-              'text-2xl font-bold tabular-nums',
-              isConnected ? 'text-primary' : 'text-destructive'
-            )}
+
+          <Separator />
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {muted ? (
+                <VolumeX className="h-4 w-4" />
+              ) : (
+                <Volume2 className="h-4 w-4" />
+              )}
+              <span className="text-sm font-medium">
+                Thông báo giọng đọc
+              </span>
+            </div>
+            <Switch checked={!muted} onCheckedChange={() => onToggleMute()} />
+          </div>
+
+          <Button
+            onClick={onTestVoice}
+            variant="outline"
+            className="w-full"
+            disabled={muted}
           >
-            {isConnected ? 'Đã kết nối' : 'Ngắt kết nối'}
-          </div>
+            <Play className="h-4 w-4 mr-2" />
+            Test âm thanh thông báo
+          </Button>
         </div>
-      </CardContent>
-    </Card>
+      </DialogContent>
+    </Dialog>
   );
 }
 
-/**
- * PaymentsList Component
- */
 export const PaymentsList = () => {
   const { isAdmin } = useIsAdmin();
-  const [showAll, setShowAll] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRange>('today');
+  const [showTest, setShowTest] = useState(true);
   const { data: payments = [], isLoading } = usePayments({
     isAdmin,
-    showAll: isAdmin && showAll,
+    dateRange,
+    showTest: isAdmin ? showTest : false,
   });
   const [searchTerm, setSearchTerm] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [muted, setMuted] = useState(isMuted());
+  const [soundboxOpen, setSoundboxOpen] = useState(false);
   const [highlightedIds, setHighlightedIds] = useState<Set<string>>(new Set());
   const highlightTimeouts = useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map()
@@ -209,17 +236,6 @@ export const PaymentsList = () => {
       momo_extrafield: null,
     });
   };
-
-  const todayStr = new Date().toISOString().split('T')[0];
-  const todayPayments = useMemo(
-    () =>
-      payments.filter(p => p.received_at?.startsWith(todayStr)),
-    [payments, todayStr]
-  );
-  const todayTotal = todayPayments.reduce(
-    (sum, p) => sum + (p.amount || 0),
-    0
-  );
 
   const getProviderInfo = (providerRaw: string | null | undefined) => {
     const provider = (providerRaw ?? '').toLowerCase().trim();
@@ -319,49 +335,45 @@ export const PaymentsList = () => {
     return allGroups.slice(start, start + daysPerPage);
   }, [allGroups, currentPage]);
 
+  const dateRangeOptions: { value: DateRange; label: string }[] = [
+    { value: 'today', label: 'Hôm nay' },
+    { value: '7days', label: '7 ngày' },
+    ...(isAdmin ? [{ value: 'all' as DateRange, label: 'Tất cả' }] : []),
+  ];
+
   return (
     <div className="space-y-6">
-      {/* Summary cards */}
-      <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
-        <SummaryCard
-          icon={<TrendingUp className="h-5 w-5 text-primary" />}
-          title="Tổng tiền hôm nay"
-          value={formatVND(todayTotal)}
-        />
-        <SummaryCard
-          icon={<Receipt className="h-5 w-5 text-primary" />}
-          title="Giao dịch hôm nay"
-          value={String(todayPayments.length)}
-        />
-        <StatusCard isConnected={isConnected} />
-      </div>
-
-      {/* Payments history */}
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div className="flex items-center gap-2 flex-wrap">
               <CardTitle>Lịch sử thanh toán</CardTitle>
+
+              {/* Date range filter */}
+              <div className="flex items-center rounded-md border border-border bg-muted/50 p-0.5">
+                {dateRangeOptions.map(opt => (
+                  <Button
+                    key={opt.value}
+                    variant={dateRange === opt.value ? 'default' : 'ghost'}
+                    size="sm"
+                    className="h-7 px-2.5 text-xs"
+                    onClick={() => setDateRange(opt.value)}
+                  >
+                    {opt.label}
+                  </Button>
+                ))}
+              </div>
+
+              {/* Test filter (admin only) */}
               {isAdmin && (
                 <Button
-                  variant={showAll ? 'default' : 'outline'}
+                  variant={showTest ? 'default' : 'outline'}
                   size="sm"
-                  onClick={() => setShowAll(prev => !prev)}
+                  onClick={() => setShowTest(prev => !prev)}
                   className="h-7 gap-1.5 text-xs"
                 >
-                  {showAll ? (
-                    <InfinityIcon className="h-3.5 w-3.5" />
-                  ) : (
-                    <CalendarDays className="h-3.5 w-3.5" />
-                  )}
-                  {showAll ? 'Tất cả' : '7 ngày'}
+                  {showTest ? 'Tất cả' : 'Không test'}
                 </Button>
-              )}
-              {!isAdmin && (
-                <Badge variant="secondary" className="text-xs">
-                  <CalendarDays className="mr-1 h-3 w-3" />
-                  7 ngày gần nhất
-                </Badge>
               )}
             </div>
 
@@ -370,7 +382,7 @@ export const PaymentsList = () => {
                 <div className="w-full max-w-md relative">
                   <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                   <Input
-                    placeholder="Tìm theo provider, số TK, ref, nội dung..."
+                    placeholder="Tìm theo provider, số TK, ref..."
                     className="pl-10"
                     value={searchTerm}
                     onChange={event => setSearchTerm(event.target.value)}
@@ -378,25 +390,18 @@ export const PaymentsList = () => {
                   />
                 </div>
               )}
-              <Clock variant="time" />
+
+              {/* SoundBox status button */}
               <Button
-                variant="ghost"
+                variant="outline"
                 size="icon"
-                onClick={handleTestVoice}
-                title="Test âm thanh"
+                onClick={() => setSoundboxOpen(true)}
+                title="SoundBox"
               >
-                <Play className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={handleToggleMute}
-                title={muted ? 'Bật tiếng' : 'Tắt tiếng'}
-              >
-                {muted ? (
-                  <VolumeX className="h-4 w-4" />
+                {isConnected ? (
+                  <div className="h-3 w-3 rounded-full bg-green-500 animate-pulse" />
                 ) : (
-                  <Volume2 className="h-4 w-4" />
+                  <div className="h-3 w-3 rounded-full bg-red-500" />
                 )}
               </Button>
             </div>
@@ -720,6 +725,15 @@ export const PaymentsList = () => {
           )}
         </CardContent>
       </Card>
+
+      <SoundBoxDialog
+        isOpen={soundboxOpen}
+        onClose={() => setSoundboxOpen(false)}
+        isConnected={isConnected}
+        muted={muted}
+        onToggleMute={handleToggleMute}
+        onTestVoice={handleTestVoice}
+      />
     </div>
   );
 };
