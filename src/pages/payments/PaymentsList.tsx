@@ -21,8 +21,6 @@ import {
   Check,
   Volume2,
   VolumeX,
-  Play,
-  Radio,
   X,
 } from 'lucide-react';
 import {
@@ -31,14 +29,13 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
+  HoverCard,
+  HoverCardContent,
+  HoverCardTrigger,
+} from '@/components/ui/hover-card';
 import { Switch } from '@/components/ui/switch';
-import { Separator } from '@/components/ui/separator';
+import { Toggle } from '@/components/ui/toggle';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePayments, type DateRange, type Payment } from '@/hooks/usePayments';
 import { usePaymentRealtime } from '@/hooks/usePaymentRealtime';
 import { usePaymentAnnouncer } from '@/hooks/usePaymentAnnouncer';
@@ -83,83 +80,6 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
-function SoundBoxDialog({
-  isOpen,
-  onClose,
-  isConnected,
-  muted,
-  onToggleMute,
-  onTestVoice,
-}: {
-  isOpen: boolean;
-  onClose: () => void;
-  isConnected: boolean;
-  muted: boolean;
-  onToggleMute: () => void;
-  onTestVoice: () => void;
-}) {
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Radio className="h-5 w-5" />
-            SoundBox
-          </DialogTitle>
-          <DialogDescription>
-            Thông báo giọng đọc chuyển khoản
-          </DialogDescription>
-        </DialogHeader>
-
-        <div className="space-y-4">
-          <div className="flex items-center justify-between rounded-lg border p-3">
-            <div className="flex items-center gap-3">
-              {isConnected ? (
-                <div className="h-3 w-3 rounded-full bg-green-500 animate-pulse" />
-              ) : (
-                <div className="h-3 w-3 rounded-full bg-red-500" />
-              )}
-              <div>
-                <div className="text-sm font-medium">
-                  {isConnected ? 'Đã kết nối' : 'Ngắt kết nối'}
-                </div>
-                <div className="text-xs text-muted-foreground">
-                  Realtime Supabase
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <Separator />
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              {muted ? (
-                <VolumeX className="h-4 w-4" />
-              ) : (
-                <Volume2 className="h-4 w-4" />
-              )}
-              <span className="text-sm font-medium">
-                Thông báo giọng đọc
-              </span>
-            </div>
-            <Switch checked={!muted} onCheckedChange={() => onToggleMute()} />
-          </div>
-
-          <Button
-            onClick={onTestVoice}
-            variant="outline"
-            className="w-full"
-            disabled={muted}
-          >
-            <Play className="h-4 w-4 mr-2" />
-            Test âm thanh thông báo
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-}
 
 export const PaymentsList = () => {
   const { isAdmin } = useIsAdmin();
@@ -174,7 +94,11 @@ export const PaymentsList = () => {
   const [searchOpen, setSearchOpen] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [muted, setMuted] = useState(isMuted());
-  const [soundboxOpen, setSoundboxOpen] = useState(false);
+  const [now, setNow] = useState(Date.now());
+  useEffect(() => {
+    const id = setInterval(() => setNow(Date.now()), 60_000);
+    return () => clearInterval(id);
+  }, []);
   const [highlightedIds, setHighlightedIds] = useState<Set<string>>(new Set());
   const highlightTimeouts = useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map()
@@ -294,6 +218,17 @@ export const PaymentsList = () => {
     });
   }, [payments, searchTerm]);
 
+  const todayStr = new Date().toISOString().split('T')[0];
+  const todayPayments = useMemo(
+    () =>
+      filteredPayments.filter(p => p.received_at?.startsWith(todayStr)),
+    [filteredPayments, todayStr]
+  );
+  const todayTotal = useMemo(
+    () => todayPayments.reduce((sum, p) => sum + (p.amount || 0), 0),
+    [todayPayments]
+  );
+
   const allGroups = useMemo(() => {
     const groups: Record<string, Payment[]> = {};
 
@@ -352,34 +287,30 @@ export const PaymentsList = () => {
               <CardTitle>Lịch sử thanh toán</CardTitle>
 
               {/* Date range filter */}
-              <div className="flex items-center rounded-md border border-border bg-muted/50 p-0.5">
-                {dateRangeOptions.map(opt => (
-                  <Button
-                    key={opt.value}
-                    variant={dateRange === opt.value ? 'default' : 'ghost'}
-                    size="sm"
-                    className="h-7 px-2.5 text-xs"
-                    onClick={() => setDateRange(opt.value)}
-                  >
-                    {opt.label}
-                  </Button>
-                ))}
-              </div>
+              <Tabs value={dateRange} onValueChange={(value) => setDateRange(value as DateRange)}>
+                <TabsList>
+                  {dateRangeOptions.map(opt => (
+                    <TabsTrigger key={opt.value} value={opt.value} className="h-7 px-3 text-xs">
+                      {opt.label}
+                    </TabsTrigger>
+                  ))}
+                </TabsList>
+              </Tabs>
 
               {/* Test filter (admin only) */}
               {isAdmin && (
-                <Button
-                  variant={showTest ? 'default' : 'outline'}
+                <Toggle
+                  pressed={showTest}
+                  onPressedChange={setShowTest}
+                  variant="outline"
                   size="sm"
-                  onClick={() => setShowTest(prev => !prev)}
-                  className="h-7 gap-1.5 text-xs"
+                  className="text-xs"
                 >
-                  {showTest ? 'Tất cả' : 'Không test'}
-                </Button>
+                  {/* {showTest ? 'Bao gồm test' : 'Không test'} */ 'Giao dịch test'}
+                </Toggle>
               )}
-            </div>
 
-            <div className="flex items-center gap-2">
+              {/* Search toggle (admin only) */}
               {isAdmin && (
                 <>
                   {searchOpen ? (
@@ -388,7 +319,7 @@ export const PaymentsList = () => {
                       <Input
                         autoFocus
                         placeholder="Tìm theo provider, số TK, ref..."
-                        className="h-9 w-64 pl-10 pr-8"
+                        className="h-7 w-48 pl-9 pr-8 text-xs"
                         value={searchTerm}
                         onChange={event => setSearchTerm(event.target.value)}
                         onBlur={() => {
@@ -410,8 +341,9 @@ export const PaymentsList = () => {
                     </div>
                   ) : (
                     <Button
-                      variant="outline"
+                      variant="ghost"
                       size="icon"
+                      className="h-7 w-7"
                       onClick={() => setSearchOpen(true)}
                       title="Tìm kiếm"
                     >
@@ -420,22 +352,40 @@ export const PaymentsList = () => {
                   )}
                 </>
               )}
+            </div>
 
-              {/* SoundBox status button */}
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={() => setSoundboxOpen(true)}
-                title="SoundBox"
-                className="gap-2"
-              >
-                {isConnected ? (
-                  <div className="h-2.5 w-2.5 rounded-full bg-green-500 animate-pulse" />
-                ) : (
-                  <div className="h-2.5 w-2.5 rounded-full bg-red-500" />
-                )}
-                <span className="text-xs">Loa chuyển khoản</span>
-              </Button>
+            <div className="flex items-center gap-2">
+              {/* SoundBox hover card */}
+              <HoverCard openDelay={20} closeDelay={20}>
+                <HoverCardTrigger asChild>
+                  <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                    {isConnected ? (
+                      <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
+                    ) : (
+                      <div className="h-2 w-2 rounded-full bg-red-500" />
+                    )}
+                    Loa chuyển khoản
+                  </span>
+                </HoverCardTrigger>
+                <HoverCardContent className="w-64 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                      <span className="text-sm">Thông báo giọng đọc</span>
+                    </div>
+                    <Switch checked={!muted} onCheckedChange={() => handleToggleMute()} />
+                  </div>
+                  <Button
+                    onClick={handleTestVoice}
+                    variant="outline"
+                    size="sm"
+                    className="w-full"
+                    disabled={muted}
+                  >
+                    Test âm thanh
+                  </Button>
+                </HoverCardContent>
+              </HoverCard>
             </div>
           </div>
         </CardHeader>
@@ -466,6 +416,7 @@ export const PaymentsList = () => {
                             const dateStr =
                               group.displayTime ||
                               `${group.date}T00:00:00Z`;
+                            const isToday = group.date === todayStr;
 
                             let formattedDate = formatDate(
                               dateStr,
@@ -505,9 +456,20 @@ export const PaymentsList = () => {
                           })()
                         )}
                       </div>
-                      <span className="text-xs text-muted-foreground">
-                        {group.items.length} giao dịch
-                      </span>
+                      <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <span>
+                          {group.items.length} giao dịch
+                          {group.date === todayStr && (
+                            <>
+                              {' '}•{' '}
+                              {todayTotal.toLocaleString('vi-VN', {
+                                style: 'currency',
+                                currency: 'VND',
+                              })}
+                            </>
+                          )}
+                        </span>
+                      </div>
                     </div>
 
                     <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-4">
@@ -516,7 +478,7 @@ export const PaymentsList = () => {
                           payment.received_at ?? payment.created_at;
                         const providerInfo = getProviderInfo(payment.provider);
                         const isNew = displayTime
-                          ? Date.now() - new Date(displayTime).getTime() <
+                          ? now - new Date(displayTime).getTime() <
                             10 * 60 * 1000
                           : false;
 
@@ -566,6 +528,11 @@ export const PaymentsList = () => {
                                   {displayTime
                                     ? formatDateTimeWithSeconds(displayTime)
                                     : '-'}
+                                  {displayTime?.startsWith(todayStr) && (
+                                    <span className="ml-1.5 text-muted-foreground">
+                                      ({formatTimeAgo(displayTime)})
+                                    </span>
+                                  )}
                                 </span>
                               </div>
                               <div className="flex items-center justify-between gap-2">
@@ -757,15 +724,6 @@ export const PaymentsList = () => {
           )}
         </CardContent>
       </Card>
-
-      <SoundBoxDialog
-        isOpen={soundboxOpen}
-        onClose={() => setSoundboxOpen(false)}
-        isConnected={isConnected}
-        muted={muted}
-        onToggleMute={handleToggleMute}
-        onTestVoice={handleTestVoice}
-      />
     </div>
   );
 };
