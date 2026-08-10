@@ -1,15 +1,16 @@
 import { useState, useEffect } from 'react';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useMutation } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Send, Loader2, MessageSquare } from 'lucide-react';
 import { toast } from 'sonner';
 import { getWindmillApiUrl } from '@/lib/windmill';
 import { useSession } from '@/hooks/useAuth';
+import { supabase } from '@/lib/supabase';
 
 const GROUP_ID = '7224557580274371426'; // [GLT] Nội bộ mới
-const SEND_SCRIPT = 'zalo/zca_send_pricetables';
-const PREVIEW_SCRIPT = 'zalo/zca_get_pricetables_preview';
+const SUPABASE_URL = 'https://wvckxasjbydyvqgwgdhg.supabase.co';
+const STORAGE_BUCKET = 'product-images';
 
 interface PricetablePreview {
   id: string;
@@ -17,61 +18,71 @@ interface PricetablePreview {
   imageUrl: string | null;
 }
 
+function getPricetableUrl(title: string): string | null {
+  const match = title.match(/(\d+)/);
+  if (!match) return null;
+  return `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/pricetables/${match[1]}.png`;
+}
+
 export function ZaloTemplates() {
   const { data: session } = useSession();
-  const [isSending, setIsSending] = useState(false);
   const [cooldownEnd, setCooldownEnd] = useState<number | null>(null);
 
-  const { data, isLoading } = useQuery<{ pricetables: PricetablePreview[] }>({
+  const { data, isLoading } = useQuery<PricetablePreview[]>({
     queryKey: ['zalo-pricetables-preview'],
     queryFn: async () => {
-      const url = getWindmillApiUrl('w', `jobs/run/${PREVIEW_SCRIPT}`);
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({}),
-      });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
-      return res.json();
+      const { data: rows, error } = await supabase
+        .from('glt_media')
+        .select('id, title, title_public')
+        .eq('type', 'pricetable-retail')
+        .eq('is_test', false)
+        .order('rank', { nullsFirst: false })
+        .limit(6);
+
+      if (error) throw error;
+      return (rows ?? []).map((row: any) => ({
+        id: String(row.id),
+        label: row.title_public || row.id,
+        imageUrl: getPricetableUrl(row.title),
+      }));
     },
     enabled: !!session,
     staleTime: 5 * 60 * 1000,
   });
 
-  const isDisabled = isSending || !!cooldownEnd;
-
-  const handleSend = async () => {
-    setIsSending(true);
-    try {
-      const url = getWindmillApiUrl('w', `jobs/run/${SEND_SCRIPT}`);
+  const sendMutation = useMutation({
+    mutationFn: async () => {
+      const url = getWindmillApiUrl('r', 'zalo');
       const res = await fetch(url, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
+          type: 'send-pricetables',
           groupId: GROUP_ID,
           text: 'Bảng giá lẻ Gạo Lâm Thúy hôm nay:',
         }),
       });
-      if (!res.ok) {
-        const body = await res.text();
-        throw new Error(body.slice(0, 200) || `HTTP ${res.status}`);
-      }
+      const body = await res.json();
+      if (body?.error) throw new Error(body.error);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      return body;
+    },
+    onSuccess: () => {
       toast.success('Đã gửi bảng giá vào nhóm Zalo');
-    } catch (err) {
+    },
+    onError: (err) => {
       const msg = err instanceof Error ? err.message : 'Lỗi không xác định';
       toast.error('Gửi bảng giá thất bại', { description: msg });
-      // If rate limited, start cooldown
       const minMatch = msg.match(/(\d+)\s*phút/);
       if (minMatch) {
         const minutes = parseInt(minMatch[1], 10);
         setCooldownEnd(Date.now() + minutes * 60 * 1000);
       }
-    } finally {
-      setIsSending(false);
-    }
-  };
+    },
+  });
 
-  const pricetables = data?.pricetables ?? [];
+  const isDisabled = sendMutation.isPending || !!cooldownEnd;
+  const pricetables = data ?? [];
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -123,10 +134,10 @@ export function ZaloTemplates() {
           </div>
           <CooldownButton
             disabled={isDisabled}
-            isSending={isSending}
+            isSending={sendMutation.isPending}
             cooldownEnd={cooldownEnd}
             onCooldownEnd={() => setCooldownEnd(null)}
-            onSend={handleSend}
+            onSend={() => sendMutation.mutate()}
           />
         </CardContent>
       </Card>
