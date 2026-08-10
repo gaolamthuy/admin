@@ -1,5 +1,5 @@
-import { useState } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useState, useEffect } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Send, Loader2, MessageSquare } from 'lucide-react';
@@ -19,8 +19,8 @@ interface PricetablePreview {
 
 export function ZaloTemplates() {
   const { data: session } = useSession();
-  const queryClient = useQueryClient();
   const [isSending, setIsSending] = useState(false);
+  const [cooldownEnd, setCooldownEnd] = useState<number | null>(null);
 
   const { data, isLoading } = useQuery<{ pricetables: PricetablePreview[] }>({
     queryKey: ['zalo-pricetables-preview'],
@@ -38,6 +38,8 @@ export function ZaloTemplates() {
     staleTime: 5 * 60 * 1000,
   });
 
+  const isDisabled = isSending || !!cooldownEnd;
+
   const handleSend = async () => {
     setIsSending(true);
     try {
@@ -50,12 +52,20 @@ export function ZaloTemplates() {
           text: 'Bảng giá lẻ Gạo Lâm Thúy hôm nay:',
         }),
       });
-      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      if (!res.ok) {
+        const body = await res.text();
+        throw new Error(body.slice(0, 200) || `HTTP ${res.status}`);
+      }
       toast.success('Đã gửi bảng giá vào nhóm Zalo');
     } catch (err) {
-      toast.error('Gửi bảng giá thất bại', {
-        description: err instanceof Error ? err.message : 'Lỗi không xác định',
-      });
+      const msg = err instanceof Error ? err.message : 'Lỗi không xác định';
+      toast.error('Gửi bảng giá thất bại', { description: msg });
+      // If rate limited, start cooldown
+      const minMatch = msg.match(/(\d+)\s*phút/);
+      if (minMatch) {
+        const minutes = parseInt(minMatch[1], 10);
+        setCooldownEnd(Date.now() + minutes * 60 * 1000);
+      }
     } finally {
       setIsSending(false);
     }
@@ -111,23 +121,73 @@ export function ZaloTemplates() {
                   </div>
                 ))}
           </div>
-          <div className="flex items-center gap-3">
-            <Button onClick={handleSend} disabled={isSending || pricetables.length === 0}>
-              {isSending ? (
-                <>
-                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  Đang gửi...
-                </>
-              ) : (
-                <>
-                  <Send className="mr-2 h-4 w-4" />
-                  Gửi ngay
-                </>
-              )}
-            </Button>
-          </div>
+          <CooldownButton
+            disabled={isDisabled}
+            isSending={isSending}
+            cooldownEnd={cooldownEnd}
+            onCooldownEnd={() => setCooldownEnd(null)}
+            onSend={handleSend}
+          />
         </CardContent>
       </Card>
     </div>
+  );
+}
+
+function CooldownButton({
+  disabled,
+  isSending,
+  cooldownEnd,
+  onCooldownEnd,
+  onSend,
+}: {
+  disabled: boolean;
+  isSending: boolean;
+  cooldownEnd: number | null;
+  onCooldownEnd: () => void;
+  onSend: () => void;
+}) {
+  return (
+    <Button onClick={onSend} disabled={disabled}>
+      {isSending ? (
+        <>
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+          Đang gửi...
+        </>
+      ) : cooldownEnd ? (
+        <CooldownTimer endTime={cooldownEnd} onDone={onCooldownEnd} />
+      ) : (
+        <>
+          <Send className="mr-2 h-4 w-4" />
+          Gửi ngay
+        </>
+      )}
+    </Button>
+  );
+}
+
+function CooldownTimer({ endTime, onDone }: { endTime: number; onDone: () => void }) {
+  const [remaining, setRemaining] = useState(() => Math.max(0, Math.ceil((endTime - Date.now()) / 1000)));
+
+  useEffect(() => {
+    const id = setInterval(() => {
+      const left = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
+      setRemaining(left);
+      if (left <= 0) {
+        clearInterval(id);
+        onDone();
+      }
+    }, 1000);
+    return () => clearInterval(id);
+  }, [endTime, onDone]);
+
+  if (remaining <= 0) return null;
+  const min = Math.floor(remaining / 60);
+  const sec = remaining % 60;
+  return (
+    <>
+      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+      {min > 0 ? `${min}p ${sec}s` : `${sec}s`}
+    </>
   );
 }
