@@ -20,6 +20,7 @@ import {
   DollarSign,
   ClipboardList,
   Settings,
+  MessageSquare,
 } from 'lucide-react';
 
 interface MenuItem {
@@ -60,6 +61,12 @@ const menuItems: MenuItem[] = [
     label: 'Hóa đơn',
     icon: ClipboardList,
     path: '/invoices',
+  },
+  {
+    key: 'zalo',
+    label: 'Zalo',
+    icon: MessageSquare,
+    path: '/zalo',
   },
 ];
 

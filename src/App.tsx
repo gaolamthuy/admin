@@ -21,6 +21,7 @@ import { PurchaseOrderShow } from '@/pages/purchase-orders/PurchaseOrderShow';
 import { CustomersList } from '@/pages/customers/CustomersList';
 import { PaymentsList } from '@/pages/payments/PaymentsList';
 import { InvoicesList } from '@/pages/invoices/InvoicesList';
+import { ZaloTemplates } from '@/pages/zalo-templates/ZaloTemplates';
 import { Toaster } from '@/components/ui/sonner';
 import './App.css';
 
@@ -118,6 +119,17 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <InvoicesList />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            <Route
+              path="/zalo"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <ZaloTemplates />
                   </Layout>
                 </ProtectedRoute>
               }
