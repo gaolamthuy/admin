@@ -21,7 +21,7 @@ interface PricetablePreview {
 function getPricetableUrl(title: string): string | null {
   const match = title.match(/(\d+)/);
   if (!match) return null;
-  return `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/pricetables/${match[1]}.png`;
+  return `${SUPABASE_URL}/storage/v1/object/public/${STORAGE_BUCKET}/pricetables/${match[1]}.webp`;
 }
 
 export function ZaloTemplates() {
