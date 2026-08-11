@@ -109,11 +109,11 @@ export function ZaloTemplates() {
                 )}
               </button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg">
+            <DialogContent className="max-w-2xl">
               <DialogHeader>
                 <DialogTitle>Preview bảng giá lẻ</DialogTitle>
               </DialogHeader>
-              <Carousel opts={{ align: 'center' }} className="mx-auto w-full max-w-xs">
+              <Carousel opts={{ align: 'center' }} className="mx-auto w-full max-w-md">
                 <CarouselContent>
                   {pricetables.map((pt) => (
                     <CarouselItem key={pt.id}>
@@ -136,8 +136,8 @@ export function ZaloTemplates() {
                     </CarouselItem>
                   ))}
                 </CarouselContent>
-                <CarouselPrevious className="-left-10" />
-                <CarouselNext className="-right-10" />
+                <CarouselPrevious className="-left-12" />
+                <CarouselNext className="-right-12" />
               </Carousel>
             </DialogContent>
           </Dialog>
