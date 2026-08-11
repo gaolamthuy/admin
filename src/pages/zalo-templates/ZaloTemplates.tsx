@@ -1,9 +1,22 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from '@/components/ui/dialog';
+import {
+  Carousel,
+  CarouselContent,
+  CarouselItem,
+  CarouselPrevious,
+  CarouselNext,
+} from '@/components/ui/carousel';
 import { Send, Loader2, MessageSquare, ImageIcon } from 'lucide-react';
 import { toast } from 'sonner';
 import { getWindmillApiUrl } from '@/lib/windmill';
@@ -78,79 +91,85 @@ export function ZaloTemplates() {
 
   return (
     <div className="container mx-auto py-6 space-y-6">
-      <Card>
-        <CardHeader className="pb-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <MessageSquare className="size-4 text-blue-500" />
-              <CardTitle className="text-base">Gửi bảng giá lẻ</CardTitle>
-              <Badge variant="secondary" className="text-xs">
-                {pricetables.length} ảnh
-              </Badge>
-            </div>
-            <CooldownButton
-              disabled={sendMutation.isPending || !!cooldownEnd}
-              isSending={sendMutation.isPending}
-              cooldownEnd={cooldownEnd}
-              onCooldownEnd={() => setCooldownEnd(null)}
-              onSend={() => sendMutation.mutate()}
-            />
-          </div>
-          <p className="text-xs text-muted-foreground">
-            Nhóm <span className="font-medium text-foreground">[GLT] Nội bộ mới</span>
-          </p>
-        </CardHeader>
-        <CardContent className="pb-4">
-          {isLoading ? (
-            <div className="aspect-[3/4] max-w-[160px] rounded-md bg-muted animate-pulse" />
-          ) : cover ? (
-            <Dialog>
-              <DialogTrigger asChild>
-                <button className="relative aspect-[3/4] max-w-[160px] overflow-hidden rounded-md border bg-muted cursor-pointer group">
-                  {cover.imageUrl ? (
-                    <img
-                      src={cover.imageUrl}
-                      alt={cover.label}
-                      className="h-full w-full object-cover transition-opacity group-hover:opacity-90"
-                      loading="lazy"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center">
-                      <ImageIcon className="size-4 text-muted-foreground" />
-                    </div>
-                  )}
-                  {moreCount > 0 && (
-                    <Badge className="absolute bottom-1.5 right-1.5 px-1.5 py-0.5 text-xs">
-                      +{moreCount}
-                    </Badge>
-                  )}
-                </button>
-              </DialogTrigger>
-              <DialogContent className="max-w-2xl">
-                <DialogHeader>
-                  <DialogTitle>Preview bảng giá lẻ</DialogTitle>
-                </DialogHeader>
-                <div className="grid grid-cols-3 gap-3">
+      <Card className="w-full max-w-sm">
+        {isLoading ? (
+          <div className="aspect-[3/4] w-full rounded-t-lg bg-muted animate-pulse" />
+        ) : cover?.imageUrl ? (
+          <Dialog>
+            <DialogTrigger asChild>
+              <button className="relative aspect-[3/4] w-full overflow-hidden rounded-t-lg bg-muted cursor-pointer group">
+                <img
+                  src={cover.imageUrl}
+                  alt={cover.label}
+                  className="h-full w-full object-cover transition-opacity group-hover:opacity-90"
+                  loading="lazy"
+                />
+                {moreCount > 0 && (
+                  <Badge className="absolute bottom-2 right-2">+{moreCount}</Badge>
+                )}
+              </button>
+            </DialogTrigger>
+            <DialogContent className="max-w-lg">
+              <DialogHeader>
+                <DialogTitle>Preview bảng giá lẻ</DialogTitle>
+              </DialogHeader>
+              <Carousel opts={{ align: 'center' }} className="mx-auto w-full max-w-xs">
+                <CarouselContent>
                   {pricetables.map((pt) => (
-                    <div key={pt.id} className="space-y-1">
+                    <CarouselItem key={pt.id}>
                       <div className="aspect-[3/4] overflow-hidden rounded-md border bg-muted">
                         {pt.imageUrl ? (
-                          <img src={pt.imageUrl} alt={pt.label} className="h-full w-full object-cover" />
+                          <img
+                            src={pt.imageUrl}
+                            alt={pt.label}
+                            className="h-full w-full object-cover"
+                          />
                         ) : (
                           <div className="flex h-full items-center justify-center">
                             <ImageIcon className="size-4 text-muted-foreground" />
                           </div>
                         )}
                       </div>
-                      <p className="text-xs text-muted-foreground text-center line-clamp-1">{pt.label}</p>
-                    </div>
+                      <p className="mt-1.5 text-center text-xs text-muted-foreground">
+                        {pt.label}
+                      </p>
+                    </CarouselItem>
                   ))}
-                </div>
-              </DialogContent>
-            </Dialog>
-          ) : (
-            <p className="text-sm text-muted-foreground">Không có ảnh bảng giá</p>
-          )}
+                </CarouselContent>
+                <CarouselPrevious className="-left-10" />
+                <CarouselNext className="-right-10" />
+              </Carousel>
+            </DialogContent>
+          </Dialog>
+        ) : (
+          <div className="flex aspect-[3/4] w-full items-center justify-center rounded-t-lg border">
+            <ImageIcon className="size-8 text-muted-foreground" />
+          </div>
+        )}
+        <CardHeader className="pb-2 pt-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <MessageSquare className="size-4 text-blue-500" />
+                Gửi bảng giá lẻ
+                <Badge variant="secondary" className="text-xs font-normal">
+                  {pricetables.length} ảnh
+                </Badge>
+              </CardTitle>
+              <CardDescription className="mt-1">
+                Nhóm [GLT] Nội bộ mới
+              </CardDescription>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="pb-4 pt-0">
+          <CooldownButton
+            disabled={sendMutation.isPending || !!cooldownEnd}
+            isSending={sendMutation.isPending}
+            cooldownEnd={cooldownEnd}
+            onCooldownEnd={() => setCooldownEnd(null)}
+            onSend={() => sendMutation.mutate()}
+          />
         </CardContent>
       </Card>
     </div>
