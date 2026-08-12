@@ -12,6 +12,9 @@ import { useProducts, useProductCategories } from '@/hooks/useProducts';
 import { useIsAdmin } from '@/hooks/useAuth';
 import { useUpdateProductPrice } from './hooks/useUpdateProductPrice';
 import { useSyncProducts } from './hooks/useSyncProducts';
+
+// Rename hook for clarity
+const useDownloadProducts = useSyncProducts;
 import { ProductCardGrid } from './components/ProductCardGrid';
 import { ProductListTable } from './components/ProductListTable';
 import type { Product, ProductCard } from '@/types/product';
@@ -34,7 +37,7 @@ import {
 } from '@/components/ui/pagination';
 import { Toggle } from '@/components/ui/toggle';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Heart, LayoutGrid, List, RefreshCw } from 'lucide-react';
+import { Heart, LayoutGrid, List, Download, Upload } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -119,7 +122,7 @@ export const ProductList = () => {
   });
 
   const updateProductPrice = useUpdateProductPrice();
-  const syncProducts = useSyncProducts();
+  const downloadProducts = useDownloadProducts();
   const [updatingPriceId, setUpdatingPriceId] = useState<number | null>(null);
 
   const handleUpdatePrice = async (kiotvietId: number) => {
@@ -324,16 +327,16 @@ export const ProductList = () => {
                   variant="outline"
                   size="sm"
                   className="h-9 gap-1.5"
-                  disabled={syncProducts.isPending}
-                  onClick={() => syncProducts.mutate()}
+                  disabled={downloadProducts.isPending}
+                  onClick={() => downloadProducts.mutate()}
                 >
-                  {syncProducts.isPending ? (
+                  {downloadProducts.isPending ? (
                     <Loader2 className="h-3.5 w-3.5 animate-spin" />
                   ) : (
-                    <RefreshCw className="h-3.5 w-3.5" />
+                    <Download className="h-3.5 w-3.5" />
                   )}
                   <span className="font-medium hidden sm:inline">
-                    {syncProducts.isPending ? 'Đang đồng bộ...' : 'Đồng bộ SP'}
+                    {downloadProducts.isPending ? 'Đang tải...' : 'Download SP'}
                   </span>
                 </Button>
               )}

@@ -73,12 +73,12 @@ export const useSyncProducts = () => {
     mutationFn: callSyncProducts,
     onSuccess: result => {
       toast.success(
-        result.message || 'Đồng bộ sản phẩm thành công'
+        result.message || 'Download sản phẩm thành công'
       );
       queryClient.invalidateQueries({ queryKey: ['products'] });
     },
     onError: (error: Error) => {
-      toast.error(`Đồng bộ sản phẩm thất bại: ${error.message}`);
+      toast.error(`Download sản phẩm thất bại: ${error.message}`);
     },
   });
 };

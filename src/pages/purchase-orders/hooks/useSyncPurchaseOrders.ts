@@ -77,12 +77,12 @@ export const useSyncPurchaseOrders = () => {
     onSuccess: result => {
       const { purchase_orders, details } = result;
       toast.success(
-        `Đồng bộ thành công: ${purchase_orders} đơn, ${details} chi tiết`
+        `Download thành công: ${purchase_orders} đơn, ${details} chi tiết`
       );
       queryClient.invalidateQueries({ queryKey: ['purchase-orders'] });
     },
     onError: (error: Error) => {
-      toast.error(`Đồng bộ nhập hàng thất bại: ${error.message}`);
+      toast.error(`Download nhập hàng thất bại: ${error.message}`);
     },
   });
 };

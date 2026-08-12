@@ -21,7 +21,7 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import { Loader2, Plus, Package, Calendar, Receipt, RefreshCw } from 'lucide-react';
+import { Loader2, Plus, Package, Calendar, Receipt, Download } from 'lucide-react';
 import { formatDate, formatDaysAgo } from '@/utils/date';
 import { useSyncPurchaseOrders } from './hooks/useSyncPurchaseOrders';
 
@@ -41,7 +41,7 @@ export const PurchaseOrderList = () => {
   const navigate = useNavigate();
   const { data: purchaseOrders = [], isLoading } = usePurchaseOrders();
   const { isAdmin } = useIsAdmin();
-  const syncPO = useSyncPurchaseOrders();
+  const downloadPO = useSyncPurchaseOrders();
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -75,16 +75,16 @@ export const PurchaseOrderList = () => {
                 variant="outline"
                 size="sm"
                 className="h-9 gap-1.5"
-                disabled={syncPO.isPending}
-                onClick={() => syncPO.mutate()}
+                disabled={downloadPO.isPending}
+                onClick={() => downloadPO.mutate()}
               >
-                {syncPO.isPending ? (
+                {downloadPO.isPending ? (
                   <Loader2 className="h-3.5 w-3.5 animate-spin" />
                 ) : (
-                  <RefreshCw className="h-3.5 w-3.5" />
+                  <Download className="h-3.5 w-3.5" />
                 )}
                 <span className="font-medium hidden sm:inline">
-                  {syncPO.isPending ? 'Đang đồng bộ...' : 'Đồng bộ'}
+                  {downloadPO.isPending ? 'Đang tải...' : 'Download'}
                 </span>
               </Button>
             )}

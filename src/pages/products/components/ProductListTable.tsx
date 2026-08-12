@@ -26,7 +26,7 @@ import {
   Loader2,
   MoreHorizontal,
   Printer,
-  RefreshCw,
+  Upload,
   AlertTriangle,
   CheckCircle,
   ArrowUpDown,
@@ -284,7 +284,7 @@ const SyncPriceConfirmDialog: React.FC<{
       <DialogContent className="sm:max-w-md">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <RefreshCw className="h-4 w-4" />
+            <Upload className="h-4 w-4" />
             Xác nhận cập nhật giá
           </DialogTitle>
           <DialogDescription>
@@ -458,7 +458,7 @@ const SyncPriceConfirmDialog: React.FC<{
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin mr-1" />
             ) : (
-              <RefreshCw className="h-4 w-4 mr-1" />
+              <Upload className="h-4 w-4 mr-1" />
             )}
             Cập nhật giá
           </Button>
@@ -836,7 +836,7 @@ const ProductRow: React.FC<{
                 {product.full_name || product.name}
                 {isRecentlyModified && (
                   <span className="inline-flex items-center gap-0.5 text-[10px] font-medium text-blue-600 dark:text-blue-400 bg-blue-50 dark:bg-blue-950 px-1.5 py-0.5 rounded-full shrink-0">
-                    <RefreshCw className="h-2.5 w-2.5" />
+                    <Upload className="h-2.5 w-2.5" />
                     Mới
                   </span>
                 )}
@@ -906,7 +906,7 @@ const ProductRow: React.FC<{
                 {isUpdating ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
-                  <RefreshCw className="h-3 w-3" />
+                  <Upload className="h-3 w-3" />
                 )}
               </Button>
             )}
@@ -986,7 +986,7 @@ const ProductRow: React.FC<{
             {product.full_name || product.name}
             {isRecentlyModified && (
               <Badge variant="outline" >
-                <RefreshCw className="h-2.5 w-2.5" />
+                <Upload className="h-2.5 w-2.5" />
                 Recently updated
               </Badge>
             )}
@@ -1057,7 +1057,7 @@ const ProductRow: React.FC<{
                 {isUpdating ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
                 ) : (
-                  <RefreshCw className="h-3 w-3" />
+                  <Upload className="h-3 w-3" />
                 )}
               </Button>
             )}
