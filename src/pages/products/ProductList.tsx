@@ -125,7 +125,7 @@ export const ProductList = () => {
   const handleUpdatePrice = async (kiotvietId: number) => {
     setUpdatingPriceId(kiotvietId);
     try {
-      await updateProductPrice.mutateAsync(kiotvietId);
+      return await updateProductPrice.mutateAsync(kiotvietId);
     } finally {
       setUpdatingPriceId(null);
     }

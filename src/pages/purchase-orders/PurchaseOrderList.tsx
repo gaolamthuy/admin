@@ -21,8 +21,9 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import { Loader2, Plus, Package, Calendar, Receipt } from 'lucide-react';
+import { Loader2, Plus, Package, Calendar, Receipt, RefreshCw } from 'lucide-react';
 import { formatDate, formatDaysAgo } from '@/utils/date';
+import { useSyncPurchaseOrders } from './hooks/useSyncPurchaseOrders';
 
 const STATUS_MAP: Record<number, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
   1: { label: 'Nháp', variant: 'secondary' },
@@ -40,6 +41,7 @@ export const PurchaseOrderList = () => {
   const navigate = useNavigate();
   const { data: purchaseOrders = [], isLoading } = usePurchaseOrders();
   const { isAdmin } = useIsAdmin();
+  const syncPO = useSyncPurchaseOrders();
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -67,10 +69,30 @@ export const PurchaseOrderList = () => {
       <Card>
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle>Danh sách đơn nhập hàng</CardTitle>
-          <Button onClick={() => navigate('/purchase-orders/create')}>
-            <Plus className="mr-2 h-4 w-4" />
-            Tạo đơn nhập hàng
-          </Button>
+          <div className="flex items-center gap-2">
+            {isAdmin && (
+              <Button
+                variant="outline"
+                size="sm"
+                className="h-9 gap-1.5"
+                disabled={syncPO.isPending}
+                onClick={() => syncPO.mutate()}
+              >
+                {syncPO.isPending ? (
+                  <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3.5 w-3.5" />
+                )}
+                <span className="font-medium hidden sm:inline">
+                  {syncPO.isPending ? 'Đang đồng bộ...' : 'Đồng bộ'}
+                </span>
+              </Button>
+            )}
+            <Button onClick={() => navigate('/purchase-orders/create')}>
+              <Plus className="mr-2 h-4 w-4" />
+              Tạo đơn nhập hàng
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           {isLoading ? (

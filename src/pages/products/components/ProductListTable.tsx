@@ -924,30 +924,13 @@ const ProductRow: React.FC<{
           onClose={() => setIsSyncDialogOpen(false)}
           onConfirm={async (printPriceboard) => {
             setIsSyncDialogOpen(false);
-            try {
-              const result = (await onUpdatePrice!(product.kiotviet_id!)) as
-                | {
-                    master: { new_baseprice: number; new_cost: number };
-                    children: Array<{
-                      code: string;
-                      full_name: string;
-                      unit: string;
-                      conversion_value: number;
-                      current_baseprice: number;
-                      new_baseprice: number;
-                      diff: number;
-                      diff_per_cv: number;
-                    }>;
-                  }
-                | undefined;
-              if (printPriceboard && product.kiotviet_id && result) {
-                const master = result.master;
-                const children = result.children || [];
-                const calcFromPo = product.calculate_from_po;
-
-                // Chuẩn bị child_unit_info format giống DB (cho template in)
-                const childUnitInfo = children.map(c => ({
-                  kiotviet_id: product.kiotviet_id,
+            // Submit form in ĐỒNG BỘ (trước await) để tránh popup blocker
+            // Data in lấy từ calculate_from_po (đã có sẵn, không cần chờ KV)
+            if (printPriceboard && product.kiotviet_id) {
+              const calcFromPo = product.calculate_from_po;
+              if (calcFromPo) {
+                const childUnitInfo = (calcFromPo.child_unit_prices || []).map(c => ({
+                  kiotviet_id: c.kiotviet_id,
                   code: c.code,
                   full_name: c.full_name,
                   unit: c.unit,
@@ -958,17 +941,20 @@ const ProductRow: React.FC<{
                       ? Math.round(c.new_baseprice / c.conversion_value)
                       : null,
                 }));
-
                 submitPostForm(getPrintUrl(), {
                   printType: 'priceboard',
                   kiotviet_id: String(product.kiotviet_id),
-                  base_price: String(master.new_baseprice),
-                  ...(calcFromPo?.latest_purchase_order_code && {
+                  base_price: String(calcFromPo.new_baseprice),
+                  ...(calcFromPo.latest_purchase_order_code && {
                     order_template: calcFromPo.latest_purchase_order_code,
                   }),
                   child_unit_info: JSON.stringify(childUnitInfo),
                 });
               }
+            }
+            // Sau đó mới async sync giá lên KV
+            try {
+              await onUpdatePrice!(product.kiotviet_id!);
             } catch {}
           }}
           isLoading={!!isUpdating}
@@ -1090,30 +1076,13 @@ const ProductRow: React.FC<{
         onClose={() => setIsSyncDialogOpen(false)}
           onConfirm={async (printPriceboard) => {
             setIsSyncDialogOpen(false);
-            try {
-              const result = (await onUpdatePrice!(product.kiotviet_id!)) as
-                | {
-                    master: { new_baseprice: number; new_cost: number };
-                    children: Array<{
-                      code: string;
-                      full_name: string;
-                      unit: string;
-                      conversion_value: number;
-                      current_baseprice: number;
-                      new_baseprice: number;
-                      diff: number;
-                      diff_per_cv: number;
-                    }>;
-                  }
-                | undefined;
-              if (printPriceboard && product.kiotviet_id && result) {
-                const master = result.master;
-                const children = result.children || [];
-                const calcFromPo = product.calculate_from_po;
-
-                // Chuẩn bị child_unit_info format giống DB (cho template in)
-                const childUnitInfo = children.map(c => ({
-                  kiotviet_id: product.kiotviet_id,
+            // Submit form in ĐỒNG BỘ (trước await) để tránh popup blocker
+            // Data in lấy từ calculate_from_po (đã có sẵn, không cần chờ KV)
+            if (printPriceboard && product.kiotviet_id) {
+              const calcFromPo = product.calculate_from_po;
+              if (calcFromPo) {
+                const childUnitInfo = (calcFromPo.child_unit_prices || []).map(c => ({
+                  kiotviet_id: c.kiotviet_id,
                   code: c.code,
                   full_name: c.full_name,
                   unit: c.unit,
@@ -1124,17 +1093,20 @@ const ProductRow: React.FC<{
                       ? Math.round(c.new_baseprice / c.conversion_value)
                       : null,
                 }));
-
                 submitPostForm(getPrintUrl(), {
                   printType: 'priceboard',
                   kiotviet_id: String(product.kiotviet_id),
-                  base_price: String(master.new_baseprice),
-                  ...(calcFromPo?.latest_purchase_order_code && {
+                  base_price: String(calcFromPo.new_baseprice),
+                  ...(calcFromPo.latest_purchase_order_code && {
                     order_template: calcFromPo.latest_purchase_order_code,
                   }),
                   child_unit_info: JSON.stringify(childUnitInfo),
                 });
               }
+            }
+            // Sau đó mới async sync giá lên KV
+            try {
+              await onUpdatePrice!(product.kiotviet_id!);
             } catch {}
           }}
         isLoading={!!isUpdating}

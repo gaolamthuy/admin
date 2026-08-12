@@ -1,4 +1,4 @@
-import { useMutation } from '@tanstack/react-query';
+import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { env } from '@/lib/env';
 import {
@@ -89,6 +89,8 @@ async function callUpdateProductPrice(
 }
 
 export const useUpdateProductPrice = () => {
+  const queryClient = useQueryClient();
+
   return useMutation({
     mutationFn: callUpdateProductPrice,
     onSuccess: result => {
@@ -104,6 +106,8 @@ export const useUpdateProductPrice = () => {
       toast.success(
         `Đã cập nhật giá: ${product_name} — basePrice ${Number(master.old_baseprice).toLocaleString()} → ${Number(master.new_baseprice).toLocaleString()}, cost ${Number(master.old_cost).toLocaleString()} → ${Number(master.new_cost).toLocaleString()}${childInfo}`
       );
+      // Reload danh sách sản phẩm để cập nhật badge recently updated
+      queryClient.invalidateQueries({ queryKey: ['products'] });
     },
     onError: (error: Error) => {
       toast.error(`Cập nhật giá thất bại: ${error.message}`);
