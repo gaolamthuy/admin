@@ -84,7 +84,7 @@ function CopyButton({ value }: { value: string }) {
 export const PaymentsList = () => {
   const { isAdmin } = useIsAdmin();
   const [dateRange, setDateRange] = useState<DateRange>('today');
-  const [showTest, setShowTest] = useState(true);
+  const [showTest, setShowTest] = useState(false);
   const { data: payments = [], isLoading } = usePayments({
     isAdmin,
     dateRange,
@@ -131,7 +131,7 @@ export const PaymentsList = () => {
   const { isConnected } = usePaymentRealtime({
     enabled: true,
     onNewPayment: handleNewPayment,
-    showTestPayments: isAdmin,
+    showTestPayments: isAdmin ? showTest : false,
   });
 
   const handleToggleMute = () => {

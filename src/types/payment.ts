@@ -81,8 +81,8 @@ export interface UsePaymentRealtimeOptions {
 
   /**
    * Có hiển thị giao dịch test (test_trans = true) không
-   * Mặc định: true (admin)
-   * Staff nên set false
+   * Mặc định: false
+   * Admin có thể bật toggle để xem
    */
   showTestPayments?: boolean;
 }
