@@ -6,8 +6,7 @@ import { getWindmillApiUrl } from '@/lib/windmill';
 const FLOW_PATH =
   'jobs/run_wait_result/f/f/frontend_admin/create_purchase_order';
 
-const DEFAULT_ERROR_MESSAGE =
-  'Không thể tạo đơn nhập hàng. Vui lòng thử lại.';
+const DEFAULT_ERROR_MESSAGE = 'Không thể tạo đơn nhập hàng. Vui lòng thử lại.';
 
 export interface PurchaseOrderItem {
   kiotviet_id: number;
@@ -96,7 +95,9 @@ export const useCreatePurchaseOrder = () => {
             ...(payload.branch_id != null
               ? { branch_id: payload.branch_id }
               : {}),
-            ...(payload.description ? { description: payload.description } : {}),
+            ...(payload.description
+              ? { description: payload.description }
+              : {}),
             ...(payload.surcharges && payload.surcharges.length > 0
               ? { surcharges: payload.surcharges }
               : {}),

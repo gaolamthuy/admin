@@ -292,7 +292,12 @@ export const useUpdateProduct = () => {
         throw new Error('Not authenticated');
       }
 
-      console.log('[useUpdateProduct] Updating product:', id, 'with fields:', fields);
+      console.log(
+        '[useUpdateProduct] Updating product:',
+        id,
+        'with fields:',
+        fields
+      );
 
       const { data, error } = await supabase
         .from('kv_products')
@@ -317,7 +322,7 @@ export const useUpdateProduct = () => {
       });
       queryClient.invalidateQueries({ queryKey: ['products'] });
     },
-    onError: (error) => {
+    onError: error => {
       console.error('[useUpdateProduct] Mutation error:', error);
     },
   });
@@ -460,15 +465,20 @@ export const useUploadProductImage = () => {
           upsert: true,
           contentType: file.type || 'image/jpeg',
         });
-      if (uploadError) throw new Error(`Upload ảnh thất bại: ${uploadError.message}`);
+      if (uploadError)
+        throw new Error(`Upload ảnh thất bại: ${uploadError.message}`);
 
       const processUrl = getWindmillApiUrl('r', 'upload_product_photo');
       const processRes = await fetch(processUrl, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${token}` },
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${token}`,
+        },
         body: JSON.stringify({ kiotviet_id: kiotvietId, role }),
       });
-      if (!processRes.ok) throw new Error((await processRes.text()) || 'Xử lý ảnh thất bại');
+      if (!processRes.ok)
+        throw new Error((await processRes.text()) || 'Xử lý ảnh thất bại');
 
       return (await processRes.json()) as UploadProductPhotoResult;
     },

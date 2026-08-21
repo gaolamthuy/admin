@@ -127,7 +127,10 @@ export const useTemplates = (
             .map(item => ({
               product_id: item.product_id,
               product_code: item.product_code,
-              product_name: (item.product_name || '').replace(/\s*\(kg\)\s*$/i, ''),
+              product_name: (item.product_name || '').replace(
+                /\s*\(kg\)\s*$/i,
+                ''
+              ),
               last_purchase_date: item.last_purchase_date,
               order_template: item.order_template || null, // ⭐ Mới: Parse order_template
               images: item.images || null, // Parse images

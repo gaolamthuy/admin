@@ -9,7 +9,12 @@
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/lib/supabase';
 import { useSession } from '@/hooks/useAuth';
-import type { Product, CostAnalysis, PricingInfo, CalculateFromPo } from '@/types';
+import type {
+  Product,
+  CostAnalysis,
+  PricingInfo,
+  CalculateFromPo,
+} from '@/types';
 
 /**
  * Product filters interface
@@ -216,15 +221,19 @@ export const useProducts = (filters: ProductFilters = {}) => {
             cost_analysis: (p.cost_analysis as CostAnalysis) || null,
             pricing_info: (p.pricing_info as PricingInfo) || null,
             calculate_from_po: (p.calculate_from_po as CalculateFromPo) || null,
-            changelog: (p.changelog as Record<string, Array<{
-              old: string;
-              new: string;
-              diff?: number;
-              pct?: number;
-              dir?: 'up' | 'down';
-              src?: string;
-              at: string;
-            }>>) || null,
+            changelog:
+              (p.changelog as Record<
+                string,
+                Array<{
+                  old: string;
+                  new: string;
+                  diff?: number;
+                  pct?: number;
+                  dir?: 'up' | 'down';
+                  src?: string;
+                  at: string;
+                }>
+              >) || null,
           } as Product & {
             priceDifference?: number | null;
             priceDifferencePercent?: number | null;

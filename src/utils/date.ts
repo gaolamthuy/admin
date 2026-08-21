@@ -204,16 +204,17 @@ export function formatTimeAgo(
   // So sánh ngày tháng để xác định "Hôm nay", "Hôm qua" chính xác
   const isSameDay = nowDateStr === targetDateStr;
   // Clone nowVN để tránh mutate, rồi subtract 1 ngày để lấy ngày hôm qua
-  const yesterdayDateStr = nowVN.clone().subtract(1, 'day').format('YYYY-MM-DD');
+  const yesterdayDateStr = nowVN
+    .clone()
+    .subtract(1, 'day')
+    .format('YYYY-MM-DD');
   const isYesterday = targetDateStr === yesterdayDateStr;
 
   // Tính các khoảng thời gian (sau khi đã xác định isSameDay và isYesterday)
   const secondsDiff = now.diff(targetDate, 'second');
   const minutesDiff = now.diff(targetDate, 'minute');
   const hoursDiff = now.diff(targetDate, 'hour');
-  const daysDiff = nowVN
-    .startOf('day')
-    .diff(targetVN.startOf('day'), 'day');
+  const daysDiff = nowVN.startOf('day').diff(targetVN.startOf('day'), 'day');
 
   const weeksDiff = Math.floor(daysDiff / 7);
   const monthsDiff = nowVN.diff(targetVN, 'month');

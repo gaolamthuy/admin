@@ -1,6 +1,12 @@
 import { useState, useEffect } from 'react';
 import { useQuery, useMutation } from '@tanstack/react-query';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -77,11 +83,12 @@ export function ZaloTemplates() {
       return body;
     },
     onSuccess: () => toast.success('Đã gửi bảng giá vào nhóm Zalo'),
-    onError: (err) => {
+    onError: err => {
       const msg = err instanceof Error ? err.message : 'Lỗi không xác định';
       toast.error('Gửi bảng giá thất bại', { description: msg });
       const minMatch = msg.match(/(\d+)\s*phút/);
-      if (minMatch) setCooldownEnd(Date.now() + parseInt(minMatch[1], 10) * 60 * 1000);
+      if (minMatch)
+        setCooldownEnd(Date.now() + parseInt(minMatch[1], 10) * 60 * 1000);
     },
   });
 
@@ -105,7 +112,9 @@ export function ZaloTemplates() {
                   loading="lazy"
                 />
                 {moreCount > 0 && (
-                  <Badge className="absolute bottom-2 right-2">+{moreCount}</Badge>
+                  <Badge className="absolute bottom-2 right-2">
+                    +{moreCount}
+                  </Badge>
                 )}
               </button>
             </DialogTrigger>
@@ -113,9 +122,12 @@ export function ZaloTemplates() {
               <DialogHeader>
                 <DialogTitle>Preview bảng giá lẻ</DialogTitle>
               </DialogHeader>
-              <Carousel opts={{ align: 'center' }} className="mx-auto w-full max-w-md">
+              <Carousel
+                opts={{ align: 'center' }}
+                className="mx-auto w-full max-w-md"
+              >
                 <CarouselContent>
-                  {pricetables.map((pt) => (
+                  {pricetables.map(pt => (
                     <CarouselItem key={pt.id}>
                       <div className="aspect-[3/4] overflow-hidden rounded-md border bg-muted">
                         {pt.imageUrl ? (
@@ -176,24 +188,43 @@ export function ZaloTemplates() {
   );
 }
 
-function CooldownButton({ disabled, isSending, cooldownEnd, onCooldownEnd, onSend }: {
-  disabled: boolean; isSending: boolean; cooldownEnd: number | null;
-  onCooldownEnd: () => void; onSend: () => void;
+function CooldownButton({
+  disabled,
+  isSending,
+  cooldownEnd,
+  onCooldownEnd,
+  onSend,
+}: {
+  disabled: boolean;
+  isSending: boolean;
+  cooldownEnd: number | null;
+  onCooldownEnd: () => void;
+  onSend: () => void;
 }) {
   return (
     <Button size="sm" onClick={onSend} disabled={disabled}>
       {isSending ? (
-        <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Đang gửi...</>
+        <>
+          <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Đang gửi...
+        </>
       ) : cooldownEnd ? (
         <CooldownTimer endTime={cooldownEnd} onDone={onCooldownEnd} />
       ) : (
-        <><Send className="mr-1.5 h-3.5 w-3.5" /> Gửi ngay</>
+        <>
+          <Send className="mr-1.5 h-3.5 w-3.5" /> Gửi ngay
+        </>
       )}
     </Button>
   );
 }
 
-function CooldownTimer({ endTime, onDone }: { endTime: number; onDone: () => void }) {
+function CooldownTimer({
+  endTime,
+  onDone,
+}: {
+  endTime: number;
+  onDone: () => void;
+}) {
   const [remaining, setRemaining] = useState(() =>
     Math.max(0, Math.ceil((endTime - Date.now()) / 1000))
   );
@@ -202,7 +233,10 @@ function CooldownTimer({ endTime, onDone }: { endTime: number; onDone: () => voi
     const id = setInterval(() => {
       const left = Math.max(0, Math.ceil((endTime - Date.now()) / 1000));
       setRemaining(left);
-      if (left <= 0) { clearInterval(id); onDone(); }
+      if (left <= 0) {
+        clearInterval(id);
+        onDone();
+      }
     }, 1000);
     return () => clearInterval(id);
   }, [endTime, onDone]);
@@ -210,5 +244,10 @@ function CooldownTimer({ endTime, onDone }: { endTime: number; onDone: () => voi
   if (remaining <= 0) return null;
   const min = Math.floor(remaining / 60);
   const sec = remaining % 60;
-  return <><Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />{min > 0 ? `${min}p${sec}s` : `${sec}s`}</>;
+  return (
+    <>
+      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" />
+      {min > 0 ? `${min}p${sec}s` : `${sec}s`}
+    </>
+  );
 }

@@ -55,7 +55,12 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { formatDaysAgo, formatDate, formatDateTime, formatTimeAgo } from '@/utils/date';
+import {
+  formatDaysAgo,
+  formatDate,
+  formatDateTime,
+  formatTimeAgo,
+} from '@/utils/date';
 import { toast } from 'sonner';
 
 /**
@@ -108,7 +113,9 @@ export const ProductShow = () => {
         glt_extra_cost: record.glt_extra_cost || 0,
         glt_baseprice_round_step: record.glt_baseprice_round_step || 1000,
         glt_labelprint_favorite: record.glt_labelprint_favorite ?? false,
-        glt_supplier_name: (record as Record<string, unknown>).glt_supplier_name as string ?? '',
+        glt_supplier_name:
+          ((record as Record<string, unknown>).glt_supplier_name as string) ??
+          '',
       });
       hasResetForm.current = true;
     }
@@ -634,8 +641,17 @@ export const ProductShow = () => {
                             )}
                             {priceComparison.latest_purchase_date && (
                               <div className="text-xs text-muted-foreground mt-1">
-                                PO {priceComparison.latest_purchase_date ? formatDateTime(priceComparison.latest_purchase_date) : ''}{' '}
-                                ({formatTimeAgo(priceComparison.latest_purchase_date)})
+                                PO{' '}
+                                {priceComparison.latest_purchase_date
+                                  ? formatDateTime(
+                                      priceComparison.latest_purchase_date
+                                    )
+                                  : ''}{' '}
+                                (
+                                {formatTimeAgo(
+                                  priceComparison.latest_purchase_date
+                                )}
+                                )
                               </div>
                             )}
                           </>
@@ -976,7 +992,8 @@ export const ProductShow = () => {
                           />
                         </FormControl>
                         <p className="text-xs text-muted-foreground">
-                          Tên thay thế khi gửi thông báo PO (Zalo/Discord). Trống = dùng tên đầy đủ.
+                          Tên thay thế khi gửi thông báo PO (Zalo/Discord).
+                          Trống = dùng tên đầy đủ.
                         </p>
                         {updateProduct.isPending && (
                           <div className="flex items-center gap-2 text-xs text-muted-foreground mt-1">

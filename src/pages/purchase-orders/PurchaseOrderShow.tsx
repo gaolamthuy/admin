@@ -28,7 +28,13 @@ import { Loader2, ArrowLeft, Receipt, Eye, EyeOff } from 'lucide-react';
 import { formatDate } from '@/utils/date';
 import { useState } from 'react';
 
-const STATUS_MAP: Record<number, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
+const STATUS_MAP: Record<
+  number,
+  {
+    label: string;
+    variant: 'default' | 'secondary' | 'destructive' | 'outline';
+  }
+> = {
   1: { label: 'Nháp', variant: 'secondary' },
   3: { label: 'Hoàn thành', variant: 'default' },
   4: { label: 'Đã hủy', variant: 'destructive' },
@@ -80,11 +86,13 @@ export const PurchaseOrderShow = () => {
     );
   }
 
-  const statusInfo = purchaseOrder.status != null
-    ? STATUS_MAP[purchaseOrder.status]
-    : { label: 'Chưa xác định', variant: 'outline' as const };
+  const statusInfo =
+    purchaseOrder.status != null
+      ? STATUS_MAP[purchaseOrder.status]
+      : { label: 'Chưa xác định', variant: 'outline' as const };
 
-  const totalCosts = (Number(purchaseOrder.ex_return_third_party) || 0) +
+  const totalCosts =
+    (Number(purchaseOrder.ex_return_third_party) || 0) +
     (Number(purchaseOrder.ex_return_suppliers) || 0);
 
   // Dùng details từ view (JSONB aggregate) nếu có, fallback về separate query
@@ -129,9 +137,7 @@ export const PurchaseOrderShow = () => {
             <CardTitle>
               Đơn nhập hàng #{purchaseOrder.code || purchaseOrder.id}
             </CardTitle>
-            <Badge variant={statusInfo.variant}>
-              {statusInfo.label}
-            </Badge>
+            <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
             {purchaseOrder.description?.includes('[TEST]') && (
               <Badge variant="outline" className="text-xs">
                 TEST
@@ -173,7 +179,8 @@ export const PurchaseOrderShow = () => {
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Sản phẩm:</span>
                   <span className="font-medium">
-                    {purchaseOrder.total_items || detailItems.length || 0} sản phẩm
+                    {purchaseOrder.total_items || detailItems.length || 0} sản
+                    phẩm
                     {purchaseOrder.total_quantity &&
                       ` (${Number(purchaseOrder.total_quantity).toLocaleString('vi-VN')} kg)`}
                   </span>
@@ -194,7 +201,9 @@ export const PurchaseOrderShow = () => {
                   </div>
                   {purchaseOrder.total_payment != null && (
                     <div className="flex justify-between">
-                      <span className="text-muted-foreground">Đã thanh toán:</span>
+                      <span className="text-muted-foreground">
+                        Đã thanh toán:
+                      </span>
                       <span className="font-medium">
                         {formatVND(purchaseOrder.total_payment)}
                       </span>
@@ -214,20 +223,25 @@ export const PurchaseOrderShow = () => {
               <div className="space-y-2">
                 {purchaseOrder.ex_return_third_party != null && (
                   <div className="flex justify-between">
-                    <span className="text-muted-foreground">Chi phí nhập khác:</span>
+                    <span className="text-muted-foreground">
+                      Chi phí nhập khác:
+                    </span>
                     <span className="font-medium text-orange-600">
                       {formatVND(purchaseOrder.ex_return_third_party)}
                     </span>
                   </div>
                 )}
-                {purchaseOrder.ex_return_suppliers != null && Number(purchaseOrder.ex_return_suppliers) > 0 && (
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Chi phí NCC:</span>
-                    <span className="font-medium text-orange-600">
-                      {formatVND(purchaseOrder.ex_return_suppliers)}
-                    </span>
-                  </div>
-                )}
+                {purchaseOrder.ex_return_suppliers != null &&
+                  Number(purchaseOrder.ex_return_suppliers) > 0 && (
+                    <div className="flex justify-between">
+                      <span className="text-muted-foreground">
+                        Chi phí NCC:
+                      </span>
+                      <span className="font-medium text-orange-600">
+                        {formatVND(purchaseOrder.ex_return_suppliers)}
+                      </span>
+                    </div>
+                  )}
                 {totalCosts > 0 && (
                   <div className="flex justify-between border-t pt-2">
                     <span className="font-medium">Tổng chi phí:</span>
@@ -237,7 +251,9 @@ export const PurchaseOrderShow = () => {
                   </div>
                 )}
                 {totalCosts === 0 && (
-                  <p className="text-sm text-muted-foreground">Không có chi phí nhập</p>
+                  <p className="text-sm text-muted-foreground">
+                    Không có chi phí nhập
+                  </p>
                 )}
               </div>
             </div>
@@ -256,7 +272,9 @@ export const PurchaseOrderShow = () => {
           {/* Admin notes */}
           {purchaseOrder.combined_admin_notes && (
             <div className="bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 rounded-md p-3">
-              <h3 className="text-sm font-semibold mb-1 text-orange-700 dark:text-orange-400">Admin notes</h3>
+              <h3 className="text-sm font-semibold mb-1 text-orange-700 dark:text-orange-400">
+                Admin notes
+              </h3>
               <p className="text-sm text-orange-600 dark:text-orange-300">
                 {purchaseOrder.combined_admin_notes}
               </p>
@@ -264,14 +282,17 @@ export const PurchaseOrderShow = () => {
           )}
 
           {/* Notes */}
-          {purchaseOrder.combined_notes && !purchaseOrder.description?.includes(purchaseOrder.combined_notes) && (
-            <div>
-              <h3 className="text-lg font-semibold mb-2">Ghi chú</h3>
-              <p className="text-muted-foreground">
-                {purchaseOrder.combined_notes}
-              </p>
-            </div>
-          )}
+          {purchaseOrder.combined_notes &&
+            !purchaseOrder.description?.includes(
+              purchaseOrder.combined_notes
+            ) && (
+              <div>
+                <h3 className="text-lg font-semibold mb-2">Ghi chú</h3>
+                <p className="text-muted-foreground">
+                  {purchaseOrder.combined_notes}
+                </p>
+              </div>
+            )}
 
           {/* Chi tiết sản phẩm */}
           <div>
@@ -284,7 +305,11 @@ export const PurchaseOrderShow = () => {
                   className="ml-2"
                   onClick={() => setShowPrice(!showPrice)}
                 >
-                  {showPrice ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                  {showPrice ? (
+                    <EyeOff className="h-4 w-4" />
+                  ) : (
+                    <Eye className="h-4 w-4" />
+                  )}
                 </Button>
               )}
             </h3>
@@ -300,11 +325,15 @@ export const PurchaseOrderShow = () => {
                   <TableHeader>
                     <TableRow>
                       <TableHead>Sản phẩm</TableHead>
-                      <TableHead className="text-right">Số lượng (kg)</TableHead>
+                      <TableHead className="text-right">
+                        Số lượng (kg)
+                      </TableHead>
                       {isAdmin && showPrice && (
                         <>
                           <TableHead className="text-right">Đơn giá</TableHead>
-                          <TableHead className="text-right">Thành tiền</TableHead>
+                          <TableHead className="text-right">
+                            Thành tiền
+                          </TableHead>
                         </>
                       )}
                     </TableRow>
@@ -318,9 +347,14 @@ export const PurchaseOrderShow = () => {
                         <TableRow key={detail.id}>
                           <TableCell className="font-medium">
                             <div>
-                              {detail.product_name || detail.product_code || '-'}
+                              {detail.product_name ||
+                                detail.product_code ||
+                                '-'}
                               {isViewItem(detail) && detail.glt_status && (
-                                <Badge variant="outline" className="ml-2 text-[10px]">
+                                <Badge
+                                  variant="outline"
+                                  className="ml-2 text-[10px]"
+                                >
                                   {detail.glt_status}
                                 </Badge>
                               )}
@@ -357,11 +391,24 @@ export const PurchaseOrderShow = () => {
                       <TableRow className="font-bold">
                         <TableCell colSpan={1}>Tổng</TableCell>
                         <TableCell className="text-right">
-                          {detailItems.reduce((sum, d) => sum + (Number(d.quantity) || 0), 0).toLocaleString('vi-VN')}
+                          {detailItems
+                            .reduce(
+                              (sum, d) => sum + (Number(d.quantity) || 0),
+                              0
+                            )
+                            .toLocaleString('vi-VN')}
                         </TableCell>
                         <TableCell />
                         <TableCell className="text-right">
-                          {formatVND(detailItems.reduce((sum, d) => sum + (Number(d.quantity) || 0) * (Number(d.price) || 0), 0))}
+                          {formatVND(
+                            detailItems.reduce(
+                              (sum, d) =>
+                                sum +
+                                (Number(d.quantity) || 0) *
+                                  (Number(d.price) || 0),
+                              0
+                            )
+                          )}
                         </TableCell>
                       </TableRow>
                     )}

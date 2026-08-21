@@ -35,7 +35,11 @@ export function MuteToggle() {
       }`}
       title={muted ? 'Bật tiếng' : 'Tắt tiếng'}
     >
-      {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+      {muted ? (
+        <VolumeX className="h-4 w-4" />
+      ) : (
+        <Volume2 className="h-4 w-4" />
+      )}
     </button>
   );
 }

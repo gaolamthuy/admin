@@ -1,10 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { env } from '@/lib/env';
-import {
-  getWindmillJobRunUrl,
-  getWindmillJobResultUrl,
-} from '@/lib/windmill';
+import { getWindmillJobRunUrl, getWindmillJobResultUrl } from '@/lib/windmill';
 
 interface UpdateProductPriceResult {
   master: {
@@ -44,7 +41,9 @@ async function callUpdateProductPrice(
     throw new Error('VITE_BACKEND_TOKEN is not configured');
   }
 
-  const apiUrl = getWindmillJobRunUrl('p/f/frontend_admin/update_product_price_from_po');
+  const apiUrl = getWindmillJobRunUrl(
+    'p/f/frontend_admin/update_product_price_from_po'
+  );
   if (!apiUrl) {
     throw new Error('VITE_BACKEND_URL is not configured');
   }

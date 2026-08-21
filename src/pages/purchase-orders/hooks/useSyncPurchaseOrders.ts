@@ -1,10 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { env } from '@/lib/env';
-import {
-  getWindmillJobRunUrl,
-  getWindmillJobResultUrl,
-} from '@/lib/windmill';
+import { getWindmillJobRunUrl, getWindmillJobResultUrl } from '@/lib/windmill';
 
 interface SyncPurchaseOrdersResult {
   purchase_orders: number;

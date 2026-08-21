@@ -454,7 +454,10 @@ const SyncPriceConfirmDialog: React.FC<{
           <Button variant="outline" onClick={onClose} disabled={isLoading}>
             Hủy
           </Button>
-          <Button onClick={() => onConfirm(printPriceboard)} disabled={isLoading}>
+          <Button
+            onClick={() => onConfirm(printPriceboard)}
+            disabled={isLoading}
+          >
             {isLoading ? (
               <Loader2 className="h-4 w-4 animate-spin mr-1" />
             ) : (
@@ -560,10 +563,14 @@ const ProductRow: React.FC<{
                   <span className="text-muted-foreground">Ngày nhập PO:</span>
                   <div className="text-right tabular-nums">
                     <div className="font-medium">
-                      {formatDateTime(product.calculate_from_po.latest_purchase_date)}
+                      {formatDateTime(
+                        product.calculate_from_po.latest_purchase_date
+                      )}
                     </div>
                     <div className="text-[10px] text-muted-foreground">
-                      {formatTimeAgo(product.calculate_from_po.latest_purchase_date)}
+                      {formatTimeAgo(
+                        product.calculate_from_po.latest_purchase_date
+                      )}
                     </div>
                   </div>
                 </div>
@@ -922,25 +929,27 @@ const ProductRow: React.FC<{
         <SyncPriceConfirmDialog
           isOpen={isSyncDialogOpen}
           onClose={() => setIsSyncDialogOpen(false)}
-          onConfirm={async (printPriceboard) => {
+          onConfirm={async printPriceboard => {
             setIsSyncDialogOpen(false);
             // Submit form in ĐỒNG BỘ (trước await) để tránh popup blocker
             // Data in lấy từ calculate_from_po (đã có sẵn, không cần chờ KV)
             if (printPriceboard && product.kiotviet_id) {
               const calcFromPo = product.calculate_from_po;
               if (calcFromPo) {
-                const childUnitInfo = (calcFromPo.child_unit_prices || []).map(c => ({
-                  kiotviet_id: c.kiotviet_id,
-                  code: c.code,
-                  full_name: c.full_name,
-                  unit: c.unit,
-                  base_price: c.new_baseprice,
-                  conversion_value: c.conversion_value,
-                  price_per_master_unit:
-                    c.conversion_value > 0
-                      ? Math.round(c.new_baseprice / c.conversion_value)
-                      : null,
-                }));
+                const childUnitInfo = (calcFromPo.child_unit_prices || []).map(
+                  c => ({
+                    kiotviet_id: c.kiotviet_id,
+                    code: c.code,
+                    full_name: c.full_name,
+                    unit: c.unit,
+                    base_price: c.new_baseprice,
+                    conversion_value: c.conversion_value,
+                    price_per_master_unit:
+                      c.conversion_value > 0
+                        ? Math.round(c.new_baseprice / c.conversion_value)
+                        : null,
+                  })
+                );
                 submitPostForm(getPrintUrl(), {
                   printType: 'priceboard',
                   kiotviet_id: String(product.kiotviet_id),
@@ -985,7 +994,7 @@ const ProductRow: React.FC<{
           <div className="font-medium text-sm line-clamp-1 flex items-center gap-1.5">
             {product.full_name || product.name}
             {isRecentlyModified && (
-              <Badge variant="outline" >
+              <Badge variant="outline">
                 <Upload className="h-2.5 w-2.5" />
                 Recently updated
               </Badge>
@@ -1074,14 +1083,15 @@ const ProductRow: React.FC<{
       <SyncPriceConfirmDialog
         isOpen={isSyncDialogOpen}
         onClose={() => setIsSyncDialogOpen(false)}
-          onConfirm={async (printPriceboard) => {
-            setIsSyncDialogOpen(false);
-            // Submit form in ĐỒNG BỘ (trước await) để tránh popup blocker
-            // Data in lấy từ calculate_from_po (đã có sẵn, không cần chờ KV)
-            if (printPriceboard && product.kiotviet_id) {
-              const calcFromPo = product.calculate_from_po;
-              if (calcFromPo) {
-                const childUnitInfo = (calcFromPo.child_unit_prices || []).map(c => ({
+        onConfirm={async printPriceboard => {
+          setIsSyncDialogOpen(false);
+          // Submit form in ĐỒNG BỘ (trước await) để tránh popup blocker
+          // Data in lấy từ calculate_from_po (đã có sẵn, không cần chờ KV)
+          if (printPriceboard && product.kiotviet_id) {
+            const calcFromPo = product.calculate_from_po;
+            if (calcFromPo) {
+              const childUnitInfo = (calcFromPo.child_unit_prices || []).map(
+                c => ({
                   kiotviet_id: c.kiotviet_id,
                   code: c.code,
                   full_name: c.full_name,
@@ -1092,23 +1102,24 @@ const ProductRow: React.FC<{
                     c.conversion_value > 0
                       ? Math.round(c.new_baseprice / c.conversion_value)
                       : null,
-                }));
-                submitPostForm(getPrintUrl(), {
-                  printType: 'priceboard',
-                  kiotviet_id: String(product.kiotviet_id),
-                  base_price: String(calcFromPo.new_baseprice),
-                  ...(calcFromPo.latest_purchase_order_code && {
-                    order_template: calcFromPo.latest_purchase_order_code,
-                  }),
-                  child_unit_info: JSON.stringify(childUnitInfo),
-                });
-              }
+                })
+              );
+              submitPostForm(getPrintUrl(), {
+                printType: 'priceboard',
+                kiotviet_id: String(product.kiotviet_id),
+                base_price: String(calcFromPo.new_baseprice),
+                ...(calcFromPo.latest_purchase_order_code && {
+                  order_template: calcFromPo.latest_purchase_order_code,
+                }),
+                child_unit_info: JSON.stringify(childUnitInfo),
+              });
             }
-            // Sau đó mới async sync giá lên KV
-            try {
-              await onUpdatePrice!(product.kiotviet_id!);
-            } catch {}
-          }}
+          }
+          // Sau đó mới async sync giá lên KV
+          try {
+            await onUpdatePrice!(product.kiotviet_id!);
+          } catch {}
+        }}
         isLoading={!!isUpdating}
         productName={product.name}
         productCode={product.code}

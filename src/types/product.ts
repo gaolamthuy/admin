@@ -173,15 +173,18 @@ export interface ProductWithPriceDifference extends ProductCard {
   cost_analysis?: CostAnalysis | null;
   pricing_info?: PricingInfo | null;
   calculate_from_po?: CalculateFromPo | null;
-  changelog?: Record<string, Array<{
-    old: string;
-    new: string;
-    diff?: number;
-    pct?: number;
-    dir?: 'up' | 'down';
-    src?: string;
-    at: string;
-  }>> | null;
+  changelog?: Record<
+    string,
+    Array<{
+      old: string;
+      new: string;
+      diff?: number;
+      pct?: number;
+      dir?: 'up' | 'down';
+      src?: string;
+      at: string;
+    }>
+  > | null;
 }
 
 /**

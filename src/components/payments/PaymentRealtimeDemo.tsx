@@ -114,9 +114,7 @@ export function PaymentRealtimeDemo() {
               placeholder="Payment ID"
               value={filterId || ''}
               onChange={e =>
-                setFilterId(
-                  e.target.value ? String(e.target.value) : undefined
-                )
+                setFilterId(e.target.value ? String(e.target.value) : undefined)
               }
             />
           </div>

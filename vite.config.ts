@@ -1,6 +1,3 @@
-
-
-
 import tailwindcss from '@tailwindcss/vite';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
@@ -14,7 +11,14 @@ export default defineConfig({
     tailwindcss(),
     VitePWA({
       registerType: 'autoUpdate',
-      includeAssets: ['favicon.ico', 'apple-touch-icon.png', 'android-chrome-192x192.png', 'android-chrome-512x512.png', 'logo.png', 'sounds/*.mp3'],
+      includeAssets: [
+        'favicon.ico',
+        'apple-touch-icon.png',
+        'android-chrome-192x192.png',
+        'android-chrome-512x512.png',
+        'logo.png',
+        'sounds/*.mp3',
+      ],
       manifest: {
         name: 'Gạo Lâm Thúy - Admin Panel',
         short_name: 'Gạo Lâm Thúy',

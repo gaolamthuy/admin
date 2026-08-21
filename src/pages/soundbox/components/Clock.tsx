@@ -35,7 +35,9 @@ export function Clock({ variant = 'full' }: { variant?: 'full' | 'time' }) {
 
   return (
     <div className="text-right">
-      <div className="text-2xl font-bold tabular-nums text-foreground">{time}</div>
+      <div className="text-2xl font-bold tabular-nums text-foreground">
+        {time}
+      </div>
       <div className="text-xs text-muted-foreground capitalize">{date}</div>
     </div>
   );

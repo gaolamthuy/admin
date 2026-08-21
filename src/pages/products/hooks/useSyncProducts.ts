@@ -1,10 +1,7 @@
 import { useMutation, useQueryClient } from '@tanstack/react-query';
 import { toast } from 'sonner';
 import { env } from '@/lib/env';
-import {
-  getWindmillJobRunUrl,
-  getWindmillJobResultUrl,
-} from '@/lib/windmill';
+import { getWindmillJobRunUrl, getWindmillJobResultUrl } from '@/lib/windmill';
 
 interface SyncProductsResult {
   success: boolean;
@@ -72,9 +69,7 @@ export const useSyncProducts = () => {
   return useMutation({
     mutationFn: callSyncProducts,
     onSuccess: result => {
-      toast.success(
-        result.message || 'Download sản phẩm thành công'
-      );
+      toast.success(result.message || 'Download sản phẩm thành công');
       queryClient.invalidateQueries({ queryKey: ['products'] });
     },
     onError: (error: Error) => {

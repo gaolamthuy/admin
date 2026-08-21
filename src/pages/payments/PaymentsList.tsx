@@ -80,7 +80,6 @@ function CopyButton({ value }: { value: string }) {
   );
 }
 
-
 export const PaymentsList = () => {
   const { isAdmin } = useIsAdmin();
   const [dateRange, setDateRange] = useState<DateRange>('today');
@@ -220,8 +219,7 @@ export const PaymentsList = () => {
 
   const todayStr = new Date().toISOString().split('T')[0];
   const todayPayments = useMemo(
-    () =>
-      filteredPayments.filter(p => p.received_at?.startsWith(todayStr)),
+    () => filteredPayments.filter(p => p.received_at?.startsWith(todayStr)),
     [filteredPayments, todayStr]
   );
   const todayTotal = useMemo(
@@ -287,10 +285,17 @@ export const PaymentsList = () => {
               <CardTitle>Lịch sử thanh toán</CardTitle>
 
               {/* Date range filter */}
-              <Tabs value={dateRange} onValueChange={(value) => setDateRange(value as DateRange)}>
+              <Tabs
+                value={dateRange}
+                onValueChange={value => setDateRange(value as DateRange)}
+              >
                 <TabsList>
                   {dateRangeOptions.map(opt => (
-                    <TabsTrigger key={opt.value} value={opt.value} className="h-7 px-3 text-xs">
+                    <TabsTrigger
+                      key={opt.value}
+                      value={opt.value}
+                      className="h-7 px-3 text-xs"
+                    >
                       {opt.label}
                     </TabsTrigger>
                   ))}
@@ -306,7 +311,9 @@ export const PaymentsList = () => {
                   size="sm"
                   className="text-xs"
                 >
-                  {/* {showTest ? 'Bao gồm test' : 'Không test'} */ 'Giao dịch test'}
+                  {
+                    /* {showTest ? 'Bao gồm test' : 'Không test'} */ 'Giao dịch test'
+                  }
                 </Toggle>
               )}
 
@@ -370,10 +377,17 @@ export const PaymentsList = () => {
                 <HoverCardContent className="w-64 space-y-3">
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-2">
-                      {muted ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                      {muted ? (
+                        <VolumeX className="h-4 w-4" />
+                      ) : (
+                        <Volume2 className="h-4 w-4" />
+                      )}
                       <span className="text-sm">Thông báo giọng đọc</span>
                     </div>
-                    <Switch checked={!muted} onCheckedChange={() => handleToggleMute()} />
+                    <Switch
+                      checked={!muted}
+                      onCheckedChange={() => handleToggleMute()}
+                    />
                   </div>
                   <Button
                     onClick={handleTestVoice}
@@ -414,8 +428,7 @@ export const PaymentsList = () => {
                         ) : (
                           (() => {
                             const dateStr =
-                              group.displayTime ||
-                              `${group.date}T00:00:00Z`;
+                              group.displayTime || `${group.date}T00:00:00Z`;
                             const isToday = group.date === todayStr;
 
                             let formattedDate = formatDate(
@@ -461,7 +474,8 @@ export const PaymentsList = () => {
                           {group.items.length} giao dịch
                           {group.date === todayStr && (
                             <>
-                              {' '}•{' '}
+                              {' '}
+                              •{' '}
                               {todayTotal.toLocaleString('vi-VN', {
                                 style: 'currency',
                                 currency: 'VND',
@@ -591,7 +605,10 @@ export const PaymentsList = () => {
                             <div className="mt-1 flex flex-col gap-1">
                               <div className="flex flex-wrap items-center gap-2">
                                 {isNew && (
-                                  <Badge variant="default" className="text-[10px]">
+                                  <Badge
+                                    variant="default"
+                                    className="text-[10px]"
+                                  >
                                     mới
                                   </Badge>
                                 )}
@@ -658,8 +675,7 @@ export const PaymentsList = () => {
                           page =>
                             page === 1 ||
                             page === totalPages ||
-                            (page >= currentPage - 1 &&
-                              page <= currentPage + 1)
+                            (page >= currentPage - 1 && page <= currentPage + 1)
                         )
                         .map((page, index, array) => {
                           const prevPage = array[index - 1];

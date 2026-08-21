@@ -32,11 +32,7 @@ const VN_TIMEZONE = 'Asia/Ho_Chi_Minh';
  * Hook fetch danh sách thanh toán từ bảng glt_payment
  */
 export const usePayments = (options: UsePaymentsOptions = {}) => {
-  const {
-    isAdmin = false,
-    dateRange = 'today',
-    showTest = true,
-  } = options;
+  const { isAdmin = false, dateRange = 'today', showTest = true } = options;
   const { data: session } = useSession();
 
   return useQuery({

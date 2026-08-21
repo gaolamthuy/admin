@@ -25,7 +25,14 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import { ArrowDown, ChevronDown, Loader2, Printer, Search, X } from 'lucide-react';
+import {
+  ArrowDown,
+  ChevronDown,
+  Loader2,
+  Printer,
+  Search,
+  X,
+} from 'lucide-react';
 import { formatTimeAgo } from '@/utils/date';
 import { Button } from '@/components/ui/button';
 import {
@@ -84,18 +91,29 @@ export const CustomersList = () => {
    * Xử lý in bảng giá cho customer
    * @param customer - Customer object
    */
-  const handlePrintPriceTable = async (customer: {
-    kiotviet_id: number;
-    name: string | null;
-  }, simplified?: boolean, withChangelog?: boolean) => {
+  const handlePrintPriceTable = async (
+    customer: {
+      kiotviet_id: number;
+      name: string | null;
+    },
+    simplified?: boolean,
+    withChangelog?: boolean
+  ) => {
     if (!customer.kiotviet_id) {
       toast.error('Không tìm thấy thông tin khách hàng');
       return;
     }
 
     try {
-      await printPriceTable(customer.kiotviet_id, { simplified, withChangelog });
-      const label = withChangelog ? ' giản lược (có cập nhật)' : simplified ? ' giản lược' : '';
+      await printPriceTable(customer.kiotviet_id, {
+        simplified,
+        withChangelog,
+      });
+      const label = withChangelog
+        ? ' giản lược (có cập nhật)'
+        : simplified
+          ? ' giản lược'
+          : '';
       toast.success('Đang mở bảng giá để in', {
         description: `Bảng giá${label} cho ${customer.name || 'khách hàng'}`,
       });
@@ -215,15 +233,27 @@ export const CustomersList = () => {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end">
-                                <DropdownMenuItem onClick={() => handlePrintPriceTable(customer, false)}>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handlePrintPriceTable(customer, false)
+                                  }
+                                >
                                   <Printer className="mr-2 h-4 w-4" />
                                   Đầy đủ
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handlePrintPriceTable(customer, true)}>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handlePrintPriceTable(customer, true)
+                                  }
+                                >
                                   <Printer className="mr-2 h-4 w-4" />
                                   Giản lược
                                 </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => handlePrintPriceTable(customer, false, true)}>
+                                <DropdownMenuItem
+                                  onClick={() =>
+                                    handlePrintPriceTable(customer, false, true)
+                                  }
+                                >
                                   <Printer className="mr-2 h-4 w-4" />
                                   Giản lược (có cập nhật)
                                 </DropdownMenuItem>

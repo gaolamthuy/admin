@@ -13,7 +13,10 @@ import { usePurchaseOrderForm } from './hooks/usePurchaseOrderForm';
 import { useSuppliers } from './hooks/useSuppliers';
 import { useTemplates } from './hooks/useTemplates';
 import { useCreatePurchaseOrder } from './hooks/useCreatePurchaseOrder';
-import { useSupplierCostDefaults, useUpsertSupplierCostDefault } from './hooks/useSupplierCostDefaults';
+import {
+  useSupplierCostDefaults,
+  useUpsertSupplierCostDefault,
+} from './hooks/useSupplierCostDefaults';
 import { useIsAdmin } from '@/hooks/useAuth';
 import {
   useSupplierFavorites,
@@ -48,7 +51,7 @@ const SURCHARGE_TYPES = [
 export const PurchaseOrderCreate = () => {
   const navigate = useNavigate();
   const { isAdmin } = useIsAdmin();
-  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+
   const [isOpen] = useState(true);
 
   // Form state management
@@ -63,10 +66,7 @@ export const PurchaseOrderCreate = () => {
 
   // Favorites — merge is_favorite + sort favorites lên đầu
   const { data: favoriteIds = [] } = useSupplierFavorites();
-  const favoriteSet = useMemo(
-    () => new Set(favoriteIds),
-    [favoriteIds]
-  );
+  const favoriteSet = useMemo(() => new Set(favoriteIds), [favoriteIds]);
   const enrichedSuppliers = useMemo(() => {
     return suppliers
       .map(s => ({ ...s, is_favorite: favoriteSet.has(s.kiotviet_id) }))
@@ -420,17 +420,13 @@ export const PurchaseOrderCreate = () => {
                 let totalMasterUnit = 0;
 
                 selectedProducts.forEach(product => {
-                  if (
-                    product.child_units &&
-                    product.child_units.length > 0
-                  ) {
+                  if (product.child_units && product.child_units.length > 0) {
                     const childUnit = product.child_units[0];
                     const unit = childUnit.unit;
                     const quantity = product.quantity || 0;
                     const currentTotal = childUnitTotals.get(unit) || 0;
                     childUnitTotals.set(unit, currentTotal + quantity);
-                    totalMasterUnit +=
-                      quantity * childUnit.conversion_value;
+                    totalMasterUnit += quantity * childUnit.conversion_value;
                   }
                 });
 
@@ -449,8 +445,7 @@ export const PurchaseOrderCreate = () => {
                     <div className="text-right">
                       {totalMasterUnit > 0 ? (
                         <p className="text-lg font-semibold">
-                          {totalMasterUnit.toLocaleString('vi-VN')}{' '}
-                          {masterUnit}
+                          {totalMasterUnit.toLocaleString('vi-VN')} {masterUnit}
                         </p>
                       ) : null}
                       {childUnitsText && (
@@ -520,7 +515,10 @@ export const PurchaseOrderCreate = () => {
                 <div className="grid grid-cols-2 gap-3">
                   {SURCHARGE_TYPES.map(t => (
                     <div key={t.code} className="space-y-1">
-                      <Label htmlFor={`surcharge-${t.code}`} className="text-xs">
+                      <Label
+                        htmlFor={`surcharge-${t.code}`}
+                        className="text-xs"
+                      >
                         {t.label}
                       </Label>
                       <CurrencyInput
@@ -535,15 +533,17 @@ export const PurchaseOrderCreate = () => {
                         disabled={isSubmitting || !editingSurcharges}
                         readOnly={!editingSurcharges}
                         className={
-                          !editingSurcharges ? 'bg-transparent border-none focus-visible:ring-0 cursor-default' : ''
+                          !editingSurcharges
+                            ? 'bg-transparent border-none focus-visible:ring-0 cursor-default'
+                            : ''
                         }
                       />
                     </div>
                   ))}
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Bấm bút chì để sửa. Check để lưu làm mặc định cho supplier. Số 0
-                  = không áp dụng.
+                  Bấm bút chì để sửa. Check để lưu làm mặc định cho supplier. Số
+                  0 = không áp dụng.
                 </p>
               </div>
 
@@ -567,7 +567,10 @@ export const PurchaseOrderCreate = () => {
                             onCheckedChange={setIsTestSwitch}
                             disabled={isSubmitting}
                           />
-                          <Label htmlFor="po-test-switch" className="text-sm font-medium cursor-pointer">
+                          <Label
+                            htmlFor="po-test-switch"
+                            className="text-sm font-medium cursor-pointer"
+                          >
                             PO test
                           </Label>
                         </div>

@@ -147,14 +147,20 @@ export const ProductImageUploadDialog = ({
             <ToggleGroup
               type="single"
               value={selectedRole}
-              onValueChange={(v) => v && setSelectedRole(v as ImageRole)}
+              onValueChange={v => v && setSelectedRole(v as ImageRole)}
               disabled={uploadMutation.isPending}
               variant="outline"
               className="w-full"
             >
               {IMAGE_ROLES.map(r => (
-                <ToggleGroupItem key={r.value} value={r.value} className="flex-1 gap-1.5 text-xs sm:text-sm">
-                  {selectedRole === r.value && <Check className="h-4 w-4 shrink-0 text-primary" />}
+                <ToggleGroupItem
+                  key={r.value}
+                  value={r.value}
+                  className="flex-1 gap-1.5 text-xs sm:text-sm"
+                >
+                  {selectedRole === r.value && (
+                    <Check className="h-4 w-4 shrink-0 text-primary" />
+                  )}
                   <span className="truncate">{r.label}</span>
                 </ToggleGroupItem>
               ))}
@@ -211,7 +217,8 @@ export const ProductImageUploadDialog = ({
             <div className="rounded-lg border p-3 space-y-2 bg-muted/50">
               <div className="flex items-center gap-2 text-sm font-medium text-green-600 dark:text-green-400">
                 <CheckCircle className="h-4 w-4" />
-                Upload thành công — {uploadResult.product_name} (#{uploadResult.kiotviet_id})
+                Upload thành công — {uploadResult.product_name} (#
+                {uploadResult.kiotviet_id})
               </div>
               <div className="space-y-1 text-xs">
                 <div className="flex justify-between">

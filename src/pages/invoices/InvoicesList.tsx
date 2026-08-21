@@ -117,9 +117,7 @@ export const InvoicesList = () => {
       });
     } catch (error) {
       const message =
-        error instanceof Error
-          ? error.message
-          : 'Có lỗi xảy ra khi in hóa đơn';
+        error instanceof Error ? error.message : 'Có lỗi xảy ra khi in hóa đơn';
       toast.error('In hóa đơn thất bại', {
         description: message,
       });
@@ -201,7 +199,9 @@ export const InvoicesList = () => {
                       <TableCell className="text-right">
                         {formatVND(invoice.total)}
                       </TableCell>
-                      <TableCell>{getStatusBadge(invoice.status_value)}</TableCell>
+                      <TableCell>
+                        {getStatusBadge(invoice.status_value)}
+                      </TableCell>
                       <TableCell>{invoice.sold_by_name || '-'}</TableCell>
                       <TableCell className="text-right">
                         <div className="flex items-center justify-end gap-2">

@@ -34,7 +34,8 @@ export const SupplierSelector: React.FC<SupplierSelectorProps> = ({
   const hasAnyFavorite = suppliers.some(s => s.is_favorite);
   const showFavoritesOnly = onlyFavorites && hasAnyFavorite;
   const filtered = useMemo(
-    () => (showFavoritesOnly ? suppliers.filter(s => s.is_favorite) : suppliers),
+    () =>
+      showFavoritesOnly ? suppliers.filter(s => s.is_favorite) : suppliers,
     [suppliers, showFavoritesOnly]
   );
 
@@ -56,10 +57,7 @@ export const SupplierSelector: React.FC<SupplierSelectorProps> = ({
           disabled={!hasAnyFavorite}
         >
           <Star
-            className={cn(
-              'h-4 w-4',
-              showFavoritesOnly && 'fill-current'
-            )}
+            className={cn('h-4 w-4', showFavoritesOnly && 'fill-current')}
           />
           Yêu thích
         </Button>
@@ -98,9 +96,7 @@ export const SupplierSelector: React.FC<SupplierSelectorProps> = ({
                         onToggleFavorite(supplier);
                       }}
                       title={
-                        supplier.is_favorite
-                          ? 'Bỏ yêu thích'
-                          : 'Thêm yêu thích'
+                        supplier.is_favorite ? 'Bỏ yêu thích' : 'Thêm yêu thích'
                       }
                     >
                       <Star

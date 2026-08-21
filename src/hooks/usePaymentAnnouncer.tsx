@@ -13,10 +13,11 @@ import { isMuted } from '@/pages/soundbox/components/MuteToggle';
 import { CheckCircle2 } from 'lucide-react';
 import type { Payment } from '@/types/payment';
 
-const NOTIFICATION_SOUND = '/sounds/universfield-new-notification-050-494248.mp3';
+const NOTIFICATION_SOUND =
+  '/sounds/universfield-new-notification-050-494248.mp3';
 
 function playNotificationSound(): Promise<void> {
-  return new Promise((resolve) => {
+  return new Promise(resolve => {
     const audio = new Audio(NOTIFICATION_SOUND);
     audio.onended = () => resolve();
     audio.onerror = () => resolve();
