@@ -10,9 +10,17 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
 } from '@/components/ui/sidebar';
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from '@/components/ui/collapsible';
 import { useIsAdmin } from '@/hooks/useAuth';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Package,
   Download,
@@ -20,14 +28,18 @@ import {
   DollarSign,
   ClipboardList,
   Settings,
+  LifeBuoy,
   MessageSquare,
+  Banknote,
+  ChevronDown,
 } from 'lucide-react';
 
 interface MenuItem {
   key: string;
   label: string;
   icon: React.ElementType;
-  path: string;
+  path?: string;
+  children?: MenuItem[];
   adminOnly?: boolean;
 }
 
@@ -63,10 +75,23 @@ const menuItems: MenuItem[] = [
     path: '/invoices',
   },
   {
-    key: 'zalo',
-    label: 'Zalo',
-    icon: MessageSquare,
-    path: '/zalo',
+    key: 'misc',
+    label: 'Hỗ trợ',
+    icon: LifeBuoy,
+    children: [
+      {
+        key: 'misc-zalo',
+        label: 'Gửi bảng giá Zalo',
+        icon: MessageSquare,
+        path: '/misc/zalo',
+      },
+      {
+        key: 'misc-cash-count',
+        label: 'Kiểm đếm tiền mặt',
+        icon: Banknote,
+        path: '/misc/cash-count',
+      },
+    ],
   },
 ];
 
@@ -104,13 +129,59 @@ export function AppSidebar() {
             <SidebarMenu>
               {filteredMenuItems.map(item => {
                 const Icon = item.icon;
-                const isActive = location.pathname.startsWith(item.path);
+                const isActive = item.path
+                  ? location.pathname.startsWith(item.path)
+                  : (item.children ?? []).some(child =>
+                      location.pathname.startsWith(child.path ?? '')
+                    );
+
+                if (item.children?.length) {
+                  return (
+                    <Collapsible
+                      key={item.key}
+                      defaultOpen={isActive}
+                      className="group/collapsible-menu"
+                    >
+                      <SidebarMenuItem>
+                        <CollapsibleTrigger asChild>
+                          <SidebarMenuButton tooltip={item.label}>
+                            <Icon />
+                            <span>{item.label}</span>
+                            <ChevronDown className="ml-auto transition-transform duration-200 group-data-[state=open]/collapsible-menu:rotate-180" />
+                          </SidebarMenuButton>
+                        </CollapsibleTrigger>
+                        <CollapsibleContent>
+                          <SidebarMenuSub>
+                            {item.children.map(child => {
+                              const childActive = child.path
+                                ? location.pathname.startsWith(child.path)
+                                : false;
+                              return (
+                                <SidebarMenuSubItem key={child.key}>
+                                  <SidebarMenuSubButton
+                                    asChild
+                                    isActive={childActive}
+                                  >
+                                    <Link to={child.path ?? '/'}>
+                                      <span>{child.label}</span>
+                                    </Link>
+                                  </SidebarMenuSubButton>
+                                </SidebarMenuSubItem>
+                              );
+                            })}
+                          </SidebarMenuSub>
+                        </CollapsibleContent>
+                      </SidebarMenuItem>
+                    </Collapsible>
+                  );
+                }
+
                 return (
                   <SidebarMenuItem key={item.key}>
                     <SidebarMenuButton
                       isActive={isActive}
                       tooltip={item.label}
-                      onClick={() => navigate(item.path)}
+                      onClick={() => item.path && navigate(item.path)}
                     >
                       <Icon />
                       <span>{item.label}</span>

@@ -22,6 +22,7 @@ import { CustomersList } from '@/pages/customers/CustomersList';
 import { PaymentsList } from '@/pages/payments/PaymentsList';
 import { InvoicesList } from '@/pages/invoices/InvoicesList';
 import { ZaloTemplates } from '@/pages/zalo-templates/ZaloTemplates';
+import { CashCount } from '@/pages/misc/cash-count/CashCount';
 import { Toaster } from '@/components/ui/sonner';
 import './App.css';
 
@@ -125,7 +126,7 @@ function App() {
             />
 
             <Route
-              path="/zalo"
+              path="/misc/zalo"
               element={
                 <ProtectedRoute>
                   <Layout>
@@ -133,6 +134,23 @@ function App() {
                   </Layout>
                 </ProtectedRoute>
               }
+            />
+
+            <Route
+              path="/misc/cash-count"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <CashCount />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+
+            {/* Redirect đường dẫn cũ */}
+            <Route
+              path="/zalo"
+              element={<Navigate to="/misc/zalo" replace />}
             />
 
             {/* Default redirect */}
