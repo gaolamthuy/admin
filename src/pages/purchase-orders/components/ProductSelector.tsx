@@ -18,6 +18,7 @@ interface ProductSelectorProps {
   onAddProduct: (product: TemplateProduct) => void;
   onRemoveAll: () => void;
   onQuantityChange: (productId: number, value: number) => void;
+  isAdminHint?: boolean;
 }
 
 /**
@@ -33,6 +34,7 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
   onAddProduct,
   onRemoveAll,
   onQuantityChange,
+  isAdminHint,
 }) => {
   const selectedCount = Object.keys(selectedProducts).length;
   const hasSelectedProducts = selectedCount > 0;
@@ -69,8 +71,9 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
           </div>
         ) : templates.length === 0 ? (
           <div className="p-6 text-center text-sm text-muted-foreground">
-            Chưa có đơn nhập hàng nào để đề xuất sản phẩm. Bạn vẫn có thể tạo
-            đơn mới ngay trong KiotViet sau khi chọn nhà cung cấp.
+            Chưa có sản phẩm nào trong template của nhà cung cấp này. Bấm "Thêm
+            sản phẩm" để thêm vào đơn hôm nay
+            {isAdminHint ? ' hoặc soạn template ở bước chọn nhà cung cấp' : ''}.
           </div>
         ) : (
           <div className="divide-y">

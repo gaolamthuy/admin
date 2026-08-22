@@ -10,7 +10,7 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePurchaseOrderForm } from './hooks/usePurchaseOrderForm';
-import { useSuppliers } from './hooks/useSuppliers';
+import { useSuppliers, SupplierOption } from './hooks/useSuppliers';
 import { useTemplates } from './hooks/useTemplates';
 import { useCreatePurchaseOrder } from './hooks/useCreatePurchaseOrder';
 import {
@@ -24,6 +24,9 @@ import {
 } from './hooks/useSupplierFavorites';
 import { SupplierSelector } from './components/SupplierSelector';
 import { ProductSelector } from './components/ProductSelector';
+import { ProductSearchDialog } from './components/ProductSearchDialog';
+import { SupplierTemplateDialog } from './components/SupplierTemplateDialog';
+import { useSupplierPoTemplateCounts } from './hooks/useSupplierPoTemplate';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { CurrencyInput } from '@/components/ui/currency-input';
@@ -35,7 +38,15 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import { toast } from 'sonner';
-import { ArrowLeft, ArrowRight, Loader2, Pencil, Check, X } from 'lucide-react';
+import {
+  ArrowLeft,
+  ArrowRight,
+  Loader2,
+  Pencil,
+  Check,
+  X,
+  Plus,
+} from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDate, formatDaysAgo } from '@/utils/date';
 
@@ -77,6 +88,14 @@ export const PurchaseOrderCreate = () => {
   }, [suppliers, favoriteSet]);
 
   const toggleFavorite = useToggleSupplierFavorite();
+
+  // Số SP template theo NCC (badge trên card) — từ glt_supplier_po_templates
+  const { data: templateCounts = {} } = useSupplierPoTemplateCounts();
+
+  // Dialog soạn template (admin) + dialog thêm SP one-off vào đơn
+  const [templateDialogSupplier, setTemplateDialogSupplier] =
+    useState<SupplierOption | null>(null);
+  const [addProductOpen, setAddProductOpen] = useState(false);
 
   const handleToggleFavorite = (supplier: typeof form.selectedSupplier) => {
     if (!supplier) return;
@@ -199,6 +218,20 @@ export const PurchaseOrderCreate = () => {
   }, [form.step, templates.length]);
 
   // Không cần tính isSelectAll nữa vì đã thay bằng removeAll
+
+  // Danh sách hiển thị = template + SP thêm one-off đã chọn (không có trong template)
+  const displayTemplates = useMemo(() => {
+    const extra = Object.values(form.selectedProducts).filter(
+      p => !templates.some(t => t.product_id === p.product_id)
+    );
+    return [...templates, ...extra];
+  }, [templates, form.selectedProducts]);
+
+  // Ids đã hiển thị (exclude khỏi dialog search)
+  const displayedIds = useMemo(
+    () => displayTemplates.map(t => t.product_id),
+    [displayTemplates]
+  );
 
   /**
    * Xử lý chọn supplier và chuyển sang step 2
@@ -344,6 +377,10 @@ export const PurchaseOrderCreate = () => {
                 selectedSupplier={form.selectedSupplier}
                 onSelect={handleSupplierSelect}
                 onToggleFavorite={handleToggleFavorite}
+                templateCounts={templateCounts}
+                {...(isAdmin
+                  ? { onEditTemplate: s => setTemplateDialogSupplier(s) }
+                  : {})}
               />
 
               <div className="flex justify-end">
@@ -372,24 +409,14 @@ export const PurchaseOrderCreate = () => {
                         'Không tên'}
                     </p>
                   </div>
-                  {/* ⭐ Mới: Hiển thị last_purchase_date từ templates */}
-                  {(() => {
-                    // Tìm last_purchase_date mới nhất từ tất cả templates
-                    if (templates.length === 0) return null;
-                    const lastPurchaseDates = templates
-                      .map(t => t.last_purchase_date)
-                      .filter((date): date is string => Boolean(date))
-                      .sort(
-                        (a, b) => new Date(b).getTime() - new Date(a).getTime()
-                      );
-                    const latestDate = lastPurchaseDates[0];
-                    return latestDate ? (
-                      <p className="text-sm text-muted-foreground">
-                        Lần cuối: {formatDate(latestDate)} (
-                        {formatDaysAgo(latestDate)})
-                      </p>
-                    ) : null;
-                  })()}
+                  {/* Lần cuối nhập hàng của NCC */}
+                  {form.selectedSupplier.last_purchase_date && (
+                    <p className="text-sm text-muted-foreground">
+                      Lần cuối:{' '}
+                      {formatDate(form.selectedSupplier.last_purchase_date)} (
+                      {formatDaysAgo(form.selectedSupplier.last_purchase_date)})
+                    </p>
+                  )}
                   {/* ⭐ Mới: Hiển thị last_master_unit_quantity để gợi ý */}
                   {form.selectedSupplier.last_master_unit_quantity && (
                     <p className="text-sm text-muted-foreground">
@@ -400,8 +427,20 @@ export const PurchaseOrderCreate = () => {
                 </div>
               )}
 
+              <div className="flex justify-end">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setAddProductOpen(true)}
+                  disabled={isSubmitting}
+                >
+                  <Plus className="mr-1.5 h-3.5 w-3.5" />
+                  Thêm sản phẩm
+                </Button>
+              </div>
+
               <ProductSelector
-                templates={templates}
+                templates={displayTemplates}
                 loading={templatesLoading}
                 error={templatesError}
                 selectedProducts={form.selectedProducts}
@@ -410,6 +449,7 @@ export const PurchaseOrderCreate = () => {
                 onAddProduct={form.addProduct}
                 onRemoveAll={form.removeAll}
                 onQuantityChange={form.updateQuantity}
+                isAdminHint={isAdmin}
               />
 
               {(() => {
@@ -614,6 +654,27 @@ export const PurchaseOrderCreate = () => {
           )}
         </CardContent>
       </Card>
+
+      {/* Dialog soạn template NCC (admin) */}
+      <SupplierTemplateDialog
+        open={!!templateDialogSupplier}
+        onOpenChange={open => {
+          if (!open) setTemplateDialogSupplier(null);
+        }}
+        supplier={templateDialogSupplier}
+      />
+
+      {/* Dialog thêm SP one-off vào đơn hôm nay (mọi user) */}
+      <ProductSearchDialog
+        open={addProductOpen}
+        onOpenChange={setAddProductOpen}
+        excludeIds={displayedIds}
+        title="Thêm sản phẩm vào đơn"
+        onConfirm={products => {
+          products.forEach(p => form.addProduct(p));
+          toast.success(`Đã thêm ${products.length} sản phẩm vào đơn`);
+        }}
+      />
     </div>
   );
 };

@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { formatDaysAgo, formatDate } from '@/utils/date';
 import { cn } from '@/lib/utils';
-import { Package, CalendarClock, Star } from 'lucide-react';
+import { Package, CalendarClock, Star, ListChecks } from 'lucide-react';
 
 interface SupplierSelectorProps {
   suppliers: SupplierOption[];
@@ -16,6 +16,10 @@ interface SupplierSelectorProps {
   selectedSupplier: SupplierOption | null;
   onSelect: (supplier: SupplierOption) => void;
   onToggleFavorite?: (supplier: SupplierOption) => void;
+  /** Số SP trong template theo supplier (từ glt_supplier_po_templates) */
+  templateCounts?: Record<number, number>;
+  /** Mở dialog soạn template (chỉ render nút khi có callback — admin) */
+  onEditTemplate?: (supplier: SupplierOption) => void;
 }
 
 /**
@@ -28,6 +32,8 @@ export const SupplierSelector: React.FC<SupplierSelectorProps> = ({
   selectedSupplier,
   onSelect,
   onToggleFavorite,
+  templateCounts,
+  onEditTemplate,
 }) => {
   const [onlyFavorites, setOnlyFavorites] = useState(true);
 
@@ -75,7 +81,7 @@ export const SupplierSelector: React.FC<SupplierSelectorProps> = ({
             {filtered.map(supplier => {
               const isActive =
                 selectedSupplier?.kiotviet_id === supplier.kiotviet_id;
-              const templateCount = supplier.po_template_products?.length ?? 0;
+              const templateCount = templateCounts?.[supplier.kiotviet_id] ?? 0;
               return (
                 <div
                   key={supplier.kiotviet_id}
@@ -147,6 +153,21 @@ export const SupplierSelector: React.FC<SupplierSelectorProps> = ({
                       )}
                     </div>
                   </button>
+
+                  {/* Nút soạn template (admin) */}
+                  {onEditTemplate && (
+                    <button
+                      type="button"
+                      className="absolute bottom-2 right-2 z-10 rounded-md p-1.5 text-muted-foreground/60 opacity-0 transition-all hover:bg-muted hover:text-primary group-hover:opacity-100"
+                      onClick={e => {
+                        e.stopPropagation();
+                        onEditTemplate(supplier);
+                      }}
+                      title="Soạn template nhập hàng"
+                    >
+                      <ListChecks className="h-4 w-4" />
+                    </button>
+                  )}
                 </div>
               );
             })}
