@@ -8,7 +8,7 @@ import {
   CardTitle,
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { Banknote, Trash2, Wallet } from 'lucide-react';
+import { Banknote, Repeat, Trash2, Wallet } from 'lucide-react';
 
 const COLUMN_A = [1000, 2000, 5000, 10000, 20000] as const;
 const COLUMN_B = [50000, 100000, 200000, 500000] as const;
@@ -69,17 +69,34 @@ function loadCounts(): CountMap {
   }
 }
 
+function loadDesc(): boolean {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw);
+    return (
+      !!parsed &&
+      typeof parsed === 'object' &&
+      'desc' in parsed &&
+      (parsed as { desc: unknown }).desc === true
+    );
+  } catch {
+    return false;
+  }
+}
+
 function formatNumber(n: number): string {
   return n.toLocaleString('vi-VN');
 }
 
 export function CashCount() {
   const [counts, setCounts] = useState<CountMap>(loadCounts);
+  const [desc, setDesc] = useState(loadDesc);
   const inputRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(counts));
-  }, [counts]);
+    localStorage.setItem(STORAGE_KEY, JSON.stringify({ counts, desc }));
+  }, [counts, desc]);
 
   const { total, sheets } = useMemo(() => {
     let total = 0;
@@ -102,8 +119,12 @@ export function CashCount() {
 
   const reset = () => setCounts({});
 
+  const firstColumn = desc ? [...COLUMN_B].reverse() : [...COLUMN_A];
+  const secondColumn = desc ? [...COLUMN_A].reverse() : [...COLUMN_B];
+  const visualOrder: number[] = [...firstColumn, ...secondColumn];
+
   const renderRow = (denom: number) => {
-    const index = DENOMINATIONS.indexOf(denom);
+    const index = visualOrder.indexOf(denom);
     const n = counts[denom] ?? 0;
     return (
       <div
@@ -173,6 +194,19 @@ export function CashCount() {
               <Button
                 variant="outline"
                 size="sm"
+                onClick={() => setDesc(v => !v)}
+                title={
+                  desc
+                    ? 'Xếp mệnh giá tăng dần từ 1k đến 500k'
+                    : 'Xếp mệnh giá giảm dần từ 500k về 1k'
+                }
+              >
+                <Repeat className="mr-1.5 size-3.5" />
+                Đảo ngược
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={prefill2M}
                 title="Soạn sẵn khối tiền thối chuẩn 2.000.000đ, ghi đè số hiện có"
               >
@@ -193,8 +227,8 @@ export function CashCount() {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
-            <div className="space-y-2">{COLUMN_A.map(renderRow)}</div>
-            <div className="space-y-2">{COLUMN_B.map(renderRow)}</div>
+            <div className="space-y-2">{firstColumn.map(renderRow)}</div>
+            <div className="space-y-2">{secondColumn.map(renderRow)}</div>
           </div>
 
           <p className="rounded-lg border bg-muted/50 px-3 py-2 text-center text-sm tabular-nums">
