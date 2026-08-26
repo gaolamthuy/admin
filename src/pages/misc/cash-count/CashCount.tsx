@@ -9,6 +9,7 @@ import {
 } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Banknote, Repeat, Trash2, Wallet } from 'lucide-react';
+import { TransferToday } from './TransferToday';
 
 const COLUMN_A = [1000, 2000, 5000, 10000, 20000] as const;
 const COLUMN_B = [50000, 100000, 200000, 500000] as const;
@@ -241,6 +242,8 @@ export function CashCount() {
           </p>
         </CardContent>
       </Card>
+
+      <TransferToday />
     </div>
   );
 }
