@@ -23,6 +23,8 @@ export interface SupplierCostDefault {
   sort_order: number;
   default_value: number;
   is_active: boolean;
+  updated_at: string | null;
+  note: string | null;
 }
 
 export const useCostTypes = () => {
@@ -55,7 +57,7 @@ export const useSupplierCostDefaults = (
       const { data, error } = await supabase
         .from('v_supplier_cost_defaults')
         .select(
-          'id, supplier_kiotviet_id, cost_type_code, cost_type_name, is_supplier_expense, sort_order, default_value, is_active'
+          'id, supplier_kiotviet_id, cost_type_code, cost_type_name, is_supplier_expense, sort_order, default_value, is_active, updated_at, note'
         )
         .eq('supplier_kiotviet_id', supplierKiotvietId)
         .eq('is_active', true)
@@ -70,6 +72,7 @@ export interface UpsertSupplierCostDefaultInput {
   supplier_kiotviet_id: number;
   cost_type_code: string;
   default_value: number;
+  note?: string | null;
 }
 
 /**
@@ -91,6 +94,7 @@ export const useUpsertSupplierCostDefault = () => {
             supplier_kiotviet_id: input.supplier_kiotviet_id,
             cost_type_code: input.cost_type_code,
             default_value: input.default_value,
+            note: input.note ?? null,
             updated_by: userId,
             is_active: true,
           },
@@ -104,6 +108,83 @@ export const useUpsertSupplierCostDefault = () => {
     onSuccess: (_data, variables) => {
       queryClient.invalidateQueries({
         queryKey: ['supplier-cost-defaults', variables.supplier_kiotviet_id],
+      });
+    },
+  });
+};
+
+export interface SurchargeHistoryEntry {
+  id: number;
+  supplier_kiotviet_id: number;
+  cost_type_code: string;
+  value: number;
+  note: string | null;
+  po_code: string | null;
+  created_at: string;
+}
+
+export interface SurchargeHistoryRow {
+  supplier_kiotviet_id: number;
+  cost_type_code: string;
+  value: number;
+  note?: string | null;
+  po_code?: string | null;
+}
+
+/**
+ * Lịch sử chi phí nhập hàng của supplier (append-only log),
+ * group theo cost_type_code, mỗi loại tối đa perTypeLimit entries mới nhất.
+ */
+export const useSupplierSurchargeHistory = (
+  supplierKiotvietId: number | null | undefined,
+  perTypeLimit = 5
+) => {
+  return useQuery({
+    queryKey: ['supplier-surcharge-history', supplierKiotvietId],
+    enabled: supplierKiotvietId != null,
+    staleTime: 30_000,
+    queryFn: async (): Promise<Record<string, SurchargeHistoryEntry[]>> => {
+      const { data, error } = await supabase
+        .from('glt_supplier_surcharge_history')
+        .select(
+          'id, supplier_kiotviet_id, cost_type_code, value, note, po_code, created_at'
+        )
+        .eq('supplier_kiotviet_id', supplierKiotvietId!)
+        .order('created_at', { ascending: false })
+        .limit(60);
+      if (error) throw error;
+
+      const grouped: Record<string, SurchargeHistoryEntry[]> = {};
+      (data ?? []).forEach(r => {
+        const entry: SurchargeHistoryEntry = { ...r, value: Number(r.value) };
+        const list = grouped[r.cost_type_code] ?? [];
+        if (list.length < perTypeLimit) list.push(entry);
+        grouped[r.cost_type_code] = list;
+      });
+      return grouped;
+    },
+  });
+};
+
+/**
+ * Append rows vào lịch sử chi phí (gọi khi tạo PO thành công).
+ */
+export const useInsertSurchargeHistory = () => {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (rows: SurchargeHistoryRow[]) => {
+      if (rows.length === 0) return;
+      const { data: session } = await supabase.auth.getSession();
+      const userId = session.session?.user?.id ?? null;
+      const { error } = await supabase
+        .from('glt_supplier_surcharge_history')
+        .insert(rows.map(r => ({ ...r, created_by: userId })));
+      if (error) throw error;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({
+        queryKey: ['supplier-surcharge-history'],
       });
     },
   });
