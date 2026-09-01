@@ -49,6 +49,7 @@ import { toast } from 'sonner';
 import {
   ArrowLeft,
   ArrowRight,
+  Check,
   History,
   Loader2,
   Pencil,
@@ -158,10 +159,10 @@ export const PurchaseOrderCreate = () => {
   const [surchargeValues, setSurchargeValues] = useState<
     Record<string, number>
   >({});
-  const [surchargeNotes, setSurchargeNotes] = useState<Record<string, string>>(
-    {}
-  );
+  // 1 note chung cho toàn bộ chi phí nhập (lưu giống nhau cho mọi cost_type)
+  const [surchargeNote, setSurchargeNote] = useState('');
   const [editingSurcharges, setEditingSurcharges] = useState(false);
+  const [savingSurcharges, setSavingSurcharges] = useState(false);
   const [isTestSwitch, setIsTestSwitch] = useState(false);
 
   // Phụ thuộc vào nội dung (string key) thay vì ref array để tránh render loop
@@ -172,16 +173,34 @@ export const PurchaseOrderCreate = () => {
     )
     .join('|');
 
+  // Note chung + thời gian lưu gần nhất (lưu là ghi cùng note cho mọi row)
+  const savedNoteInfo = useMemo(() => {
+    const withNote = [...costDefaults]
+      .filter(d => d.note && d.updated_at)
+      .sort(
+        (a, b) =>
+          new Date(b.updated_at!).getTime() - new Date(a.updated_at!).getTime()
+      );
+    const latest = [...costDefaults]
+      .filter(d => d.updated_at)
+      .sort(
+        (a, b) =>
+          new Date(b.updated_at!).getTime() - new Date(a.updated_at!).getTime()
+      )[0];
+    return {
+      note: withNote[0]?.note ?? costDefaults.find(d => d.note)?.note ?? null,
+      updatedAt: latest?.updated_at ?? null,
+    };
+  }, [costDefaults]);
+
   useEffect(() => {
     const next: Record<string, number> = {};
-    const nextNotes: Record<string, string> = {};
     SURCHARGE_TYPES.forEach(t => {
       const def = costDefaults.find(d => d.cost_type_code === t.code);
       next[t.code] = def ? Number(def.default_value) || 0 : 0;
-      nextNotes[t.code] = def?.note ?? '';
     });
     setSurchargeValues(next);
-    setSurchargeNotes(nextNotes);
+    setSurchargeNote(savedNoteInfo.note ?? '');
     setEditingSurcharges(false);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [costDefaultsKey]);
@@ -198,6 +217,7 @@ export const PurchaseOrderCreate = () => {
   const captureSurcharges = async (poCode: string | null) => {
     const supplierId = form.selectedSupplier?.kiotviet_id;
     if (!supplierId) return;
+    const note = surchargeNote.trim() || null;
     try {
       const historyRows = SURCHARGE_TYPES.filter(
         t => (Number(surchargeValues[t.code]) || 0) > 0
@@ -205,7 +225,7 @@ export const PurchaseOrderCreate = () => {
         supplier_kiotviet_id: supplierId,
         cost_type_code: t.code,
         value: Number(surchargeValues[t.code]) || 0,
-        note: surchargeNotes[t.code]?.trim() || null,
+        note,
         po_code: poCode,
       }));
 
@@ -215,7 +235,7 @@ export const PurchaseOrderCreate = () => {
             supplier_kiotviet_id: supplierId,
             cost_type_code: t.code,
             default_value: Number(surchargeValues[t.code]) || 0,
-            note: surchargeNotes[t.code]?.trim() || null,
+            note,
           })
         ),
         ...(historyRows.length > 0
@@ -228,17 +248,41 @@ export const PurchaseOrderCreate = () => {
     }
   };
 
+  // Lưu thủ công: cập nhật "lần gần nhất" (prefill) mà KHÔNG tạo đơn.
+  // Không ghi vào history — history chỉ dành cho đơn nhập thật (có po_code).
+  const handleSaveSurcharges = async () => {
+    const supplierId = form.selectedSupplier?.kiotviet_id;
+    if (!supplierId) return;
+    setSavingSurcharges(true);
+    try {
+      await Promise.all(
+        SURCHARGE_TYPES.map(t =>
+          upsertDefault.mutateAsync({
+            supplier_kiotviet_id: supplierId,
+            cost_type_code: t.code,
+            default_value: Number(surchargeValues[t.code]) || 0,
+            note: surchargeNote.trim() || null,
+          })
+        )
+      );
+      toast.success('Đã lưu chi phí nhập cho supplier');
+      setEditingSurcharges(false);
+    } catch (e) {
+      toast.error('Lưu chi phí thất bại', { description: String(e) });
+    } finally {
+      setSavingSurcharges(false);
+    }
+  };
+
   // Hủy edit — revert về giá trị từ DB
   const handleCancelEditSurcharges = () => {
     const next: Record<string, number> = {};
-    const nextNotes: Record<string, string> = {};
     SURCHARGE_TYPES.forEach(t => {
       const def = costDefaults.find(d => d.cost_type_code === t.code);
       next[t.code] = def ? Number(def.default_value) || 0 : 0;
-      nextNotes[t.code] = def?.note ?? '';
     });
     setSurchargeValues(next);
-    setSurchargeNotes(nextNotes);
+    setSurchargeNote(savedNoteInfo.note ?? '');
     setEditingSurcharges(false);
   };
 
@@ -552,15 +596,32 @@ export const PurchaseOrderCreate = () => {
                       </span>
                     )}
                     {editingSurcharges ? (
-                      <Button
-                        size="icon"
-                        variant="ghost"
-                        className="h-7 w-7 text-muted-foreground"
-                        onClick={handleCancelEditSurcharges}
-                        title="Hủy"
-                      >
-                        <X className="h-4 w-4" />
-                      </Button>
+                      <div className="flex gap-1">
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-green-600"
+                          onClick={handleSaveSurcharges}
+                          disabled={savingSurcharges}
+                          title="Lưu chi phí cho supplier (không tạo đơn)"
+                        >
+                          {savingSurcharges ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Check className="h-4 w-4" />
+                          )}
+                        </Button>
+                        <Button
+                          size="icon"
+                          variant="ghost"
+                          className="h-7 w-7 text-muted-foreground"
+                          onClick={handleCancelEditSurcharges}
+                          disabled={savingSurcharges}
+                          title="Hủy"
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
                     ) : (
                       <Button
                         size="icon"
@@ -576,139 +637,120 @@ export const PurchaseOrderCreate = () => {
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-3">
-                  {SURCHARGE_TYPES.map(t => {
-                    const def = costDefaults.find(
-                      d => d.cost_type_code === t.code
-                    );
-                    return (
-                      <div key={t.code} className="space-y-1">
-                        <div className="flex items-center justify-between gap-1">
-                          <Label
-                            htmlFor={`surcharge-${t.code}`}
-                            className="text-xs"
-                          >
-                            {t.label}
-                          </Label>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="size-5 text-muted-foreground hover:text-foreground"
-                                title="Các lần gần nhất — bấm để điền nhanh"
-                              >
-                                <History className="size-3.5" />
-                              </Button>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-64 p-2" align="start">
-                              <p className="mb-1.5 text-xs font-medium text-muted-foreground">
-                                {t.label} — các lần gần nhất
+                  {SURCHARGE_TYPES.map(t => (
+                    <div key={t.code} className="space-y-1">
+                      <div className="flex items-center justify-between gap-1">
+                        <Label
+                          htmlFor={`surcharge-${t.code}`}
+                          className="text-xs"
+                        >
+                          {t.label}
+                        </Label>
+                        <Popover>
+                          <PopoverTrigger asChild>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="size-5 text-muted-foreground hover:text-foreground"
+                              title="Các lần gần nhất — bấm để điền nhanh"
+                            >
+                              <History className="size-3.5" />
+                            </Button>
+                          </PopoverTrigger>
+                          <PopoverContent className="w-64 p-2" align="start">
+                            <p className="mb-1.5 text-xs font-medium text-muted-foreground">
+                              {t.label} — các lần gần nhất
+                            </p>
+                            {(surchargeHistory[t.code]?.length ?? 0) === 0 ? (
+                              <p className="py-3 text-center text-xs text-muted-foreground">
+                                Chưa có lịch sử
                               </p>
-                              {(surchargeHistory[t.code]?.length ?? 0) === 0 ? (
-                                <p className="py-3 text-center text-xs text-muted-foreground">
-                                  Chưa có lịch sử
-                                </p>
-                              ) : (
-                                <div className="space-y-0.5">
-                                  {surchargeHistory[t.code]!.map(h => (
-                                    <button
-                                      key={h.id}
-                                      type="button"
-                                      onClick={() =>
-                                        setSurchargeValues(prev => ({
-                                          ...prev,
-                                          [t.code]: h.value,
-                                        }))
-                                      }
-                                      className="flex w-full flex-col rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted"
-                                      title="Bấm để điền giá trị này"
-                                    >
-                                      <span className="text-sm font-medium tabular-nums">
-                                        {h.value.toLocaleString('vi-VN')}đ
-                                        {h.po_code && (
-                                          <span className="ml-1.5 text-xs font-normal text-muted-foreground">
-                                            {h.po_code}
-                                          </span>
-                                        )}
-                                      </span>
-                                      <span className="text-xs text-muted-foreground">
-                                        {new Date(
-                                          h.created_at
-                                        ).toLocaleDateString('vi-VN')}
-                                        {h.note ? ` · ${h.note}` : ''}
-                                      </span>
-                                    </button>
-                                  ))}
-                                </div>
-                              )}
-                            </PopoverContent>
-                          </Popover>
-                        </div>
-                        <CurrencyInput
-                          id={`surcharge-${t.code}`}
-                          value={surchargeValues[t.code] ?? 0}
-                          onValueChange={n =>
-                            setSurchargeValues(prev => ({
-                              ...prev,
-                              [t.code]: n,
-                            }))
-                          }
-                          disabled={isSubmitting || !editingSurcharges}
-                          readOnly={!editingSurcharges}
-                          className={
-                            !editingSurcharges
-                              ? 'bg-transparent border-none focus-visible:ring-0 cursor-default'
-                              : ''
-                          }
-                        />
-                        {/* Note + thời gian — hiện dạng text, nhập được khi admin edit */}
-                        {editingSurcharges && isAdmin ? (
-                          <Input
-                            value={surchargeNotes[t.code] ?? ''}
-                            onChange={e =>
-                              setSurchargeNotes(prev => ({
-                                ...prev,
-                                [t.code]: e.target.value,
-                              }))
-                            }
-                            placeholder="Ghi chú (vd: tăng giá xăng)"
-                            disabled={isSubmitting}
-                            className="h-7 text-xs"
-                          />
-                        ) : (
-                          <p className="text-xs text-muted-foreground min-h-4">
-                            {def?.note ? (
-                              <>
-                                {def.note}
-                                {def.updated_at && (
-                                  <span className="text-muted-foreground/70">
-                                    {' '}
-                                    · lần trước{' '}
-                                    {new Date(
-                                      def.updated_at
-                                    ).toLocaleDateString('vi-VN')}
-                                  </span>
-                                )}
-                              </>
-                            ) : def?.updated_at ? (
-                              <span className="text-muted-foreground/70">
-                                lần trước{' '}
-                                {new Date(def.updated_at).toLocaleDateString(
-                                  'vi-VN'
-                                )}
-                              </span>
-                            ) : null}
-                          </p>
-                        )}
+                            ) : (
+                              <div className="space-y-0.5">
+                                {surchargeHistory[t.code]!.map(h => (
+                                  <button
+                                    key={h.id}
+                                    type="button"
+                                    onClick={() =>
+                                      setSurchargeValues(prev => ({
+                                        ...prev,
+                                        [t.code]: h.value,
+                                      }))
+                                    }
+                                    className="flex w-full flex-col rounded-md px-2 py-1.5 text-left transition-colors hover:bg-muted"
+                                    title="Bấm để điền giá trị này"
+                                  >
+                                    <span className="text-sm font-medium tabular-nums">
+                                      {h.value.toLocaleString('vi-VN')}đ
+                                      {h.po_code && (
+                                        <span className="ml-1.5 text-xs font-normal text-muted-foreground">
+                                          {h.po_code}
+                                        </span>
+                                      )}
+                                    </span>
+                                    <span className="text-xs text-muted-foreground">
+                                      {new Date(
+                                        h.created_at
+                                      ).toLocaleDateString('vi-VN')}
+                                      {h.note ? ` · ${h.note}` : ''}
+                                    </span>
+                                  </button>
+                                ))}
+                              </div>
+                            )}
+                          </PopoverContent>
+                        </Popover>
                       </div>
-                    );
-                  })}
+                      <CurrencyInput
+                        id={`surcharge-${t.code}`}
+                        value={surchargeValues[t.code] ?? 0}
+                        onValueChange={n =>
+                          setSurchargeValues(prev => ({
+                            ...prev,
+                            [t.code]: n,
+                          }))
+                        }
+                        disabled={isSubmitting || !editingSurcharges}
+                        readOnly={!editingSurcharges}
+                        className={
+                          !editingSurcharges
+                            ? 'bg-transparent border-none focus-visible:ring-0 cursor-default'
+                            : ''
+                        }
+                      />
+                    </div>
+                  ))}
                 </div>
+
+                {/* 1 note chung cho toàn bộ chi phí nhập */}
+                {editingSurcharges && isAdmin ? (
+                  <Input
+                    value={surchargeNote}
+                    onChange={e => setSurchargeNote(e.target.value)}
+                    placeholder="Ghi chú cho lần đổi chi phí (vd: tăng giá xăng)"
+                    disabled={isSubmitting}
+                    className="h-8 text-xs"
+                  />
+                ) : (
+                  savedNoteInfo.note && (
+                    <p className="text-xs text-muted-foreground">
+                      {savedNoteInfo.note}
+                      {savedNoteInfo.updatedAt && (
+                        <span className="text-muted-foreground/70">
+                          {' '}
+                          · lần trước{' '}
+                          {new Date(savedNoteInfo.updatedAt).toLocaleDateString(
+                            'vi-VN'
+                          )}
+                        </span>
+                      )}
+                    </p>
+                  )
+                )}
                 <p className="text-xs text-muted-foreground">
                   Theo chi phí của đơn nhập gần nhất — tự ghi lại mỗi khi tạo
-                  đơn. Bấm bút chì để sửa cho đơn hôm nay
-                  {isAdmin ? ' (kèm ghi chú nếu thay đổi)' : ''}. Số 0 = không
-                  áp dụng.
+                  đơn. Bấm bút chì để sửa, check để lưu lại cho supplier, X để
+                  hủy. Số 0 = không áp dụng.
                 </p>
               </div>
 
