@@ -24,8 +24,10 @@ async function callSyncPurchaseOrders(): Promise<SyncPurchaseOrdersResult> {
     throw new Error('VITE_BACKEND_TOKEN is not configured');
   }
 
-  // Gọi trực tiếp script sync_purchase_orders, không qua flow
-  const runUrl = getWindmillJobRunUrl('f/f/kiotviet/sync_purchase_orders');
+  // Chạy qua flow sync_data (token chỉ có scope chạy flow, không chạy script trực tiếp)
+  // sync_types = "purchase_orders" → chỉ module sync_purchase_orders chạy,
+  // script dùng default daysBack = 120 (giống schedule hourly)
+  const runUrl = getWindmillJobRunUrl('f/f/kiotviet/sync_data');
 
   const runRes = await fetch(runUrl, {
     method: 'POST',
@@ -33,7 +35,7 @@ async function callSyncPurchaseOrders(): Promise<SyncPurchaseOrdersResult> {
       'Content-Type': 'application/json',
       Authorization: `Bearer ${windmillToken}`,
     },
-    body: JSON.stringify({ daysBack: 30 }),
+    body: JSON.stringify({ sync_types: 'purchase_orders' }),
   });
 
   if (!runRes.ok) {
