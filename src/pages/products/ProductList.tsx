@@ -17,7 +17,7 @@ import { useSyncProducts } from './hooks/useSyncProducts';
 const useDownloadProducts = useSyncProducts;
 import { ProductCardGrid } from './components/ProductCardGrid';
 import { ProductListTable } from './components/ProductListTable';
-import type { Product, ProductCard } from '@/types/product';
+import type { Product } from '@/types/product';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
   Select,
@@ -134,6 +134,17 @@ export const ProductList = () => {
     }
   };
 
+  // Map rank của category theo id + tên (từ kv_product_categories)
+  const categoryRankMap = useMemo(() => {
+    const m = new Map<number | string, number>();
+    categories.forEach(c => {
+      const rank = c.rank ?? 1e9;
+      m.set(c.category_id, rank);
+      m.set(c.category_name, rank);
+    });
+    return m;
+  }, [categories]);
+
   const products = useMemo(() => {
     type ProductWithExtendedFields = Omit<Product, 'id'> & {
       id: string;
@@ -231,10 +242,54 @@ export const ProductList = () => {
       });
     }
 
+    // Mặc định: sort theo cost tăng dần (SP rẻ trên đầu) — áp khi không
+    // bật sort admin nào; các sort admin vẫn ưu tiên khi được bật
+    const anyAdminSort =
+      isAdmin &&
+      (filters.sortByPriceDifference ||
+        filters.sortByKvStatus ||
+        filters.sortByChangelog);
+    if (!anyAdminSort) {
+      const costOf = (p: ProductWithExtendedFields) => {
+        const ca = p.cost_analysis;
+        const calcFromPo = (p as Record<string, unknown>).calculate_from_po as
+          | { latest_total_cost_per_unit?: number | null }
+          | null
+          | undefined;
+        const v =
+          ca?.inventory_cost ??
+          ca?.latest_po_price ??
+          calcFromPo?.latest_total_cost_per_unit;
+        return v != null ? Number(v) : Number.POSITIVE_INFINITY;
+      };
+      mappedProducts.sort((a, b) => costOf(a) - costOf(b));
+    }
+
+    // Nhóm theo danh mục làm khóa sort chính (sort stable → thứ tự trong nhóm
+    // giữ nguyên theo các sort bên trên). Thứ tự nhóm theo rank từ
+    // kv_product_categories; "Chưa phân loại" luôn cuối. Mảng liên tục theo
+    // category để phân trang không xé nhóm xen kẽ.
+    const categoryOf = (p: ProductWithExtendedFields) =>
+      (p.category_name ?? '').trim() || 'Chưa phân loại';
+    const rankOf = (p: ProductWithExtendedFields) => {
+      if (!(p.category_name ?? '').trim()) return Infinity;
+      return (
+        categoryRankMap.get(p.category_id ?? -1) ??
+        categoryRankMap.get((p.category_name ?? '').trim()) ??
+        1e9
+      );
+    };
+    mappedProducts.sort((a, b) => {
+      const rankDiff = rankOf(a) - rankOf(b);
+      if (rankDiff !== 0) return rankDiff;
+      return categoryOf(a).localeCompare(categoryOf(b), 'vi');
+    });
+
     return mappedProducts;
   }, [
     isAdmin,
     productsRaw,
+    categoryRankMap,
     filters.sortByPriceDifference,
     filters.sortByKvStatus,
     filters.sortByChangelog,
@@ -255,6 +310,35 @@ export const ProductList = () => {
     const endIndex = startIndex + itemsPerPage;
     return products.slice(startIndex, endIndex);
   }, [products, currentPage, itemsPerPage]);
+
+  // Nhóm sản phẩm trên trang hiện tại (sau pagination — nhóm có thể lặp lại
+  // ở trang kế nếu bị cắt ngang, đánh dấu isContinued)
+  const productGroups = useMemo(() => {
+    const startIndex = (currentPage - 1) * itemsPerPage;
+    const labelOf = (p: (typeof products)[number]) =>
+      (p.category_name ?? '').trim() || 'Chưa phân loại';
+
+    const groups: Array<{
+      key: string;
+      label: string;
+      products: Array<(typeof products)[number]>;
+      isContinued: boolean;
+    }> = [];
+
+    paginatedProducts.forEach((p, idx) => {
+      const label = labelOf(p);
+      const last = groups[groups.length - 1];
+      if (!last || last.key !== label) {
+        const globalIdx = startIndex + idx;
+        const isContinued =
+          globalIdx > 0 && labelOf(products[globalIdx - 1]) === label;
+        groups.push({ key: label, label, products: [p], isContinued });
+      } else {
+        last.products.push(p);
+      }
+    });
+    return groups;
+  }, [paginatedProducts, products, currentPage, itemsPerPage]);
 
   const totalPages = Math.ceil(products.length / itemsPerPage);
 
@@ -373,7 +457,11 @@ export const ProductList = () => {
             <>
               {filters.viewMode === 'card' ? (
                 <ProductCardGrid
-                  products={paginatedProducts as unknown as ProductCard[]}
+                  groups={
+                    productGroups as unknown as Parameters<
+                      typeof ProductCardGrid
+                    >[0]['groups']
+                  }
                   loading={isLoading}
                   onEdit={handleEdit}
                   onShow={handleShow}
@@ -382,10 +470,10 @@ export const ProductList = () => {
                 />
               ) : (
                 <ProductListTable
-                  products={
-                    paginatedProducts as unknown as Parameters<
+                  groups={
+                    productGroups as unknown as Parameters<
                       typeof ProductListTable
-                    >[0]['products']
+                    >[0]['groups']
                   }
                   loading={isLoading}
                   onShow={handleShow}

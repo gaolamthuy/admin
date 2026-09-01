@@ -86,8 +86,15 @@ interface ProductWithPriceDiff {
   > | null;
 }
 
-interface ProductListTableProps {
+export interface ProductTableGroup {
+  key: string;
+  label: string;
   products: ProductWithPriceDiff[];
+  isContinued: boolean;
+}
+
+interface ProductListTableProps {
+  groups: ProductTableGroup[];
   loading: boolean;
   onShow: (id: string | number) => void;
   isAdmin: boolean;
@@ -1134,7 +1141,7 @@ const ProductRowMemo = React.memo(ProductRow);
 ProductRowMemo.displayName = 'ProductRow';
 
 export const ProductListTable: React.FC<ProductListTableProps> = ({
-  products,
+  groups,
   loading,
   onShow,
   isAdmin,
@@ -1147,6 +1154,8 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
   sortByChangelog,
   onToggleChangelogSort,
 }) => {
+  const totalProducts = groups.reduce((sum, g) => sum + g.products.length, 0);
+
   if (loading) {
     return (
       <div className="rounded-md border">
@@ -1228,7 +1237,7 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
     );
   }
 
-  if (!products || products.length === 0) {
+  if (totalProducts === 0) {
     return (
       <div className="flex items-center justify-center py-12">
         <div className="text-center">
@@ -1241,20 +1250,40 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
     );
   }
 
+  // Số cột table: ảnh + tên (+3 cột admin) + thao tác
+  const tableColSpan = isAdmin ? 6 : 3;
+
+  const renderRow = (
+    product: ProductWithPriceDiff,
+    mode: 'mobile' | 'desktop'
+  ) => (
+    <ProductRowMemo
+      key={product.id}
+      product={product}
+      onShow={onShow}
+      isAdmin={isAdmin}
+      onUpdatePrice={onUpdatePrice}
+      isUpdating={updatingPriceId === product.kiotviet_id}
+      mode={mode}
+    />
+  );
+
   return (
     <div>
-      {/* Mobile: card list */}
+      {/* Mobile: card list theo nhóm */}
       <div className="sm:hidden space-y-2">
-        {products.map(product => (
-          <ProductRowMemo
-            key={product.id}
-            product={product}
-            onShow={onShow}
-            isAdmin={isAdmin}
-            onUpdatePrice={onUpdatePrice}
-            isUpdating={updatingPriceId === product.kiotviet_id}
-            mode="mobile"
-          />
+        {groups.map(group => (
+          <div key={group.key} className="space-y-2 pt-1">
+            <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+              {group.label} · {group.products.length} SP
+              {group.isContinued && (
+                <span className="ml-1 font-normal normal-case text-muted-foreground/60">
+                  (tiếp)
+                </span>
+              )}
+            </p>
+            {group.products.map(p => renderRow(p, 'mobile'))}
+          </div>
         ))}
       </div>
 
@@ -1306,16 +1335,22 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
             </TableRow>
           </TableHeader>
           <TableBody>
-            {products.map(product => (
-              <ProductRowMemo
-                key={product.id}
-                product={product}
-                onShow={onShow}
-                isAdmin={isAdmin}
-                onUpdatePrice={onUpdatePrice}
-                isUpdating={updatingPriceId === product.kiotviet_id}
-                mode="desktop"
-              />
+            {groups.map(group => (
+              <React.Fragment key={group.key}>
+                <TableRow className="bg-muted/40 hover:bg-muted/40">
+                  <TableCell colSpan={tableColSpan} className="border-b py-1.5">
+                    <span className="text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+                      {group.label} · {group.products.length} SP
+                      {group.isContinued && (
+                        <span className="ml-1 font-normal normal-case text-muted-foreground/60">
+                          (tiếp)
+                        </span>
+                      )}
+                    </span>
+                  </TableCell>
+                </TableRow>
+                {group.products.map(p => renderRow(p, 'desktop'))}
+              </React.Fragment>
             ))}
           </TableBody>
         </Table>

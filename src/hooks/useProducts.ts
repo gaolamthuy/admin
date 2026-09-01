@@ -309,8 +309,9 @@ export const useProductCategories = () => {
 
       const { data, error } = await supabase
         .from('kv_product_categories')
-        .select('category_id, category_name, glt_is_active')
+        .select('category_id, category_name, glt_is_active, rank')
         .eq('glt_is_active', true)
+        .order('rank', { ascending: true, nullsFirst: false })
         .order('category_name');
 
       if (error) throw error;
