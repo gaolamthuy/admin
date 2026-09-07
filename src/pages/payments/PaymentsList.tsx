@@ -15,14 +15,14 @@ import { cn } from '@/lib/utils';
 import {
   Loader2,
   Search,
-  CalendarDays,
-  Infinity as InfinityIcon,
   Copy,
   Check,
   Volume2,
   VolumeX,
   X,
+  Banknote,
 } from 'lucide-react';
+import { CashCountDialog } from './components/CashCountDialog';
 import {
   Tooltip,
   TooltipContent,
@@ -99,6 +99,8 @@ export const PaymentsList = () => {
     return () => clearInterval(id);
   }, []);
   const [highlightedIds, setHighlightedIds] = useState<Set<string>>(new Set());
+  const [countDate, setCountDate] = useState<string | null>(null);
+  const [countPayments, setCountPayments] = useState<Payment[]>([]);
   const highlightTimeouts = useRef<Map<string, ReturnType<typeof setTimeout>>>(
     new Map()
   );
@@ -429,7 +431,6 @@ export const PaymentsList = () => {
                           (() => {
                             const dateStr =
                               group.displayTime || `${group.date}T00:00:00Z`;
-                            const isToday = group.date === todayStr;
 
                             let formattedDate = formatDate(
                               dateStr,
@@ -483,6 +484,21 @@ export const PaymentsList = () => {
                             </>
                           )}
                         </span>
+                        {group.date !== 'unknown' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            className="h-7 gap-1.5 px-2 text-xs"
+                            onClick={() => {
+                              setCountDate(group.date);
+                              setCountPayments(group.items);
+                            }}
+                            title="Kiểm đếm tiền mặt cuối ca ngày này (đối chiếu Sổ quỹ KiotViet)"
+                          >
+                            <Banknote className="size-3.5 text-emerald-600" />
+                            Kiểm đếm
+                          </Button>
+                        )}
                       </div>
                     </div>
 
@@ -742,6 +758,12 @@ export const PaymentsList = () => {
           )}
         </CardContent>
       </Card>
+
+      <CashCountDialog
+        date={countDate}
+        payments={countPayments}
+        onClose={() => setCountDate(null)}
+      />
     </div>
   );
 };

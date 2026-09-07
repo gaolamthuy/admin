@@ -13,21 +13,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Skeleton } from '@/components/ui/skeleton';
 import { ChevronDown, Landmark } from 'lucide-react';
-
-function getProviderLabel(providerRaw: string | null | undefined): string {
-  const provider = (providerRaw ?? '').toLowerCase().trim();
-  if (provider.includes('momo')) return 'MoMo';
-  if (provider.includes('acb')) return 'ACB';
-  if (provider.includes('vietcom') || provider.includes('vcb'))
-    return 'Vietcombank';
-  if (
-    provider.includes('techcom') ||
-    provider.includes('tcb') ||
-    provider.includes('techcomb')
-  )
-    return 'Techcombank';
-  return providerRaw || 'Khác';
-}
+import { getProviderLabel } from './constants';
 
 function formatAmount(n: number): string {
   return n.toLocaleString('vi-VN');
