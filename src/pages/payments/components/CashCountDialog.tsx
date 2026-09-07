@@ -217,7 +217,7 @@ export function CashCountDialog({
                       Ngày này chưa có phiếu thu chi nào
                     </p>
                   ) : (
-                    <div className="mt-2 max-h-44 space-y-0.5 overflow-y-auto rounded-md border bg-card/60 p-1.5">
+                    <div className="mt-2 max-h-44 space-y-0.5 overflow-y-auto overflow-x-hidden rounded-md border bg-card/60 p-1.5">
                       {data.vouchers.map((v, i) => {
                         const detail = `${v.code ?? ''} · ${getMethodLabel(
                           v.method
@@ -225,7 +225,7 @@ export function CashCountDialog({
                         return (
                           <div
                             key={`${v.code ?? i}-${i}`}
-                            className="flex items-center gap-2 px-1.5 py-1 text-xs"
+                            className="flex min-w-0 items-center gap-2 overflow-hidden px-1.5 py-1 text-xs"
                           >
                             <span className="w-9 shrink-0 text-muted-foreground tabular-nums">
                               {formatVoucherTime(v.transDate)}
@@ -296,7 +296,7 @@ export function CashCountDialog({
                       Ngày này chưa có giao dịch chuyển khoản nào
                     </p>
                   ) : (
-                    <div className="mt-2 max-h-44 space-y-0.5 overflow-y-auto rounded-md border bg-card/60 p-1.5">
+                    <div className="mt-2 max-h-44 space-y-0.5 overflow-y-auto overflow-x-hidden rounded-md border bg-card/60 p-1.5">
                       {payments.map(p => {
                         const amount = Number(p.amount) || 0;
                         const provider = getProviderLabel(p.provider);
@@ -304,7 +304,7 @@ export function CashCountDialog({
                         return (
                           <div
                             key={p.id}
-                            className="flex items-center gap-2 px-1.5 py-1 text-xs"
+                            className="flex min-w-0 items-center gap-2 overflow-hidden px-1.5 py-1 text-xs"
                           >
                             <span className="w-9 shrink-0 text-muted-foreground tabular-nums">
                               {formatPaymentTime(p.received_at)}
@@ -317,13 +317,13 @@ export function CashCountDialog({
                             </Badge>
                             <Tooltip>
                               <TooltipTrigger asChild>
-                                <span className="min-w-0 flex-1 cursor-default truncate text-muted-foreground">
+                                <span className="min-w-0 flex-[1_1_0%] cursor-default truncate text-muted-foreground">
                                   {ref || '—'}
                                 </span>
                               </TooltipTrigger>
                               <TooltipContent
                                 side="top"
-                                className="max-w-xs whitespace-pre-wrap break-all"
+                                className="max-h-56 max-w-xs overflow-y-auto whitespace-pre-wrap break-all"
                               >
                                 <p className="text-xs font-semibold">
                                   {provider}
