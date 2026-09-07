@@ -33,19 +33,23 @@ function loadCounts(storageKey: string): CountMap {
   }
 }
 
+// Mặc định xếp giảm dần (500k → 1k); chỉ dùng giá trị lưu nếu có
 function loadDesc(storageKey: string): boolean {
   try {
     const raw = localStorage.getItem(storageKey);
-    if (!raw) return false;
+    if (!raw) return true;
     const parsed = JSON.parse(raw);
-    return (
-      !!parsed &&
+    if (
+      parsed &&
       typeof parsed === 'object' &&
       'desc' in parsed &&
-      (parsed as { desc: unknown }).desc === true
-    );
+      typeof (parsed as { desc: unknown }).desc === 'boolean'
+    ) {
+      return (parsed as { desc: boolean }).desc;
+    }
+    return true;
   } catch {
-    return false;
+    return true;
   }
 }
 
@@ -142,7 +146,7 @@ export function CashCountBoard({
                 e.currentTarget.blur();
               }
             }}
-            className="h-9 w-24 text-center tabular-nums"
+            className="h-8 w-14 text-center text-sm tabular-nums"
           />
         </div>
         <span

@@ -4,7 +4,7 @@
  * kèm giao dịch chuyển khoản/MoMo của ngày, đếm tiền theo mệnh giá
  * (lưu riêng theo ngày) và gợi ý chênh lệch.
  */
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   AlertTriangle,
   Banknote,
@@ -32,6 +32,7 @@ import {
 } from '@/components/ui/tooltip';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import { Checkbox } from '@/components/ui/checkbox';
 import { Skeleton } from '@/components/ui/skeleton';
 import { cn } from '@/lib/utils';
 import { formatDate } from '@/utils/date';
@@ -97,13 +98,52 @@ export function CashCountDialog({
     []
   );
 
+  // Các giao dịch CK bị loại khỏi chênh lệch (không thuộc ca mình) — lưu theo ngày
+  const [excludedIds, setExcludedIds] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    if (!date) return;
+    try {
+      const raw = localStorage.getItem(
+        `glt-admin-cash-count:${date}:ck-excluded`
+      );
+      const arr = raw ? (JSON.parse(raw) as string[]) : [];
+      setExcludedIds(new Set(Array.isArray(arr) ? arr : []));
+    } catch {
+      setExcludedIds(new Set());
+    }
+  }, [date]);
+
+  useEffect(() => {
+    if (!date) return;
+    localStorage.setItem(
+      `glt-admin-cash-count:${date}:ck-excluded`,
+      JSON.stringify([...excludedIds])
+    );
+  }, [date, excludedIds]);
+
+  const toggleExcluded = (id: string) => {
+    setExcludedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
+
   const transferSummary = useMemo(() => {
     let total = 0;
+    let count = 0;
     payments.forEach(p => {
+      if (excludedIds.has(p.id)) return;
       total += Number(p.amount) || 0;
+      count += 1;
     });
-    return { total, count: payments.length };
-  }, [payments]);
+    return { total, count, excluded: payments.length - count };
+  }, [payments, excludedIds]);
 
   const diff = useMemo(() => {
     if (!data) return null;
@@ -168,11 +208,12 @@ export function CashCountDialog({
                 </div>
               ) : data ? (
                 <Collapsible className="group/collapsible-kv">
-                  <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div className="flex min-w-0 items-center gap-2">
                     <CollapsibleTrigger asChild>
                       <button
                         type="button"
-                        className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                        className="flex min-w-0 flex-1 items-center gap-2 rounded px-1 py-0.5 text-left transition-colors hover:bg-muted/50"
+                        aria-label="Mở/đóng danh sách phiếu thu chi"
                       >
                         <Banknote className="size-4 shrink-0 text-emerald-600" />
                         <span className="shrink-0 text-sm font-semibold">
@@ -188,23 +229,24 @@ export function CashCountDialog({
                         >
                           {formatNumber(data.totalIn - data.totalOut)}đ
                         </span>
-                        <ChevronDown className="ml-auto size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]/collapsible-kv:rotate-180" />
+                        <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]/collapsible-kv:rotate-180" />
                       </button>
                     </CollapsibleTrigger>
+                    <div className="h-5 w-px shrink-0 bg-border" />
                     <Button
                       variant="ghost"
-                      size="sm"
-                      className="h-7 shrink-0 px-2 text-xs"
+                      size="icon"
+                      className="size-7 shrink-0"
+                      title="Làm mới Sổ quỹ KiotViet"
                       onClick={() => refetch()}
                       disabled={isRefetching}
                     >
                       <RefreshCw
                         className={cn(
-                          'mr-1 size-3.5',
+                          'size-3.5',
                           isRefetching && 'animate-spin'
                         )}
                       />
-                      Làm mới
                     </Button>
                   </div>
                   <p className="mt-1 text-xs text-muted-foreground tabular-nums">
@@ -277,22 +319,24 @@ export function CashCountDialog({
                     >
                       <Landmark className="size-4 shrink-0 text-sky-600" />
                       <span className="text-sm font-semibold">
-                        Chuyển khoản / MoMo
+                        Chuyển khoản
                       </span>
                       <span className="text-xs text-muted-foreground tabular-nums">
-                        {transferSummary.count} giao dịch ·{' '}
+                        {transferSummary.excluded > 0
+                          ? `${transferSummary.count}/${payments.length} giao dịch · `
+                          : `${transferSummary.count} giao dịch · `}
                         {formatNumber(transferSummary.total)}đ
                       </span>
                       <span className="ml-auto flex items-center gap-2">
                         <span className="text-[11px] text-muted-foreground">
-                          Không gồm giao dịch test
+                          Bỏ tick để loại CK không thuộc ca mình
                         </span>
                         <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]/collapsible-transfer:rotate-180" />
                       </span>
                     </button>
                   </CollapsibleTrigger>
                   <CollapsibleContent>
-                    {transferSummary.count === 0 ? (
+                    {payments.length === 0 ? (
                       <p className="py-3 text-center text-xs text-muted-foreground">
                         Ngày này chưa có giao dịch chuyển khoản nào
                       </p>
@@ -302,11 +346,20 @@ export function CashCountDialog({
                           const amount = Number(p.amount) || 0;
                           const provider = getProviderLabel(p.provider);
                           const ref = p.ref || p.momo_ref;
+                          const excluded = excludedIds.has(p.id);
                           return (
-                            <div
+                            <label
                               key={p.id}
-                              className="flex min-w-0 items-center gap-2 overflow-hidden px-1.5 py-1 text-xs"
+                              className={cn(
+                                'flex min-w-0 cursor-pointer items-center gap-2 overflow-hidden rounded px-1.5 py-1 text-xs transition-opacity hover:bg-muted/50',
+                                excluded && 'opacity-45'
+                              )}
                             >
+                              <Checkbox
+                                checked={!excluded}
+                                onCheckedChange={() => toggleExcluded(p.id)}
+                                className="size-3.5 shrink-0"
+                              />
                               <span className="w-9 shrink-0 text-muted-foreground tabular-nums">
                                 {formatPaymentTime(p.received_at)}
                               </span>
@@ -335,10 +388,15 @@ export function CashCountDialog({
                                   {ref && <p className="break-all">{ref}</p>}
                                 </TooltipContent>
                               </Tooltip>
-                              <span className="shrink-0 font-medium tabular-nums text-emerald-700 dark:text-emerald-400">
+                              <span
+                                className={cn(
+                                  'shrink-0 font-medium tabular-nums text-emerald-700 dark:text-emerald-400',
+                                  excluded && 'line-through'
+                                )}
+                              >
                                 +{formatNumber(amount)}đ
                               </span>
-                            </div>
+                            </label>
                           );
                         })}
                       </div>
