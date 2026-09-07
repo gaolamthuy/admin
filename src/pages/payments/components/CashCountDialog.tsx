@@ -131,65 +131,25 @@ export function CashCountDialog({
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-4">
-          {/* Sổ quỹ KiotViet */}
-          <section className="rounded-lg border bg-muted/30 p-3">
-            {isLoading ? (
-              <div className="space-y-2">
-                <Skeleton className="h-9 w-full" />
-                <Skeleton className="h-9 w-full" />
-                <Skeleton className="h-9 w-2/3" />
-              </div>
-            ) : isError ? (
-              <div className="flex items-start justify-between gap-2">
-                <div className="flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-300">
-                  <AlertTriangle className="mt-0.5 size-4 shrink-0" />
-                  <div>
-                    Không lấy được Sổ quỹ KiotViet: {error?.message}. Vẫn đếm
-                    tiền bình thường.
-                  </div>
+        <div className="space-y-4 lg:grid lg:grid-cols-[minmax(0,22rem)_minmax(0,1fr)] lg:items-start lg:gap-4 lg:space-y-0">
+          <div className="min-w-0 space-y-4">
+            {/* Sổ quỹ KiotViet */}
+            <section className="rounded-lg border bg-muted/30 p-3">
+              {isLoading ? (
+                <div className="space-y-2">
+                  <Skeleton className="h-9 w-full" />
+                  <Skeleton className="h-9 w-full" />
+                  <Skeleton className="h-9 w-2/3" />
                 </div>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  className="h-7 shrink-0 px-2 text-xs"
-                  onClick={() => refetch()}
-                  disabled={isRefetching}
-                >
-                  <RefreshCw
-                    className={cn(
-                      'mr-1 size-3.5',
-                      isRefetching && 'animate-spin'
-                    )}
-                  />
-                  Làm mới
-                </Button>
-              </div>
-            ) : data ? (
-              <Collapsible className="group/collapsible-kv">
-                <div className="flex flex-wrap items-center justify-between gap-2">
-                  <CollapsibleTrigger asChild>
-                    <button
-                      type="button"
-                      className="flex min-w-0 flex-1 items-center gap-2 text-left"
-                    >
-                      <Banknote className="size-4 shrink-0 text-emerald-600" />
-                      <span className="shrink-0 text-sm font-semibold">
-                        Thu chi theo KiotViet
-                      </span>
-                      <span
-                        className={cn(
-                          'shrink-0 text-lg font-bold tabular-nums',
-                          data.totalIn - data.totalOut >= 0
-                            ? 'text-emerald-700 dark:text-emerald-400'
-                            : 'text-rose-700 dark:text-rose-400'
-                        )}
-                      >
-                        {formatNumber(data.totalIn - data.totalOut)}đ
-                      </span>
-                      <ChevronDown className="ml-auto size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]/collapsible-kv:rotate-180" />
-                    </button>
-                  </CollapsibleTrigger>
+              ) : isError ? (
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-2 rounded-md border border-rose-200 bg-rose-50 p-2.5 text-xs text-rose-700 dark:border-rose-900 dark:bg-rose-950 dark:text-rose-300">
+                    <AlertTriangle className="mt-0.5 size-4 shrink-0" />
+                    <div>
+                      Không lấy được Sổ quỹ KiotViet: {error?.message}. Vẫn đếm
+                      tiền bình thường.
+                    </div>
+                  </div>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -206,189 +166,234 @@ export function CashCountDialog({
                     Làm mới
                   </Button>
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground tabular-nums">
-                  Thu {formatNumber(data.totalIn)}đ · Chi{' '}
-                  {formatNumber(data.totalOut)}đ · {data.count} phiếu — bấm xem
-                  chi tiết từng phiếu
-                </p>
-                <CollapsibleContent>
-                  {data.vouchers.length === 0 ? (
-                    <p className="py-3 text-center text-xs text-muted-foreground">
-                      Ngày này chưa có phiếu thu chi nào
-                    </p>
-                  ) : (
-                    <div className="mt-2 max-h-44 space-y-0.5 overflow-y-auto overflow-x-hidden rounded-md border bg-card/60 p-1.5">
-                      {data.vouchers.map((v, i) => {
-                        const detail = `${v.code ?? ''} · ${getMethodLabel(
-                          v.method
-                        )}${v.partnerName ? ` · ${v.partnerName}` : ''}`;
-                        return (
-                          <div
-                            key={`${v.code ?? i}-${i}`}
-                            className="flex min-w-0 items-center gap-2 overflow-hidden px-1.5 py-1 text-xs"
-                          >
-                            <span className="w-9 shrink-0 text-muted-foreground tabular-nums">
-                              {formatVoucherTime(v.transDate)}
-                            </span>
-                            <Badge
-                              variant={
-                                v.isReceipt ? 'secondary' : 'destructive'
-                              }
-                              className="h-5 shrink-0 px-1.5 font-normal"
+              ) : data ? (
+                <Collapsible className="group/collapsible-kv">
+                  <div className="flex flex-wrap items-center justify-between gap-2">
+                    <CollapsibleTrigger asChild>
+                      <button
+                        type="button"
+                        className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                      >
+                        <Banknote className="size-4 shrink-0 text-emerald-600" />
+                        <span className="shrink-0 text-sm font-semibold">
+                          Thu chi theo KiotViet
+                        </span>
+                        <span
+                          className={cn(
+                            'shrink-0 text-lg font-bold tabular-nums',
+                            data.totalIn - data.totalOut >= 0
+                              ? 'text-emerald-700 dark:text-emerald-400'
+                              : 'text-rose-700 dark:text-rose-400'
+                          )}
+                        >
+                          {formatNumber(data.totalIn - data.totalOut)}đ
+                        </span>
+                        <ChevronDown className="ml-auto size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]/collapsible-kv:rotate-180" />
+                      </button>
+                    </CollapsibleTrigger>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="h-7 shrink-0 px-2 text-xs"
+                      onClick={() => refetch()}
+                      disabled={isRefetching}
+                    >
+                      <RefreshCw
+                        className={cn(
+                          'mr-1 size-3.5',
+                          isRefetching && 'animate-spin'
+                        )}
+                      />
+                      Làm mới
+                    </Button>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground tabular-nums">
+                    Thu {formatNumber(data.totalIn)}đ · Chi{' '}
+                    {formatNumber(data.totalOut)}đ · {data.count} phiếu — bấm
+                    xem chi tiết từng phiếu
+                  </p>
+                  <CollapsibleContent>
+                    {data.vouchers.length === 0 ? (
+                      <p className="py-3 text-center text-xs text-muted-foreground">
+                        Ngày này chưa có phiếu thu chi nào
+                      </p>
+                    ) : (
+                      <div className="mt-2 max-h-44 space-y-0.5 overflow-y-auto overflow-x-hidden rounded-md border bg-card/60 p-1.5">
+                        {data.vouchers.map((v, i) => {
+                          const detail = `${v.code ?? ''} · ${getMethodLabel(
+                            v.method
+                          )}${v.partnerName ? ` · ${v.partnerName}` : ''}`;
+                          return (
+                            <div
+                              key={`${v.code ?? i}-${i}`}
+                              className="flex min-w-0 items-center gap-2 overflow-hidden px-1.5 py-1 text-xs"
                             >
-                              {v.isReceipt ? 'Thu' : 'Chi'}
-                            </Badge>
-                            <span
-                              className="min-w-0 flex-1 truncate text-muted-foreground"
-                              title={detail}
-                            >
-                              {detail}
-                            </span>
-                            <span
-                              className={cn(
-                                'shrink-0 font-medium tabular-nums',
-                                v.isReceipt
-                                  ? 'text-emerald-700 dark:text-emerald-400'
-                                  : 'text-rose-700 dark:text-rose-400'
-                              )}
-                            >
-                              {v.isReceipt ? '+' : '−'}
-                              {formatNumber(v.amount)}đ
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
-                  )}
-                </CollapsibleContent>
-              </Collapsible>
-            ) : null}
-          </section>
-
-          {/* Giao dịch chuyển khoản/MoMo của ngày (từ trang Thanh toán) */}
-          {date && (
-            <section className="rounded-lg border bg-muted/30 p-3">
-              <Collapsible className="group/collapsible-transfer">
-                <CollapsibleTrigger asChild>
-                  <button
-                    type="button"
-                    className="flex w-full items-center gap-2 text-left"
-                  >
-                    <Landmark className="size-4 shrink-0 text-sky-600" />
-                    <span className="text-sm font-semibold">
-                      Chuyển khoản / MoMo
-                    </span>
-                    <span className="text-xs text-muted-foreground tabular-nums">
-                      {transferSummary.count} giao dịch ·{' '}
-                      {formatNumber(transferSummary.total)}đ
-                    </span>
-                    <span className="ml-auto flex items-center gap-2">
-                      <span className="text-[11px] text-muted-foreground">
-                        Không gồm giao dịch test
-                      </span>
-                      <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]/collapsible-transfer:rotate-180" />
-                    </span>
-                  </button>
-                </CollapsibleTrigger>
-                <CollapsibleContent>
-                  {transferSummary.count === 0 ? (
-                    <p className="py-3 text-center text-xs text-muted-foreground">
-                      Ngày này chưa có giao dịch chuyển khoản nào
-                    </p>
-                  ) : (
-                    <div className="mt-2 max-h-44 space-y-0.5 overflow-y-auto overflow-x-hidden rounded-md border bg-card/60 p-1.5">
-                      {payments.map(p => {
-                        const amount = Number(p.amount) || 0;
-                        const provider = getProviderLabel(p.provider);
-                        const ref = p.ref || p.momo_ref;
-                        return (
-                          <div
-                            key={p.id}
-                            className="flex min-w-0 items-center gap-2 overflow-hidden px-1.5 py-1 text-xs"
-                          >
-                            <span className="w-9 shrink-0 text-muted-foreground tabular-nums">
-                              {formatPaymentTime(p.received_at)}
-                            </span>
-                            <Badge
-                              variant="secondary"
-                              className="h-5 shrink-0 px-1.5 font-normal"
-                            >
-                              {provider}
-                            </Badge>
-                            <Tooltip>
-                              <TooltipTrigger asChild>
-                                <span className="min-w-0 flex-[1_1_0%] cursor-default truncate text-muted-foreground">
-                                  {ref || '—'}
-                                </span>
-                              </TooltipTrigger>
-                              <TooltipContent
-                                side="top"
-                                className="max-h-56 max-w-xs overflow-y-auto whitespace-pre-wrap break-all"
+                              <span className="w-9 shrink-0 text-muted-foreground tabular-nums">
+                                {formatVoucherTime(v.transDate)}
+                              </span>
+                              <Badge
+                                variant={
+                                  v.isReceipt ? 'secondary' : 'destructive'
+                                }
+                                className="h-5 shrink-0 px-1.5 font-normal"
                               >
-                                <p className="text-xs font-semibold">
-                                  {provider}
-                                  {p.account_number
-                                    ? ` · STK ${p.account_number}`
-                                    : ''}
-                                </p>
-                                {ref && <p className="break-all">{ref}</p>}
-                              </TooltipContent>
-                            </Tooltip>
-                            <span className="shrink-0 font-medium tabular-nums text-emerald-700 dark:text-emerald-400">
-                              +{formatNumber(amount)}đ
-                            </span>
-                          </div>
-                        );
-                      })}
-                    </div>
+                                {v.isReceipt ? 'Thu' : 'Chi'}
+                              </Badge>
+                              <span
+                                className="min-w-0 flex-1 truncate text-muted-foreground"
+                                title={detail}
+                              >
+                                {detail}
+                              </span>
+                              <span
+                                className={cn(
+                                  'shrink-0 font-medium tabular-nums',
+                                  v.isReceipt
+                                    ? 'text-emerald-700 dark:text-emerald-400'
+                                    : 'text-rose-700 dark:text-rose-400'
+                                )}
+                              >
+                                {v.isReceipt ? '+' : '−'}
+                                {formatNumber(v.amount)}đ
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+              ) : null}
+            </section>
+
+            {/* Giao dịch chuyển khoản/MoMo của ngày (từ trang Thanh toán) */}
+            {date && (
+              <section className="rounded-lg border bg-muted/30 p-3">
+                <Collapsible className="group/collapsible-transfer">
+                  <CollapsibleTrigger asChild>
+                    <button
+                      type="button"
+                      className="flex w-full items-center gap-2 text-left"
+                    >
+                      <Landmark className="size-4 shrink-0 text-sky-600" />
+                      <span className="text-sm font-semibold">
+                        Chuyển khoản / MoMo
+                      </span>
+                      <span className="text-xs text-muted-foreground tabular-nums">
+                        {transferSummary.count} giao dịch ·{' '}
+                        {formatNumber(transferSummary.total)}đ
+                      </span>
+                      <span className="ml-auto flex items-center gap-2">
+                        <span className="text-[11px] text-muted-foreground">
+                          Không gồm giao dịch test
+                        </span>
+                        <ChevronDown className="size-4 shrink-0 text-muted-foreground transition-transform duration-200 group-data-[state=open]/collapsible-transfer:rotate-180" />
+                      </span>
+                    </button>
+                  </CollapsibleTrigger>
+                  <CollapsibleContent>
+                    {transferSummary.count === 0 ? (
+                      <p className="py-3 text-center text-xs text-muted-foreground">
+                        Ngày này chưa có giao dịch chuyển khoản nào
+                      </p>
+                    ) : (
+                      <div className="mt-2 max-h-44 space-y-0.5 overflow-y-auto overflow-x-hidden rounded-md border bg-card/60 p-1.5">
+                        {payments.map(p => {
+                          const amount = Number(p.amount) || 0;
+                          const provider = getProviderLabel(p.provider);
+                          const ref = p.ref || p.momo_ref;
+                          return (
+                            <div
+                              key={p.id}
+                              className="flex min-w-0 items-center gap-2 overflow-hidden px-1.5 py-1 text-xs"
+                            >
+                              <span className="w-9 shrink-0 text-muted-foreground tabular-nums">
+                                {formatPaymentTime(p.received_at)}
+                              </span>
+                              <Badge
+                                variant="secondary"
+                                className="h-5 shrink-0 px-1.5 font-normal"
+                              >
+                                {provider}
+                              </Badge>
+                              <Tooltip>
+                                <TooltipTrigger asChild>
+                                  <span className="min-w-0 flex-[1_1_0%] cursor-default truncate text-muted-foreground">
+                                    {ref || '—'}
+                                  </span>
+                                </TooltipTrigger>
+                                <TooltipContent
+                                  side="top"
+                                  className="max-h-56 max-w-xs overflow-y-auto whitespace-pre-wrap break-all"
+                                >
+                                  <p className="text-xs font-semibold">
+                                    {provider}
+                                    {p.account_number
+                                      ? ` · STK ${p.account_number}`
+                                      : ''}
+                                  </p>
+                                  {ref && <p className="break-all">{ref}</p>}
+                                </TooltipContent>
+                              </Tooltip>
+                              <span className="shrink-0 font-medium tabular-nums text-emerald-700 dark:text-emerald-400">
+                                +{formatNumber(amount)}đ
+                              </span>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </CollapsibleContent>
+                </Collapsible>
+              </section>
+            )}
+          </div>
+
+          <div className="min-w-0 space-y-4">
+            {/* Bảng đếm theo ngày */}
+            {date && (
+              <CashCountBoard
+                storageKey={`glt-admin-cash-count:${date}`}
+                onTotals={handleTotals}
+                compact
+              />
+            )}
+
+            {/* Chênh lệch (gợi ý) */}
+            {diff && data && (
+              <section className="space-y-1.5 rounded-lg border p-3">
+                <div className="flex items-center justify-between gap-2">
+                  <span className="flex items-center gap-1.5 text-sm font-semibold">
+                    <Calculator className="size-4 text-muted-foreground" />
+                    Chênh lệch
+                  </span>
+                  {diff.diff === 0 ? (
+                    <Badge className="bg-emerald-600 hover:bg-emerald-600">
+                      Khớp quỹ
+                    </Badge>
+                  ) : diff.diff > 0 ? (
+                    <Badge variant="destructive">
+                      Thiếu {formatNumber(diff.diff)}đ
+                    </Badge>
+                  ) : (
+                    <Badge className="bg-sky-600 hover:bg-sky-600">
+                      Thừa {formatNumber(-diff.diff)}đ
+                    </Badge>
                   )}
-                </CollapsibleContent>
-              </Collapsible>
-            </section>
-          )}
-
-          {/* Bảng đếm theo ngày */}
-          {date && (
-            <CashCountBoard
-              storageKey={`glt-admin-cash-count:${date}`}
-              onTotals={handleTotals}
-            />
-          )}
-
-          {/* Chênh lệch (gợi ý) */}
-          {diff && data && (
-            <section className="space-y-1.5 rounded-lg border p-3">
-              <div className="flex items-center justify-between gap-2">
-                <span className="flex items-center gap-1.5 text-sm font-semibold">
-                  <Calculator className="size-4 text-muted-foreground" />
-                  Chênh lệch
-                </span>
-                {diff.diff === 0 ? (
-                  <Badge className="bg-emerald-600 hover:bg-emerald-600">
-                    Khớp quỹ
-                  </Badge>
-                ) : diff.diff > 0 ? (
-                  <Badge variant="destructive">
-                    Thiếu {formatNumber(diff.diff)}đ
-                  </Badge>
-                ) : (
-                  <Badge className="bg-sky-600 hover:bg-sky-600">
-                    Thừa {formatNumber(-diff.diff)}đ
-                  </Badge>
-                )}
-              </div>
-              <p className="text-xs text-muted-foreground tabular-nums">
-                KiotViet: {formatNumber(diff.kvNet)}đ (thu − chi) · Thực tế:{' '}
-                {formatNumber(totals.total)}đ đếm +{' '}
-                {formatNumber(transferSummary.total)}đ CK ={' '}
-                {formatNumber(diff.actual)}đ
-              </p>
-              <p className="text-[11px] text-muted-foreground">
-                Chênh lệch = KiotViet − (đếm + chuyển khoản) — dương là thiếu,
-                âm là thừa. Chỉ mang tính gợi ý.
-              </p>
-            </section>
-          )}
+                </div>
+                <p className="text-xs text-muted-foreground tabular-nums">
+                  KiotViet: {formatNumber(diff.kvNet)}đ (thu − chi) · Thực tế:{' '}
+                  {formatNumber(totals.total)}đ đếm +{' '}
+                  {formatNumber(transferSummary.total)}đ CK ={' '}
+                  {formatNumber(diff.actual)}đ
+                </p>
+                <p className="text-[11px] text-muted-foreground">
+                  Chênh lệch = KiotViet − (đếm + chuyển khoản) — dương là thiếu,
+                  âm là thừa. Chỉ mang tính gợi ý.
+                </p>
+              </section>
+            )}
+          </div>
         </div>
       </DialogContent>
     </Dialog>

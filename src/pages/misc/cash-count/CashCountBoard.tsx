@@ -57,12 +57,15 @@ interface CashCountBoardProps {
   storageKey: string;
   onTotals?: (totals: { total: number; sheets: number }) => void;
   className?: string;
+  /** Chế độ gọn (ảnh tiền nhỏ hơn) — dùng trong dialog */
+  compact?: boolean;
 }
 
 export function CashCountBoard({
   storageKey,
   onTotals,
   className,
+  compact = false,
 }: CashCountBoardProps) {
   const [counts, setCounts] = useState<CountMap>(() => loadCounts(storageKey));
   const [desc, setDesc] = useState(() => loadDesc(storageKey));
@@ -113,7 +116,7 @@ export function CashCountBoard({
           src={NOTE_IMAGES[denom]}
           alt={`Tờ ${formatNumber(denom)} đồng`}
           loading="lazy"
-          className={`${NOTE_IMAGE_CLASS} rounded-md border bg-muted/30 object-contain p-1`}
+          className={`${compact ? 'h-16 w-auto' : NOTE_IMAGE_CLASS} rounded-md border bg-muted/30 object-contain p-1`}
         />
         <div className="flex min-w-0 flex-col items-center gap-1">
           <span className="text-xs font-semibold text-muted-foreground tabular-nums">
