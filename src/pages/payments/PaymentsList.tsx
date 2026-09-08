@@ -523,15 +523,35 @@ export const PaymentsList = () => {
                           >
                             <div className="flex items-start justify-between gap-3">
                               <div className="flex items-center gap-2">
-                                {providerInfo.logoSrc && (
-                                  <span className="flex h-8 w-8 shrink-0 items-center justify-center">
-                                    <img
-                                      src={providerInfo.logoSrc}
-                                      alt={providerInfo.label}
-                                      className="h-full w-full object-contain"
-                                    />
-                                  </span>
-                                )}
+                                <Tooltip delayDuration={0}>
+                                  <TooltipTrigger asChild>
+                                    <span className="flex h-8 w-8 shrink-0 cursor-default items-center justify-center">
+                                      {providerInfo.logoSrc ? (
+                                        <img
+                                          src={providerInfo.logoSrc}
+                                          alt={providerInfo.label}
+                                          className="h-full w-full object-contain"
+                                        />
+                                      ) : (
+                                        <span className="flex h-8 w-8 items-center justify-center rounded-full bg-muted text-xs font-semibold text-muted-foreground">
+                                          {providerInfo.label.charAt(0)}
+                                        </span>
+                                      )}
+                                    </span>
+                                  </TooltipTrigger>
+                                  <TooltipContent
+                                    side="top"
+                                    align="start"
+                                    className="text-xs"
+                                  >
+                                    <p className="font-semibold">
+                                      {providerInfo.label}
+                                    </p>
+                                    <p>
+                                      STK {payment.account_number || 'không rõ'}
+                                    </p>
+                                  </TooltipContent>
+                                </Tooltip>
                                 <span className="text-sm font-medium">
                                   {providerInfo.label}
                                 </span>
@@ -554,26 +574,24 @@ export const PaymentsList = () => {
                                 <span className="text-muted-foreground">
                                   Thời gian
                                 </span>
-                                <span className="text-right">
-                                  <span className="font-medium">
-                                    {displayTime
-                                      ? formatDateTimeWithSeconds(displayTime)
-                                      : '-'}
-                                  </span>
-                                  {displayTime?.startsWith(todayStr) && (
-                                    <span className="block text-muted-foreground">
-                                      {formatTimeAgo(displayTime)}
+                                <Tooltip delayDuration={0}>
+                                  <TooltipTrigger asChild>
+                                    <span className="cursor-default font-medium">
+                                      {displayTime
+                                        ? formatTimeAgo(displayTime)
+                                        : '-'}
                                     </span>
+                                  </TooltipTrigger>
+                                  {displayTime && (
+                                    <TooltipContent
+                                      side="top"
+                                      align="end"
+                                      className="text-xs"
+                                    >
+                                      {formatDateTimeWithSeconds(displayTime)}
+                                    </TooltipContent>
                                   )}
-                                </span>
-                              </div>
-                              <div className="flex items-center justify-between gap-2">
-                                <span className="text-muted-foreground">
-                                  Số tài khoản
-                                </span>
-                                <span className="font-mono">
-                                  {payment.account_number || '-'}
-                                </span>
+                                </Tooltip>
                               </div>
                               {isAdmin &&
                                 payment.balance !== null &&
