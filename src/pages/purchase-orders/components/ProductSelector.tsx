@@ -71,9 +71,8 @@ export const ProductSelector: React.FC<ProductSelectorProps> = ({
           </div>
         ) : templates.length === 0 ? (
           <div className="p-6 text-center text-sm text-muted-foreground">
-            Chưa có sản phẩm nào trong template của nhà cung cấp này. Bấm "Thêm
-            sản phẩm" để thêm vào đơn hôm nay
-            {isAdminHint ? ' hoặc soạn template ở bước chọn nhà cung cấp' : ''}.
+            Chưa có sản phẩm nào trong template của nhà cung cấp này.
+            {isAdminHint ? ' Bấm "Sửa template" để soạn danh sách chuẩn.' : ''}
           </div>
         ) : (
           <div className="divide-y">

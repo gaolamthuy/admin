@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/command';
 import { Check, PackageSearch } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { toast } from 'sonner';
 
 interface MasterProductRow {
   kiotviet_id: number;
@@ -121,6 +122,8 @@ interface ProductSearchDialogProps {
   /** Ẩn các SP đã có (VD: đã trong template / đã trong đơn) */
   excludeIds?: number[];
   title?: string;
+  /** Mô tả mục đích (VD: vào đơn hôm nay hay vào template NCC) */
+  description?: string;
 }
 
 export const ProductSearchDialog = ({
@@ -129,6 +132,7 @@ export const ProductSearchDialog = ({
   onConfirm,
   excludeIds = [],
   title = 'Thêm sản phẩm',
+  description,
 }: ProductSearchDialogProps) => {
   const [selected, setSelected] = useState<number[]>([]);
   const [submitting, setSubmitting] = useState(false);
@@ -184,6 +188,13 @@ export const ProductSearchDialog = ({
       onConfirm(enriched);
       setSelected([]);
       onOpenChange(false);
+    } catch (err) {
+      // Trước đây lỗi enrich bị nuốt im lặng — user bấm Thêm không thấy gì xảy ra
+      const msg =
+        err instanceof Error
+          ? err.message
+          : ((err as { message?: string })?.message ?? String(err));
+      toast.error('Không thêm được sản phẩm', { description: msg });
     } finally {
       setSubmitting(false);
     }
@@ -204,7 +215,7 @@ export const ProductSearchDialog = ({
             {title}
           </DialogTitle>
           <DialogDescription>
-            Tìm theo tên hoặc mã sản phẩm, chọn rồi bấm Thêm
+            {description ?? 'Tìm theo tên hoặc mã sản phẩm, chọn rồi bấm Thêm'}
           </DialogDescription>
         </DialogHeader>
 

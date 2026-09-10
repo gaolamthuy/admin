@@ -2,7 +2,7 @@
  * Purchase Order Create Page
  * Sử dụng step-based flow với usePurchaseOrderForm
  * Step 1: Chọn supplier
- * Step 2: Chọn products từ templates
+ * Step 2: Chọn products từ template (admin sửa template ngay tại đây)
  *
  * @module pages/purchase-orders/PurchaseOrderCreate
  */
@@ -26,7 +26,6 @@ import {
 } from './hooks/useSupplierFavorites';
 import { SupplierSelector } from './components/SupplierSelector';
 import { ProductSelector } from './components/ProductSelector';
-import { ProductSearchDialog } from './components/ProductSearchDialog';
 import { SupplierTemplateDialog } from './components/SupplierTemplateDialog';
 import { useSupplierPoTemplateCounts } from './hooks/useSupplierPoTemplate';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -51,10 +50,10 @@ import {
   ArrowRight,
   Check,
   History,
+  ListChecks,
   Loader2,
   Pencil,
   X,
-  Plus,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { formatDate, formatDaysAgo } from '@/utils/date';
@@ -101,10 +100,9 @@ export const PurchaseOrderCreate = () => {
   // Số SP template theo NCC (badge trên card) — từ glt_supplier_po_templates
   const { data: templateCounts = {} } = useSupplierPoTemplateCounts();
 
-  // Dialog soạn template (admin) + dialog thêm SP one-off vào đơn
+  // Dialog soạn template (admin) — mở từ step 2
   const [templateDialogSupplier, setTemplateDialogSupplier] =
     useState<SupplierOption | null>(null);
-  const [addProductOpen, setAddProductOpen] = useState(false);
 
   const handleToggleFavorite = (supplier: typeof form.selectedSupplier) => {
     if (!supplier) return;
@@ -308,12 +306,6 @@ export const PurchaseOrderCreate = () => {
     return [...templates, ...extra];
   }, [templates, form.selectedProducts]);
 
-  // Ids đã hiển thị (exclude khỏi dialog search)
-  const displayedIds = useMemo(
-    () => displayTemplates.map(t => t.product_id),
-    [displayTemplates]
-  );
-
   /**
    * Xử lý chọn supplier và chuyển sang step 2
    * Clear selectedProducts để tránh sót items của supplier trước đó
@@ -462,9 +454,6 @@ export const PurchaseOrderCreate = () => {
                 onSelect={handleSupplierSelect}
                 onToggleFavorite={handleToggleFavorite}
                 templateCounts={templateCounts}
-                {...(isAdmin
-                  ? { onEditTemplate: s => setTemplateDialogSupplier(s) }
-                  : {})}
               />
 
               <div className="flex justify-end">
@@ -511,17 +500,21 @@ export const PurchaseOrderCreate = () => {
                 </div>
               )}
 
-              <div className="flex justify-end">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => setAddProductOpen(true)}
-                  disabled={isSubmitting}
-                >
-                  <Plus className="mr-1.5 h-3.5 w-3.5" />
-                  Thêm sản phẩm
-                </Button>
-              </div>
+              {isAdmin && (
+                <div className="flex justify-end">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() =>
+                      setTemplateDialogSupplier(form.selectedSupplier)
+                    }
+                    disabled={isSubmitting}
+                  >
+                    <ListChecks className="mr-1.5 h-3.5 w-3.5" />
+                    Sửa template
+                  </Button>
+                </div>
+              )}
 
               <ProductSelector
                 templates={displayTemplates}
@@ -822,24 +815,19 @@ export const PurchaseOrderCreate = () => {
         </CardContent>
       </Card>
 
-      {/* Dialog soạn template NCC (admin) */}
+      {/* Dialog soạn template NCC (admin) — SP thêm vào template cũng được
+          auto-chọn vào đơn hôm nay qua onProductsAdded */}
       <SupplierTemplateDialog
         open={!!templateDialogSupplier}
         onOpenChange={open => {
           if (!open) setTemplateDialogSupplier(null);
         }}
         supplier={templateDialogSupplier}
-      />
-
-      {/* Dialog thêm SP one-off vào đơn hôm nay (mọi user) */}
-      <ProductSearchDialog
-        open={addProductOpen}
-        onOpenChange={setAddProductOpen}
-        excludeIds={displayedIds}
-        title="Thêm sản phẩm vào đơn"
-        onConfirm={products => {
+        onProductsAdded={products => {
           products.forEach(p => form.addProduct(p));
-          toast.success(`Đã thêm ${products.length} sản phẩm vào đơn`);
+          toast.success(
+            `Đã thêm ${products.length} SP vào template và đơn hôm nay`
+          );
         }}
       />
     </div>

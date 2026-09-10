@@ -6,6 +6,7 @@
  */
 import { useMemo, useState } from 'react';
 import { SupplierOption } from '../hooks/useSuppliers';
+import { TemplateProduct } from '../hooks/useTemplates';
 import { useSupplierPoTemplate } from '../hooks/useSupplierPoTemplate';
 import { ProductSearchDialog } from './ProductSearchDialog';
 import {
@@ -25,12 +26,15 @@ interface SupplierTemplateDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   supplier: SupplierOption | null;
+  /** SP vừa thêm vào template (VD: auto-chọn vào đơn hôm nay) */
+  onProductsAdded?: (products: TemplateProduct[]) => void;
 }
 
 export const SupplierTemplateDialog = ({
   open,
   onOpenChange,
   supplier,
+  onProductsAdded,
 }: SupplierTemplateDialogProps) => {
   const [searchOpen, setSearchOpen] = useState(false);
 
@@ -131,8 +135,14 @@ export const SupplierTemplateDialog = ({
           onOpenChange={setSearchOpen}
           excludeIds={templateIds}
           title={`Thêm SP vào template ${supplier.name || supplier.code || ''}`}
+          description="Lưu vào danh sách chuẩn — tự có mặt ở các đơn nhập sau"
           onConfirm={products => {
-            addProducts.mutate(products.map(p => p.product_id));
+            // Chỉ auto-chọn vào đơn khi persist thành công
+            // (lỗi đã được toast trong onError của mutation)
+            addProducts
+              .mutateAsync(products.map(p => p.product_id))
+              .then(() => onProductsAdded?.(products))
+              .catch(() => undefined);
           }}
         />
       </DialogContent>
