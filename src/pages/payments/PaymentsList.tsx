@@ -56,6 +56,10 @@ import {
   PaginationPrevious,
 } from '@/components/ui/pagination';
 
+// Loa chuyển khoản — đã ngưng sử dụng, tạm ẩn toàn bộ (UI + âm thanh).
+// Flip true để bật lại chức năng; code bên dưới giữ nguyên cho lúc cần.
+const SOUND_ANNOUNCER_ENABLED = false;
+
 function CopyButton({ value }: { value: string }) {
   const [copied, setCopied] = useState(false);
 
@@ -109,7 +113,9 @@ export const PaymentsList = () => {
 
   const handleNewPayment = useCallback(
     (payment: Payment) => {
-      announcePayment(payment);
+      if (SOUND_ANNOUNCER_ENABLED) {
+        announcePayment(payment);
+      }
 
       setHighlightedIds(prev => new Set(prev).add(payment.id));
       const existing = highlightTimeouts.current.get(payment.id);
@@ -363,46 +369,48 @@ export const PaymentsList = () => {
               )}
             </div>
 
-            <div className="flex items-center gap-2">
-              {/* SoundBox hover card */}
-              <HoverCard openDelay={20} closeDelay={20}>
-                <HoverCardTrigger asChild>
-                  <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
-                    {isConnected ? (
-                      <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
-                    ) : (
-                      <div className="h-2 w-2 rounded-full bg-red-500" />
-                    )}
-                    Loa chuyển khoản
-                  </span>
-                </HoverCardTrigger>
-                <HoverCardContent className="w-64 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      {muted ? (
-                        <VolumeX className="h-4 w-4" />
+            {SOUND_ANNOUNCER_ENABLED && (
+              <div className="flex items-center gap-2">
+                {/* SoundBox hover card */}
+                <HoverCard openDelay={20} closeDelay={20}>
+                  <HoverCardTrigger asChild>
+                    <span className="inline-flex items-center gap-1.5 text-xs text-muted-foreground cursor-pointer select-none">
+                      {isConnected ? (
+                        <div className="h-2 w-2 rounded-full bg-green-500 animate-pulse" />
                       ) : (
-                        <Volume2 className="h-4 w-4" />
+                        <div className="h-2 w-2 rounded-full bg-red-500" />
                       )}
-                      <span className="text-sm">Thông báo giọng đọc</span>
+                      Loa chuyển khoản
+                    </span>
+                  </HoverCardTrigger>
+                  <HoverCardContent className="w-64 space-y-3">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        {muted ? (
+                          <VolumeX className="h-4 w-4" />
+                        ) : (
+                          <Volume2 className="h-4 w-4" />
+                        )}
+                        <span className="text-sm">Thông báo giọng đọc</span>
+                      </div>
+                      <Switch
+                        checked={!muted}
+                        onCheckedChange={() => handleToggleMute()}
+                      />
                     </div>
-                    <Switch
-                      checked={!muted}
-                      onCheckedChange={() => handleToggleMute()}
-                    />
-                  </div>
-                  <Button
-                    onClick={handleTestVoice}
-                    variant="outline"
-                    size="sm"
-                    className="w-full"
-                    disabled={muted}
-                  >
-                    Test âm thanh
-                  </Button>
-                </HoverCardContent>
-              </HoverCard>
-            </div>
+                    <Button
+                      onClick={handleTestVoice}
+                      variant="outline"
+                      size="sm"
+                      className="w-full"
+                      disabled={muted}
+                    >
+                      Test âm thanh
+                    </Button>
+                  </HoverCardContent>
+                </HoverCard>
+              </div>
+            )}
           </div>
         </CardHeader>
         <CardContent>
