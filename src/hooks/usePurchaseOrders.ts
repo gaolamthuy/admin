@@ -112,6 +112,9 @@ export const usePurchaseOrders = () => {
         .from('v_purchase_orders')
         .select('*')
         .in('status', [1, 3]) // status 1 = nháp, status 3 = hoàn thành
+        // Sort theo ngày mua (purchase_date) — đơn null (nháp chưa có ngày) xuống cuối,
+        // secondary created_at để các đơn null/trùng ngày xếp theo mới nhất
+        .order('purchase_date', { ascending: false, nullsFirst: false })
         .order('created_at', { ascending: false });
 
       if (error) throw error;
