@@ -225,9 +225,14 @@ export const PaymentsList = () => {
     });
   }, [payments, searchTerm]);
 
-  const todayStr = new Date().toISOString().split('T')[0];
+  // So sánh theo ngày Việt Nam (GMT+7) để nhất quán với formatDate() ở allGroups
+  const todayStr = formatDate(new Date(), 'YYYY-MM-DD');
   const todayPayments = useMemo(
-    () => filteredPayments.filter(p => p.received_at?.startsWith(todayStr)),
+    () =>
+      filteredPayments.filter(p => {
+        const t = p.received_at ?? p.created_at;
+        return t ? formatDate(t, 'YYYY-MM-DD') === todayStr : false;
+      }),
     [filteredPayments, todayStr]
   );
   const todayTotal = useMemo(
@@ -582,24 +587,30 @@ export const PaymentsList = () => {
                                 <span className="text-muted-foreground">
                                   Thời gian
                                 </span>
-                                <Tooltip delayDuration={0}>
-                                  <TooltipTrigger asChild>
-                                    <span className="cursor-default font-medium">
-                                      {displayTime
-                                        ? formatTimeAgo(displayTime)
-                                        : '-'}
+                                <span className="inline-flex items-baseline gap-1">
+                                  <Tooltip delayDuration={0}>
+                                    <TooltipTrigger asChild>
+                                      <span className="cursor-default font-medium">
+                                        {displayTime
+                                          ? formatDate(displayTime, 'HH:mm:ss')
+                                          : '-'}
+                                      </span>
+                                    </TooltipTrigger>
+                                    {displayTime && (
+                                      <TooltipContent
+                                        side="left"
+                                        className="text-xs"
+                                      >
+                                        {formatDateTimeWithSeconds(displayTime)}
+                                      </TooltipContent>
+                                    )}
+                                  </Tooltip>
+                                  {displayTime && group.date === todayStr && (
+                                    <span className="text-[11px] text-muted-foreground">
+                                      · {formatTimeAgo(displayTime)}
                                     </span>
-                                  </TooltipTrigger>
-                                  {displayTime && (
-                                    <TooltipContent
-                                      side="top"
-                                      align="end"
-                                      className="text-xs"
-                                    >
-                                      {formatDateTimeWithSeconds(displayTime)}
-                                    </TooltipContent>
                                   )}
-                                </Tooltip>
+                                </span>
                               </div>
                               {isAdmin &&
                                 payment.balance !== null &&
@@ -629,8 +640,7 @@ export const PaymentsList = () => {
                                     </TooltipTrigger>
                                     {payment.ref && (
                                       <TooltipContent
-                                        side="top"
-                                        align="start"
+                                        side="left"
                                         className="max-w-xs break-all text-xs"
                                       >
                                         {payment.ref}
