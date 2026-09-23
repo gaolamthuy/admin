@@ -23,6 +23,7 @@ import {
   Banknote,
 } from 'lucide-react';
 import { CashCountDialog } from './components/CashCountDialog';
+import DebtSettlementSuggestions from './components/DebtSettlementSuggestions';
 import {
   Tooltip,
   TooltipContent,
@@ -37,6 +38,7 @@ import { Switch } from '@/components/ui/switch';
 import { Toggle } from '@/components/ui/toggle';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { usePayments, type DateRange, type Payment } from '@/hooks/usePayments';
+import { isAtyPayment } from './lib/aty';
 import { usePaymentRealtime } from '@/hooks/usePaymentRealtime';
 import { usePaymentAnnouncer } from '@/hooks/usePaymentAnnouncer';
 import {
@@ -88,6 +90,7 @@ export const PaymentsList = () => {
   const { isAdmin } = useIsAdmin();
   const [dateRange, setDateRange] = useState<DateRange>('today');
   const [showTest, setShowTest] = useState(false);
+  const [atyOnly, setAtyOnly] = useState(false);
   const { data: payments = [], isLoading } = usePayments({
     isAdmin,
     dateRange,
@@ -204,9 +207,15 @@ export const PaymentsList = () => {
 
   const filteredPayments = useMemo(() => {
     const term = searchTerm.trim().toLowerCase();
-    if (!term) return payments;
+    let list = payments;
 
-    return payments.filter(payment => {
+    if (atyOnly) {
+      list = list.filter(payment => isAtyPayment(payment.ref));
+    }
+
+    if (!term) return list;
+
+    return list.filter(payment => {
       const provider = payment.provider?.toLowerCase() ?? '';
       const account = payment.account_number?.toLowerCase() ?? '';
       const ref = payment.ref?.toLowerCase() ?? '';
@@ -223,7 +232,7 @@ export const PaymentsList = () => {
         handleStatus.includes(term)
       );
     });
-  }, [payments, searchTerm]);
+  }, [payments, searchTerm, atyOnly]);
 
   // So sánh theo ngày Việt Nam (GMT+7) để nhất quán với formatDate() ở allGroups
   const todayStr = formatDate(new Date(), 'YYYY-MM-DD');
@@ -291,6 +300,8 @@ export const PaymentsList = () => {
 
   return (
     <div className="space-y-6">
+      {isAdmin && <DebtSettlementSuggestions />}
+
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -327,6 +338,19 @@ export const PaymentsList = () => {
                   {
                     /* {showTest ? 'Bao gồm test' : 'Không test'} */ 'Giao dịch test'
                   }
+                </Toggle>
+              )}
+
+              {/* ATY filter (admin only) — lọc CK của 2 khách trả chậm aty */}
+              {isAdmin && (
+                <Toggle
+                  pressed={atyOnly}
+                  onPressedChange={setAtyOnly}
+                  variant="outline"
+                  size="sm"
+                  className="text-xs"
+                >
+                  ATY
                 </Toggle>
               )}
 
