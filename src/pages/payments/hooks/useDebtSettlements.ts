@@ -1,7 +1,8 @@
 /**
- * useDebtSettlements — list + approve/reject gợi ý gạch nợ ATY
- * qua Windmill f/frontend_admin/get_debt_settlements và approve_debt_settlement.
- * Dùng cho section "Gợi ý gạch nợ" (admin-only) trên trang Thanh toán.
+ * useDebtSettlements — pending suggestions + map theo glt_ref + approve/reject
+ * qua Windmill f/frontend_admin/{get,approve}_debt_settlements.
+ * Dùng cho strip gạch nợ ATY nhúng trong card giao dịch + dialog duyệt
+ * (admin-only) trên trang Thanh toán.
  */
 import { useState } from 'react';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
@@ -13,20 +14,6 @@ const LIST_PATH =
   'jobs/run_wait_result/p/f/frontend_admin/get_debt_settlements';
 const ACT_PATH =
   'jobs/run_wait_result/p/f/frontend_admin/approve_debt_settlement';
-const MANUAL_PATH =
-  'jobs/run_wait_result/p/f/frontend_admin/manual_debt_settlement';
-
-export interface ManualSettlementResult {
-  status: string;
-  id: number;
-  amount: number;
-  date_used: string | null;
-  date_accepted_by_kv: boolean;
-  missing: string[];
-  skipped: { code: string; reason: string }[];
-  leftover: number | null;
-  payments: { invoice_code: string; amount: number; kv_code?: string }[];
-}
 
 export interface DebtInvoice {
   code: string;
@@ -47,6 +34,7 @@ export interface DebtSuggestion {
   match_how: string;
   note: string | null;
   account_number: string | null;
+  live: boolean;
   created_str: string;
   received_str: string | null;
   invoices: DebtInvoice[];
@@ -54,10 +42,17 @@ export interface DebtSuggestion {
   sum_remaining: number;
 }
 
+export interface RefSuggestion {
+  status: string;
+  invoice_codes: string[];
+  payment_codes: string[] | null;
+}
+
 export interface ActDebtSettlementResult {
   status: string;
   id: number;
   payments?: { invoice_code: string; amount: number }[];
+  skipped?: { code: string; reason: string }[];
   leftover?: number | null;
 }
 
@@ -91,16 +86,21 @@ async function callWindmill<T>(path: string, body: unknown): Promise<T> {
   return (await res.json()) as T;
 }
 
-export const useDebtSettlements = () =>
+export const useDebtSettlements = (enabled = true) =>
   useQuery({
     queryKey: ['debt-settlements'],
     queryFn: async () => {
-      const r = await callWindmill<{ suggestions: DebtSuggestion[] }>(
-        LIST_PATH,
-        {}
-      );
-      return r.suggestions ?? [];
+      const r = await callWindmill<{
+        suggestions: DebtSuggestion[];
+        by_ref?: Record<string, RefSuggestion>;
+      }>(LIST_PATH, {});
+      return {
+        pending: r.suggestions ?? [],
+        pendingCount: r.suggestions?.length ?? 0,
+        byRef: r.by_ref ?? {},
+      };
     },
+    enabled,
     staleTime: 60 * 1000,
     refetchOnWindowFocus: true,
     retry: 1,
@@ -124,20 +124,26 @@ export const useActDebtSettlement = () => {
       });
 
       if (action === 'approve') {
-        const total = (result.payments ?? []).reduce(
-          (sum, p) => sum + p.amount,
-          0
-        );
-        toast.success(
-          `Đã ghi ${result.payments?.length ?? 0} phiếu thu KiotViet`,
-          {
-            description: `${total.toLocaleString('vi-VN')}đ${
-              result.leftover
-                ? ` — còn dư ${result.leftover.toLocaleString('vi-VN')}đ chưa phân bổ`
-                : ''
-            }`,
-          }
-        );
+        if (result.status === 'already_settled') {
+          toast.info('Hóa đơn đã được trả đủ trên KiotViet', {
+            description: `Đã đóng gợi ý #${result.id} — không ghi phiếu thu nào thêm`,
+          });
+        } else {
+          const total = (result.payments ?? []).reduce(
+            (sum, p) => sum + p.amount,
+            0
+          );
+          toast.success(
+            `Đã ghi ${result.payments?.length ?? 0} phiếu thu KiotViet`,
+            {
+              description: `${total.toLocaleString('vi-VN')}đ${
+                result.leftover
+                  ? ` — còn dư ${result.leftover.toLocaleString('vi-VN')}đ chưa phân bổ`
+                  : ''
+              }`,
+            }
+          );
+        }
       } else {
         toast.info('Đã bỏ gợi ý gạch nợ');
       }
@@ -149,7 +155,7 @@ export const useActDebtSettlement = () => {
         error instanceof Error ? error.message : 'Thao tác thất bại';
       toast.error(
         action === 'approve'
-          ? 'Duyệt gạch nợ thất bại — chưa ghi phiếu thu nào thêm'
+          ? 'Duyệt gạch nợ thất bại — chưa ghi phiếu thu nào'
           : 'Bỏ gợi ý thất bại',
         { description: message }
       );
@@ -160,61 +166,4 @@ export const useActDebtSettlement = () => {
   };
 
   return { act, actingId };
-};
-
-export const useManualDebtSettlement = () => {
-  const queryClient = useQueryClient();
-  const [submitting, setSubmitting] = useState(false);
-
-  const submit = async (
-    text: string,
-    date?: string
-  ): Promise<ManualSettlementResult | null> => {
-    setSubmitting(true);
-    try {
-      const result = await callWindmill<ManualSettlementResult>(MANUAL_PATH, {
-        text,
-        ...(date ? { date } : {}),
-      });
-
-      if (result.status === 'already_settled') {
-        toast.info('Các hóa đơn đã được trả đủ trên KiotViet', {
-          description: `Đã đánh dấu gợi ý #${result.id} là đã xử lý`,
-        });
-      } else {
-        const total = (result.payments ?? []).reduce(
-          (sum, p) => sum + p.amount,
-          0
-        );
-        toast.success(
-          `Đã ghi ${result.payments?.length ?? 0} phiếu thu KiotViet`,
-          {
-            description: `${total.toLocaleString('vi-VN')}đ${
-              result.date_accepted_by_kv && result.date_used
-                ? ` — ngày phiếu thu ${result.date_used.slice(0, 10)}`
-                : ''
-            }${
-              result.leftover
-                ? ` — còn dư ${result.leftover.toLocaleString('vi-VN')}đ chưa phân bổ`
-                : ''
-            }`,
-          }
-        );
-      }
-
-      await queryClient.invalidateQueries({ queryKey: ['debt-settlements'] });
-      return result;
-    } catch (error) {
-      const message =
-        error instanceof Error ? error.message : 'Ghi phiếu thu thất bại';
-      toast.error('Ghi phiếu thu thủ công thất bại', {
-        description: message,
-      });
-      return null;
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  return { submit, submitting };
 };
