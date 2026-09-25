@@ -57,7 +57,9 @@ function CopyRow({
         <p
           className={cn(
             'font-mono text-xs',
-            long ? 'max-h-24 overflow-y-auto break-all' : 'truncate'
+            long
+              ? 'max-h-24 overflow-y-auto break-all whitespace-pre-wrap'
+              : 'truncate'
           )}
           title={value}
         >
@@ -82,15 +84,15 @@ function CopyRow({
 }
 
 export function DebtSettlementDialog({
-  ref: atyRef,
+  paymentRef,
   open,
   onOpenChange,
 }: {
-  ref: string | null;
+  paymentRef: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { data: sug, isLoading } = useAtySuggestion(open ? atyRef : null);
+  const { data: sug, isLoading } = useAtySuggestion(open ? paymentRef : null);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -144,10 +146,10 @@ export function DebtSettlementDialog({
 
             <div className="space-y-2">
               <CopyRow
-                label={`Mô tả${sug.invoices.length > 0 ? ' (kèm gạch nợ hóa đơn)' : ''}`}
+                label={`Mô tả${sug.invoices.length > 0 ? ' (kèm gạch nợ đơn hàng)' : ''}`}
                 value={
                   sug.invoices.length > 0
-                    ? `${sug.ref} gạch nợ cho hóa đơn ${sug.invoices
+                    ? `${sug.ref}\ngạch nợ cho đơn hàng ${sug.invoices
                         .map(
                           inv =>
                             `${inv.code} (${fmtDateFull(inv.purchase_date)})`
@@ -167,7 +169,7 @@ export function DebtSettlementDialog({
               <table className="w-full text-xs">
                 <thead>
                   <tr className="border-b text-left text-[10px] text-muted-foreground">
-                    <th className="py-1 pr-2 font-medium">Hóa đơn cần thu</th>
+                    <th className="py-1 pr-2 font-medium">Đơn hàng cần thu</th>
                     <th className="py-1 pr-2 font-medium">Ngày</th>
                     <th className="py-1 pr-2 text-right font-medium">Tổng</th>
                     <th className="py-1 text-right font-medium">Còn lại</th>
@@ -192,7 +194,8 @@ export function DebtSettlementDialog({
               </table>
             ) : (
               <p className="text-xs italic text-muted-foreground">
-                Không còn hóa đơn chưa trả phù hợp — có thể đã gạch rồi
+                Các đơn hàng trong khoảng này đã trả đủ trên KiotViet — CK có
+                thể đã được gạch rồi
               </p>
             )}
 

@@ -835,7 +835,7 @@ export const PaymentsList = () => {
       />
 
       <DebtSettlementDialog
-        ref={atyDialogRef}
+        paymentRef={atyDialogRef}
         open={!!atyDialogRef}
         onOpenChange={open => !open && setAtyDialogRef(null)}
       />
