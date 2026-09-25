@@ -29,7 +29,17 @@ const fmtDate = (iso: string) =>
     month: '2-digit',
   });
 
-function CopyRow({ label, value }: { label: string; value: string }) {
+const fmtDateFull = (iso: string) => new Date(iso).toLocaleDateString('vi-VN');
+
+function CopyRow({
+  label,
+  value,
+  long = false,
+}: {
+  label: string;
+  value: string;
+  long?: boolean;
+}) {
   const [copied, setCopied] = useState(false);
 
   const handleCopy = async () => {
@@ -44,7 +54,13 @@ function CopyRow({ label, value }: { label: string; value: string }) {
         <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
           {label}
         </p>
-        <p className="truncate font-mono text-xs" title={value}>
+        <p
+          className={cn(
+            'font-mono text-xs',
+            long ? 'max-h-24 overflow-y-auto break-all' : 'truncate'
+          )}
+          title={value}
+        >
           {value}
         </p>
       </div>
@@ -127,7 +143,20 @@ export function DebtSettlementDialog({
             </div>
 
             <div className="space-y-2">
-              <CopyRow label="Mô tả" value={sug.ref} />
+              <CopyRow
+                label={`Mô tả${sug.invoices.length > 0 ? ' (kèm gạch nợ hóa đơn)' : ''}`}
+                value={
+                  sug.invoices.length > 0
+                    ? `${sug.ref} gạch nợ cho hóa đơn ${sug.invoices
+                        .map(
+                          inv =>
+                            `${inv.code} (${fmtDateFull(inv.purchase_date)})`
+                        )
+                        .join(' + ')}`.slice(0, 500)
+                    : sug.ref
+                }
+                long
+              />
               <CopyRow label="Số tiền" value={String(sug.amount)} />
               {sug.received_str && (
                 <CopyRow label="Thời gian" value={sug.received_str} />
