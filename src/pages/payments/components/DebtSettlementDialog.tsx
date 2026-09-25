@@ -1,9 +1,12 @@
 /**
- * DebtSettlementDialog — chi tiết + duyệt gợi ý gạch nợ ATY.
- * Mở từ strip trên card giao dịch aty (admin-only). Bảng hóa đơn kèm preview
- * phân bổ FIFO số tiền CK — "sẽ thu" chính là số tiền phiếu thu sẽ ghi trên KV.
+ * DebtSettlementDialog — copy station cho gạch nợ ATY (stateless).
+ * Mở từ strip trên card giao dịch aty (admin-only). Hiển thị 3 hàng copy
+ * (mô tả CK / số tiền / thời gian) để dán vào phiếu thu trên KiotViet portal,
+ * kèm checklist hóa đơn chưa trả (live KV). Không có action — thu trực tiếp
+ * trên KV UI.
  */
 
+import { useState } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -15,11 +18,8 @@ import {
   DialogTitle,
 } from '@/components/ui/dialog';
 import { cn } from '@/lib/utils';
-import { Check, Loader2, X } from 'lucide-react';
-import {
-  useActDebtSettlement,
-  type DebtSuggestion,
-} from '../hooks/useDebtSettlements';
+import { Check, Copy, Loader2 } from 'lucide-react';
+import { useAtySuggestion } from '../hooks/useAtySuggestion';
 
 const fmtVnd = (n: number) => `${n.toLocaleString('vi-VN')}đ`;
 
@@ -29,40 +29,52 @@ const fmtDate = (iso: string) =>
     month: '2-digit',
   });
 
-function fifoAllocations(s: DebtSuggestion) {
-  let left = s.amount;
-  return s.invoices
-    .filter(inv => inv.remaining > 0)
-    .map(inv => {
-      const alloc = Math.min(inv.remaining, left);
-      left -= alloc;
-      return { ...inv, alloc };
-    });
+function CopyRow({ label, value }: { label: string; value: string }) {
+  const [copied, setCopied] = useState(false);
+
+  const handleCopy = async () => {
+    await navigator.clipboard.writeText(value);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 1500);
+  };
+
+  return (
+    <div className="flex items-center gap-2 rounded-md border p-2">
+      <div className="min-w-0 flex-1">
+        <p className="text-[10px] uppercase tracking-wide text-muted-foreground">
+          {label}
+        </p>
+        <p className="truncate font-mono text-xs" title={value}>
+          {value}
+        </p>
+      </div>
+      <Button
+        variant="outline"
+        size="sm"
+        className="h-7 shrink-0 gap-1 px-2 text-[11px]"
+        onClick={handleCopy}
+      >
+        {copied ? (
+          <Check className="size-3 text-green-600" />
+        ) : (
+          <Copy className="size-3" />
+        )}
+        {copied ? 'Đã copy' : 'Copy'}
+      </Button>
+    </div>
+  );
 }
 
 export function DebtSettlementDialog({
-  suggestion,
+  ref: atyRef,
   open,
   onOpenChange,
 }: {
-  suggestion: DebtSuggestion | null;
+  ref: string | null;
   open: boolean;
   onOpenChange: (open: boolean) => void;
 }) {
-  const { act, actingId } = useActDebtSettlement();
-
-  if (!suggestion) return null;
-
-  const rows = fifoAllocations(suggestion);
-  const willCollect = rows.reduce((s, r) => s + r.alloc, 0);
-  const leftover = suggestion.amount - willCollect;
-  const diff = suggestion.diff;
-  const acting = actingId === suggestion.id;
-
-  const handleAct = async (action: 'approve' | 'reject') => {
-    const ok = await act(suggestion.id, action);
-    if (ok) onOpenChange(false);
-  };
+  const { data: sug, isLoading } = useAtySuggestion(open ? atyRef : null);
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -70,125 +82,106 @@ export function DebtSettlementDialog({
         <DialogHeader>
           <DialogTitle>Gợi ý gạch nợ ATY</DialogTitle>
           <DialogDescription>
-            {suggestion.customer_name ?? suggestion.customer_code} ·{' '}
-            {fmtVnd(suggestion.amount)}
-            {suggestion.received_str
-              ? ` · nhận ${suggestion.received_str}`
-              : ''}
+            Copy thông tin bên dưới rồi tạo phiếu thu trên KiotViet
+            {sug?.matched ? ` — ${sug.customer_name ?? sug.customer_code}` : ''}
           </DialogDescription>
         </DialogHeader>
 
-        <div className="space-y-3">
-          <div className="flex flex-wrap items-center gap-1.5">
-            <Badge variant="secondary" className="text-[10px]">
-              {suggestion.match_how}
-              {suggestion.range_start && suggestion.range_end
-                ? ` ${fmtDate(suggestion.range_start)}→${fmtDate(suggestion.range_end)}`
-                : ''}
-            </Badge>
-            {suggestion.live && (
-              <Badge variant="outline" className="text-[10px]">
-                live KV
-              </Badge>
-            )}
-            {diff !== 0 && (
-              <Badge
-                variant="outline"
-                className={cn(
-                  'text-[10px]',
-                  diff > 0
-                    ? 'border-orange-500/50 text-orange-600'
-                    : 'border-blue-500/50 text-blue-600'
-                )}
-              >
-                {diff > 0
-                  ? `CK thiếu ${fmtVnd(diff)}`
-                  : `CK thừa ${fmtVnd(-diff)}`}
-              </Badge>
-            )}
+        {isLoading ? (
+          <div className="flex items-center justify-center py-10">
+            <Loader2 className="size-6 animate-spin text-muted-foreground" />
           </div>
+        ) : !sug?.matched ? (
+          <p className="py-6 text-center text-sm text-muted-foreground">
+            {sug?.reason ?? 'Không phải giao dịch ATY'}
+          </p>
+        ) : (
+          <div className="space-y-3">
+            <div className="flex flex-wrap items-center gap-1.5">
+              <Badge variant="secondary" className="text-[10px]">
+                {sug.match_how}
+                {sug.range_start && sug.range_end
+                  ? ` ${fmtDate(sug.range_start)}→${fmtDate(sug.range_end)}`
+                  : ''}
+              </Badge>
+              {sug.live && (
+                <Badge variant="outline" className="text-[10px]">
+                  live KV
+                </Badge>
+              )}
+              {sug.diff !== 0 && (
+                <Badge
+                  variant="outline"
+                  className={cn(
+                    'text-[10px]',
+                    sug.diff > 0
+                      ? 'border-orange-500/50 text-orange-600'
+                      : 'border-blue-500/50 text-blue-600'
+                  )}
+                >
+                  {sug.diff > 0
+                    ? `CK thiếu ${fmtVnd(sug.diff)}`
+                    : `CK thừa ${fmtVnd(-sug.diff)}`}
+                </Badge>
+              )}
+            </div>
 
-          <div
-            className="break-all rounded-md border bg-muted/50 p-2 font-mono text-[11px]"
-            title="Mô tả chuyển khoản"
-          >
-            {suggestion.glt_ref}
-          </div>
+            <div className="space-y-2">
+              <CopyRow label="Mô tả" value={sug.ref} />
+              <CopyRow label="Số tiền" value={String(sug.amount)} />
+              {sug.received_str && (
+                <CopyRow label="Thời gian" value={sug.received_str} />
+              )}
+            </div>
 
-          {rows.length > 0 ? (
-            <table className="w-full text-xs">
-              <thead>
-                <tr className="border-b text-left text-[10px] text-muted-foreground">
-                  <th className="py-1 pr-2 font-medium">Hóa đơn</th>
-                  <th className="py-1 pr-2 font-medium">Ngày</th>
-                  <th className="py-1 pr-2 text-right font-medium">Còn lại</th>
-                  <th className="py-1 text-right font-medium">Sẽ thu</th>
-                </tr>
-              </thead>
-              <tbody>
-                {rows.map(r => (
-                  <tr key={r.code} className="border-b last:border-0">
-                    <td className="py-1.5 pr-2 font-mono">{r.code}</td>
-                    <td className="py-1.5 pr-2 text-muted-foreground">
-                      {r.purchase_date}
-                    </td>
-                    <td className="py-1.5 pr-2 text-right">
-                      {fmtVnd(r.remaining)}
-                    </td>
-                    <td
-                      className={cn(
-                        'py-1.5 text-right font-semibold',
-                        r.alloc > 0
-                          ? 'text-emerald-600'
-                          : 'text-muted-foreground'
-                      )}
-                    >
-                      {r.alloc > 0 ? fmtVnd(r.alloc) : '—'}
-                    </td>
+            {sug.invoices.length > 0 ? (
+              <table className="w-full text-xs">
+                <thead>
+                  <tr className="border-b text-left text-[10px] text-muted-foreground">
+                    <th className="py-1 pr-2 font-medium">Hóa đơn cần thu</th>
+                    <th className="py-1 pr-2 font-medium">Ngày</th>
+                    <th className="py-1 pr-2 text-right font-medium">Tổng</th>
+                    <th className="py-1 text-right font-medium">Còn lại</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          ) : (
-            <p className="text-xs italic text-muted-foreground">
-              Không còn hóa đơn chưa trả phù hợp
-            </p>
-          )}
+                </thead>
+                <tbody>
+                  {sug.invoices.map(inv => (
+                    <tr key={inv.code} className="border-b last:border-0">
+                      <td className="py-1.5 pr-2 font-mono">{inv.code}</td>
+                      <td className="py-1.5 pr-2 text-muted-foreground">
+                        {inv.purchase_date}
+                      </td>
+                      <td className="py-1.5 pr-2 text-right text-muted-foreground">
+                        {fmtVnd(inv.total)}
+                      </td>
+                      <td className="py-1.5 text-right font-semibold">
+                        {fmtVnd(inv.remaining)}
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="text-xs italic text-muted-foreground">
+                Không còn hóa đơn chưa trả phù hợp — có thể đã gạch rồi
+              </p>
+            )}
 
-          {leftover > 0 && (
-            <p className="text-[11px] text-orange-600">
-              CK dư {fmtVnd(leftover)} chưa phân bổ vào hóa đơn nào
-            </p>
-          )}
-          {suggestion.note && (
-            <p className="text-[11px] leading-relaxed text-muted-foreground">
-              {suggestion.note}
-            </p>
-          )}
-        </div>
+            {sug.notes.length > 0 && (
+              <p className="text-[11px] leading-relaxed text-muted-foreground">
+                {sug.notes.join(' | ')}
+              </p>
+            )}
+          </div>
+        )}
 
         <DialogFooter>
           <Button
             variant="outline"
             size="sm"
-            onClick={() => handleAct('reject')}
-            disabled={acting}
+            onClick={() => onOpenChange(false)}
           >
-            <X className="mr-1 size-3.5" />
-            Bỏ qua
-          </Button>
-          <Button
-            size="sm"
-            className="bg-emerald-600 hover:bg-emerald-700"
-            onClick={() => handleAct('approve')}
-            disabled={acting || rows.length === 0}
-          >
-            {acting ? (
-              <Loader2 className="mr-1 size-3.5 animate-spin" />
-            ) : (
-              <Check className="mr-1 size-3.5" />
-            )}
-            Duyệt gạch nợ — {rows.filter(r => r.alloc > 0).length} phiếu thu
+            Đóng
           </Button>
         </DialogFooter>
       </DialogContent>

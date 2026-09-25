@@ -25,11 +25,6 @@ import {
 import { CashCountDialog } from './components/CashCountDialog';
 import DebtSettlementDialog from './components/DebtSettlementDialog';
 import { AtySettlementLine } from './components/AtySettlementLine';
-import {
-  useDebtSettlements,
-  type DebtSuggestion,
-} from './hooks/useDebtSettlements';
-import { useQueryClient } from '@tanstack/react-query';
 import { usePayments, type DateRange, type Payment } from '@/hooks/usePayments';
 import { isAtyPayment } from './lib/aty';
 import {
@@ -97,14 +92,7 @@ export const PaymentsList = () => {
   const [dateRange, setDateRange] = useState<DateRange>('today');
   const [showTest, setShowTest] = useState(false);
   const [atyOnly, setAtyOnly] = useState(false);
-  const [dialogSuggestion, setDialogSuggestion] =
-    useState<DebtSuggestion | null>(null);
-  const queryClient = useQueryClient();
-  const { data: debtSettlements } = useDebtSettlements(isAdmin);
-  const pendingByRef = useMemo(
-    () => new Map((debtSettlements?.pending ?? []).map(s => [s.glt_ref, s])),
-    [debtSettlements]
-  );
+  const [atyDialogRef, setAtyDialogRef] = useState<string | null>(null);
   const { data: payments = [], isLoading } = usePayments({
     isAdmin,
     dateRange,
@@ -134,10 +122,6 @@ export const PaymentsList = () => {
         announcePayment(payment);
       }
 
-      // Suggestion gạch nợ được tạo song song trên windmill — refetch để
-      // strip hiện lên trên card aty
-      queryClient.invalidateQueries({ queryKey: ['debt-settlements'] });
-
       setHighlightedIds(prev => new Set(prev).add(payment.id));
       const existing = highlightTimeouts.current.get(payment.id);
       if (existing) clearTimeout(existing);
@@ -153,7 +137,7 @@ export const PaymentsList = () => {
         }, 4000)
       );
     },
-    [announcePayment, queryClient]
+    [announcePayment]
   );
 
   const { isConnected } = usePaymentRealtime({
@@ -357,8 +341,7 @@ export const PaymentsList = () => {
                 </Toggle>
               )}
 
-              {/* ATY filter (admin only) — lọc CK của 2 khách trả chậm aty.
-                  Chấm đỏ + số suggestion pending đang chờ duyệt (kể cả khi filter tắt) */}
+              {/* ATY filter (admin only) — lọc CK của 2 khách trả chậm aty */}
               {isAdmin && (
                 <Toggle
                   pressed={atyOnly}
@@ -368,14 +351,6 @@ export const PaymentsList = () => {
                   className="text-xs"
                 >
                   ATY
-                  {(debtSettlements?.pendingCount ?? 0) > 0 && (
-                    <span
-                      className="ml-1 inline-flex h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-semibold leading-none text-white"
-                      title={`${debtSettlements?.pendingCount} gợi ý gạch nợ đang chờ duyệt`}
-                    >
-                      {debtSettlements?.pendingCount}
-                    </span>
-                  )}
                 </Toggle>
               )}
 
@@ -733,13 +708,7 @@ export const PaymentsList = () => {
                               </div>
                               {isAdmin && atyRef && (
                                 <AtySettlementLine
-                                  pendingSuggestion={pendingByRef.get(atyRef)}
-                                  settledInfo={debtSettlements?.byRef[atyRef]}
-                                  onOpen={() =>
-                                    setDialogSuggestion(
-                                      pendingByRef.get(atyRef) ?? null
-                                    )
-                                  }
+                                  onOpen={() => setAtyDialogRef(atyRef)}
                                 />
                               )}
                             </div>
@@ -866,9 +835,9 @@ export const PaymentsList = () => {
       />
 
       <DebtSettlementDialog
-        suggestion={dialogSuggestion}
-        open={!!dialogSuggestion}
-        onOpenChange={open => !open && setDialogSuggestion(null)}
+        ref={atyDialogRef}
+        open={!!atyDialogRef}
+        onOpenChange={open => !open && setAtyDialogRef(null)}
       />
     </div>
   );
