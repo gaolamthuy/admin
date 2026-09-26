@@ -44,6 +44,7 @@ import { usePaymentRealtime } from '@/hooks/usePaymentRealtime';
 import { usePaymentAnnouncer } from '@/hooks/usePaymentAnnouncer';
 import {
   formatDate,
+  formatDateTime,
   formatTimeAgo,
   formatDateTimeWithSeconds,
 } from '@/utils/date';
@@ -633,6 +634,11 @@ export const PaymentsList = () => {
                                       </TooltipContent>
                                     )}
                                   </Tooltip>
+                                  {displayTime && (
+                                    <CopyButton
+                                      value={formatDateTime(displayTime)}
+                                    />
+                                  )}
                                   {displayTime && group.date === todayStr && (
                                     <span className="text-[11px] text-muted-foreground">
                                       · {formatTimeAgo(displayTime)}
