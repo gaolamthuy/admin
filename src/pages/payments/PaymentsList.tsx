@@ -599,14 +599,22 @@ export const PaymentsList = () => {
                                 </span>
                               </div>
                               <div className="text-right">
-                                <div className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xl font-semibold text-primary">
+                                <div className="inline-flex items-center gap-1">
+                                  <div className="inline-flex items-center rounded-full bg-primary/10 px-3 py-1 text-xl font-semibold text-primary">
+                                    {payment.amount !== null &&
+                                    payment.amount !== undefined
+                                      ? payment.amount.toLocaleString('vi-VN', {
+                                          style: 'currency',
+                                          currency: payment.currency || 'VND',
+                                        })
+                                      : '-'}
+                                  </div>
                                   {payment.amount !== null &&
-                                  payment.amount !== undefined
-                                    ? payment.amount.toLocaleString('vi-VN', {
-                                        style: 'currency',
-                                        currency: payment.currency || 'VND',
-                                      })
-                                    : '-'}
+                                    payment.amount !== undefined && (
+                                      <CopyButton
+                                        value={String(payment.amount)}
+                                      />
+                                    )}
                                 </div>
                               </div>
                             </div>
