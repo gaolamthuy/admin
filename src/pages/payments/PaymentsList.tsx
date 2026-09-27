@@ -617,6 +617,11 @@ export const PaymentsList = () => {
                                   Thời gian
                                 </span>
                                 <span className="inline-flex items-baseline gap-1">
+                                  {displayTime && group.date === todayStr && (
+                                    <span className="text-[11px] text-muted-foreground">
+                                      {formatTimeAgo(displayTime)} ·
+                                    </span>
+                                  )}
                                   <Tooltip delayDuration={0}>
                                     <TooltipTrigger asChild>
                                       <span className="cursor-default font-medium">
@@ -638,11 +643,6 @@ export const PaymentsList = () => {
                                     <CopyButton
                                       value={formatDateTime(displayTime)}
                                     />
-                                  )}
-                                  {displayTime && group.date === todayStr && (
-                                    <span className="text-[11px] text-muted-foreground">
-                                      · {formatTimeAgo(displayTime)}
-                                    </span>
                                   )}
                                 </span>
                               </div>
