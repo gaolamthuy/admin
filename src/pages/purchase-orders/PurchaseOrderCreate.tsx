@@ -7,7 +7,7 @@
  * @module pages/purchase-orders/PurchaseOrderCreate
  */
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { usePurchaseOrderForm } from './hooks/usePurchaseOrderForm';
 import { useSuppliers, SupplierOption } from './hooks/useSuppliers';
@@ -138,10 +138,17 @@ export const PurchaseOrderCreate = () => {
   // Hook cho create purchase order (webhook với n8n)
   const {
     createPurchaseOrder,
-    isSubmitting,
+    isSubmitting: hookSubmitting,
     // eslint-disable-next-line @typescript-eslint/no-unused-vars
     errorMessage,
   } = useCreatePurchaseOrder();
+
+  // Chống tạo trùng PO: khóa submit đồng bộ (ref) từ lúc bấm đến khi navigate xong.
+  // isSubmitting của hook mở khóa ngay sau fetch, trong lúc captureSurcharges
+  // còn chạy — đúng cửa sổ đó user bấm thêm lần nữa sẽ sinh 2 PO (đã xảy ra).
+  const submitLockRef = useRef(false);
+  const [pageSubmitting, setPageSubmitting] = useState(false);
+  const isSubmitting = pageSubmitting || hookSubmitting;
 
   // Default surcharges của supplier đã chọn (cước xe, xuống gạo...)
   const { data: costDefaults = [] } = useSupplierCostDefaults(
@@ -327,8 +334,11 @@ export const PurchaseOrderCreate = () => {
 
   /**
    * Xử lý submit purchase order
+   * submitLockRef chặn đồng bộ mọi click thừa (double-tap/bấm lại khi đang xử lý)
    */
   const handleSubmit = async () => {
+    if (submitLockRef.current) return;
+
     // Validate form
     if (!form.validate()) {
       if (!form.selectedSupplier) {
@@ -346,6 +356,8 @@ export const PurchaseOrderCreate = () => {
       return;
     }
 
+    submitLockRef.current = true;
+    setPageSubmitting(true);
     try {
       // Build payload cho Windmill flow create_purchase_order
       // Giá nhập KHÔNG gửi — script tự lấy latest PO price phía server.
@@ -387,6 +399,11 @@ export const PurchaseOrderCreate = () => {
     } catch (error) {
       // Error đã được handle trong useCreatePurchaseOrder hook
       console.error('Error creating purchase order:', error);
+    } finally {
+      // Mở khóa sau cùng — sau navigate, không để cửa sổ "nút sáng lại
+      // nhưng trang chưa chuyển" sinh đơn trùng
+      submitLockRef.current = false;
+      setPageSubmitting(false);
     }
   };
 
