@@ -31,9 +31,6 @@ const fmtDate = (iso: string) =>
 
 const fmtDateFull = (iso: string) => new Date(iso).toLocaleDateString('vi-VN');
 
-// Bỏ "hoa don NNNN" (số HĐĐT mình phát hành) khỏi mô tả copy — dư thừa khi tạo phiếu thu.
-const cleanRef = (ref: string) => ref.replace(/\s*-\s*hoa don \d+/i, '').trim();
-
 function CopyRow({
   label,
   value,
@@ -154,13 +151,13 @@ export function DebtSettlementDialog({
                 label={`Mô tả${sug.invoices.length > 0 && sug.sum_remaining === sug.amount ? ' (kèm gạch nợ đơn hàng)' : ''}`}
                 value={
                   sug.invoices.length > 0 && sug.sum_remaining === sug.amount
-                    ? `${cleanRef(sug.ref)}\ngạch nợ cho đơn hàng ${sug.invoices
+                    ? `${sug.ref}\ngạch nợ cho đơn hàng ${sug.invoices
                         .map(
                           inv =>
                             `${inv.code} (${fmtDateFull(inv.purchase_date)})`
                         )
                         .join(' + ')}`.slice(0, 500)
-                    : cleanRef(sug.ref)
+                    : sug.ref
                 }
                 long
               />
