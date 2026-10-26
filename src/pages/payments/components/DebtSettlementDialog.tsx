@@ -145,10 +145,12 @@ export function DebtSettlementDialog({
             </div>
 
             <div className="space-y-2">
+              {/* Chỉ liệt kê đơn vào mô tả khi CK khớp trọn tổng còn lại —
+                  ngược lại copy ref trần, tránh dán sai list vào phiếu thu. */}
               <CopyRow
-                label={`Mô tả${sug.invoices.length > 0 ? ' (kèm gạch nợ đơn hàng)' : ''}`}
+                label={`Mô tả${sug.invoices.length > 0 && sug.sum_remaining === sug.amount ? ' (kèm gạch nợ đơn hàng)' : ''}`}
                 value={
-                  sug.invoices.length > 0
+                  sug.invoices.length > 0 && sug.sum_remaining === sug.amount
                     ? `${sug.ref}\ngạch nợ cho đơn hàng ${sug.invoices
                         .map(
                           inv =>
@@ -177,7 +179,19 @@ export function DebtSettlementDialog({
                 </thead>
                 <tbody>
                   {sug.invoices.map(inv => (
-                    <tr key={inv.code} className="border-b last:border-0">
+                    <tr
+                      key={inv.code}
+                      className={cn(
+                        'border-b last:border-0',
+                        inv.remaining === sug.amount &&
+                          'font-semibold text-emerald-500'
+                      )}
+                      title={
+                        inv.remaining === sug.amount
+                          ? 'Khớp đúng số tiền CK'
+                          : undefined
+                      }
+                    >
                       <td className="py-1.5 pr-2 font-mono">{inv.code}</td>
                       <td className="py-1.5 pr-2 text-muted-foreground">
                         {inv.purchase_date}
