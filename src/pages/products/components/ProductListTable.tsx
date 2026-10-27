@@ -46,7 +46,7 @@ import { Label } from '@/components/ui/label';
 import { ButtonGroup } from '@/components/ui/button-group';
 import { Checkbox } from '@/components/ui/checkbox';
 import type { CostAnalysis, PricingInfo, CalculateFromPo } from '@/types';
-import { formatDateTime, formatTimeAgo } from '@/utils/date';
+import { formatDate, formatDateTime, formatTimeAgo } from '@/utils/date';
 
 interface ProductWithPriceDiff {
   id: string;
@@ -104,8 +104,6 @@ interface ProductListTableProps {
   onTogglePriceDiffSort?: () => void;
   sortByKvStatus?: boolean;
   onToggleKvStatusSort?: () => void;
-  sortByChangelog?: boolean;
-  onToggleChangelogSort?: () => void;
 }
 
 import { getPrintUrl } from '@/lib/windmill';
@@ -724,8 +722,28 @@ const ProductRow: React.FC<{
   };
 
   const renderChangelog = () => {
-    const changelog = product.changelog;
-    if (!changelog || Object.keys(changelog).length === 0) {
+    // Chỉ theo dõi thay đổi giá vốn (cost) — hiển thị 3 lần gần nhất trong popover
+    const costChanges = [...(product.changelog?.cost ?? [])].sort(
+      (a, b) => new Date(b.at).getTime() - new Date(a.at).getTime()
+    );
+
+    const fmtNum = (v: string) =>
+      /^\d+$/.test(v) ? Number(v).toLocaleString('vi-VN') : v;
+
+    const renderDir = (dir?: 'up' | 'down') =>
+      // Giá vốn: tăng = đỏ (tốn thêm tiền), giảm = xanh lá (lời hơn)
+      dir === 'up' ? (
+        <ArrowUp className="h-3 w-3 shrink-0 text-destructive" />
+      ) : dir === 'down' ? (
+        <ArrowDown className="h-3 w-3 shrink-0 text-green-600" />
+      ) : null;
+
+    const diffNum = (diff?: number | null) =>
+      diff === undefined || diff === null || diff === 0 ? null : (
+        <span>{Math.abs(Math.round(diff)).toLocaleString('vi-VN')}</span>
+      );
+
+    if (costChanges.length === 0) {
       return (
         <HoverCard>
           <HoverCardTrigger asChild>
@@ -734,88 +752,57 @@ const ProductRow: React.FC<{
             </span>
           </HoverCardTrigger>
           <HoverCardContent side="top" className="w-auto">
-            <p className="text-xs">Chưa có thay đổi</p>
+            <p className="text-xs">Chưa có thay đổi giá vốn</p>
           </HoverCardContent>
         </HoverCard>
       );
     }
 
-    const allChanges = Object.entries(changelog)
-      .flatMap(([field, changes]) =>
-        changes.map(change => ({ field, ...change }))
-      )
-      .sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
-
-    const latestChange = allChanges[0];
-
-    const fieldLabels: Record<string, string> = {
-      base_price: 'Giá bán',
-      cost: 'Giá vốn',
-      order_template: 'Mẫu đặt hàng',
-    };
+    const latest = costChanges[0];
 
     return (
       <HoverCard openDelay={100} closeDelay={100}>
         <HoverCardTrigger asChild>
           <div className="cursor-help">
-            <div className="text-xs font-medium">
-              {formatDateTime(latestChange.at)}
+            <div className="flex items-center gap-1 text-xs font-medium tabular-nums">
+              {renderDir(latest.dir)}
+              {diffNum(latest.diff)}
+              <span className="text-muted-foreground">
+                (<span className="line-through">{fmtNum(latest.old)}</span> →{' '}
+                <span className="font-bold">{fmtNum(latest.new)}</span>)
+              </span>
             </div>
             <div className="text-[10px] text-muted-foreground">
-              {formatTimeAgo(latestChange.at)}
+              {formatDate(latest.at, 'DD/MM')} · {formatTimeAgo(latest.at)}
             </div>
           </div>
         </HoverCardTrigger>
-        <HoverCardContent side="left" className="w-auto max-w-xs">
+        <HoverCardContent side="top" className="w-80">
           <div className="space-y-2">
-            <p className="font-semibold text-sm">Lịch sử thay đổi</p>
-            <div className="space-y-2 text-xs">
-              {Object.entries(changelog)
-                .slice(0, 3)
-                .map(([field, changes]) => (
-                  <div key={field} className="space-y-1">
-                    <div className="font-medium text-muted-foreground">
-                      {fieldLabels[field] || field}
-                    </div>
-                    {changes.slice(0, 2).map((change, idx) => (
-                      <div key={idx} className="pl-2 space-y-0.5">
-                        <div className="flex justify-between gap-4">
-                          <span className="text-muted-foreground">Cũ:</span>
-                          <span className="line-through opacity-70">
-                            {change.old}
-                          </span>
-                        </div>
-                        <div className="flex justify-between gap-4">
-                          <span className="text-muted-foreground">Mới:</span>
-                          <span className="font-medium">{change.new}</span>
-                        </div>
-                        {(change.diff !== undefined ||
-                          change.pct !== undefined) && (
-                          <div className="flex items-center gap-1 text-muted-foreground">
-                            {change.dir === 'up' && (
-                              <ArrowUp className="h-3 w-3 text-green-600" />
-                            )}
-                            {change.dir === 'down' && (
-                              <ArrowDown className="h-3 w-3 text-destructive" />
-                            )}
-                            {change.pct !== undefined && (
-                              <span>{change.pct}%</span>
-                            )}
-                            {change.diff !== undefined &&
-                              change.diff !== null && (
-                                <span>({change.diff.toLocaleString()})</span>
-                              )}
-                          </div>
-                        )}
-                        <div className="text-[10px] text-muted-foreground">
-                          {change.src && <span>{change.src} • </span>}
-                          {formatDateTime(change.at)} (
-                          {formatTimeAgo(change.at)})
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                ))}
+            <p className="text-sm font-semibold">
+              Giá vốn — 3 lần thay đổi gần nhất
+            </p>
+            <div className="space-y-1.5 text-xs">
+              {costChanges.slice(0, 3).map((change, idx) => (
+                <div
+                  key={idx}
+                  className="flex items-center justify-between gap-2"
+                >
+                  <span className="flex items-center gap-1 tabular-nums">
+                    {renderDir(change.dir)}
+                    {diffNum(change.diff)}
+                    <span className="text-muted-foreground">
+                      (
+                      <span className="line-through">{fmtNum(change.old)}</span>{' '}
+                      → <span className="font-bold">{fmtNum(change.new)}</span>)
+                    </span>
+                  </span>
+                  <span className="shrink-0 text-right text-[10px] text-muted-foreground">
+                    {change.src && <div>{change.src}</div>}
+                    {formatDateTime(change.at)}
+                  </span>
+                </div>
+              ))}
             </div>
           </div>
         </HoverCardContent>
@@ -1151,8 +1138,6 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
   onTogglePriceDiffSort,
   sortByKvStatus,
   onToggleKvStatusSort,
-  sortByChangelog,
-  onToggleChangelogSort,
 }) => {
   const totalProducts = groups.reduce((sum, g) => sum + g.products.length, 0);
 
@@ -1188,17 +1173,7 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
                       />
                     </button>
                   </TableHead>
-                  <TableHead>
-                    <button
-                      onClick={onToggleChangelogSort}
-                      className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
-                    >
-                      Changelog
-                      <ArrowUpDown
-                        className={`h-3 w-3 ${sortByChangelog ? 'text-foreground' : 'text-muted-foreground'}`}
-                      />
-                    </button>
-                  </TableHead>
+                  <TableHead>Changelog</TableHead>
                 </>
               )}
               <TableHead>Thao tác</TableHead>
@@ -1318,17 +1293,7 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
                       />
                     </button>
                   </TableHead>
-                  <TableHead>
-                    <button
-                      onClick={onToggleChangelogSort}
-                      className="flex items-center gap-1 hover:text-foreground transition-colors cursor-pointer"
-                    >
-                      Changelog
-                      <ArrowUpDown
-                        className={`h-3 w-3 ${sortByChangelog ? 'text-foreground' : 'text-muted-foreground'}`}
-                      />
-                    </button>
-                  </TableHead>
+                  <TableHead>Changelog</TableHead>
                 </>
               )}
               <TableHead>Thao tác</TableHead>
