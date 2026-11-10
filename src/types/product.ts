@@ -55,6 +55,19 @@ export interface Product {
   created_date: string;
   modified_date: string;
   order_template?: string | null;
+  glt_supplier_name?: string | null;
+  glt_baseprice_markup?: number | null;
+  glt_extra_cost?: number | null;
+  glt_baseprice_round_step?: number | null;
+  child_unit_info?: Array<{
+    kiotviet_id: number;
+    code: string;
+    full_name: string;
+    unit: string;
+    base_price: number;
+    conversion_value: number;
+    price_per_master_unit?: number | null;
+  }> | null;
 }
 
 /**

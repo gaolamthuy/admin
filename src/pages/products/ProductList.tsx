@@ -37,7 +37,7 @@ import {
 } from '@/components/ui/pagination';
 import { Toggle } from '@/components/ui/toggle';
 import { ToggleGroup, ToggleGroupItem } from '@/components/ui/toggle-group';
-import { Heart, LayoutGrid, List, Download, Upload } from 'lucide-react';
+import { Heart, LayoutGrid, List, Download, PenLine } from 'lucide-react';
 import { Loader2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
@@ -49,6 +49,7 @@ interface FilterState {
   sortByPriceDifference: boolean;
   sortByKvStatus: boolean;
   viewMode: ViewMode;
+  showSupplierName: boolean;
 }
 
 export const ProductList = () => {
@@ -61,6 +62,7 @@ export const ProductList = () => {
     const categoryParam = searchParams.get('category');
     const sortParam = searchParams.get('sort');
     const viewParam = searchParams.get('view');
+    const supplierParam = searchParams.get('supplier');
 
     return {
       category: categoryParam || null,
@@ -68,6 +70,7 @@ export const ProductList = () => {
       sortByPriceDifference: sortParam === 'price-diff',
       sortByKvStatus: sortParam === 'kv-status',
       viewMode: viewParam === 'list' ? 'list' : 'card',
+      showSupplierName: supplierParam === '1',
     };
   };
 
@@ -100,6 +103,10 @@ export const ProductList = () => {
       newSearchParams.set('view', 'list');
     }
 
+    if (isAdmin && filters.showSupplierName) {
+      newSearchParams.set('supplier', '1');
+    }
+
     const newParamsString = newSearchParams.toString();
     const currentParamsString = searchParams.toString();
 
@@ -121,10 +128,13 @@ export const ProductList = () => {
   const downloadProducts = useDownloadProducts();
   const [updatingPriceId, setUpdatingPriceId] = useState<number | null>(null);
 
-  const handleUpdatePrice = async (kiotvietId: number) => {
+  const handleUpdatePrice = async (
+    kiotvietId: number,
+    params?: { targetCost?: number; targetPoPrice?: number }
+  ) => {
     setUpdatingPriceId(kiotvietId);
     try {
-      return await updateProductPrice.mutateAsync(kiotvietId);
+      return await updateProductPrice.mutateAsync({ kiotvietId, params });
     } finally {
       setUpdatingPriceId(null);
     }
@@ -378,6 +388,25 @@ export const ProductList = () => {
 
             <div className="flex items-center gap-2 sm:ml-auto">
               {isAdmin && (
+                <Toggle
+                  aria-label="Toggle hiển thị cột Tên NCC"
+                  size="sm"
+                  variant="outline"
+                  pressed={filters.showSupplierName}
+                  onPressedChange={pressed =>
+                    setFilters(prev => ({
+                      ...prev,
+                      showSupplierName: pressed,
+                    }))
+                  }
+                  className="h-9 gap-1.5 px-2.5 data-[state=on]:bg-transparent data-[state=on]:*:[svg]:stroke-primary"
+                >
+                  <PenLine className="h-4 w-4" />
+                  <span className="font-medium hidden sm:inline">Tên NCC</span>
+                </Toggle>
+              )}
+
+              {isAdmin && (
                 <Button
                   variant="outline"
                   size="sm"
@@ -449,6 +478,7 @@ export const ProductList = () => {
                   loading={isLoading}
                   onShow={handleShow}
                   isAdmin={isAdmin}
+                  showSupplierName={filters.showSupplierName}
                   onUpdatePrice={handleUpdatePrice}
                   updatingPriceId={updatingPriceId}
                   sortByPriceDifference={filters.sortByPriceDifference}

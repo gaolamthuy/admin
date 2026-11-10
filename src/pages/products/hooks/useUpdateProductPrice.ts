@@ -26,14 +26,38 @@ interface UpdateProductPriceResult {
     supplier_name: string;
     purchase_order_code: string;
     total_cost_per_unit: number;
-  };
+  } | null;
+  mode?: 'po' | 'manual_cost' | 'manual_po';
   kiotviet_id: number;
   product_name: string;
   changelog_count: number;
 }
 
+interface UpdatePriceParams {
+  targetCost?: number;
+  targetPoPrice?: number;
+}
+
+/** Windmill trả error dạng string hoặc object lồng nhau — rút message sâu nhất */
+function extractErrorString(value: unknown): string {
+  if (value == null) return '';
+  if (typeof value === 'string') return value;
+  if (typeof value === 'object') {
+    const obj = value as Record<string, unknown>;
+    for (const key of ['message', 'error', 'detail']) {
+      if (obj[key] != null) {
+        const msg = extractErrorString(obj[key]);
+        if (msg) return msg;
+      }
+    }
+    return JSON.stringify(value);
+  }
+  return String(value);
+}
+
 async function callUpdateProductPrice(
-  kiotvietId: number
+  kiotvietId: number,
+  params?: UpdatePriceParams
 ): Promise<UpdateProductPriceResult> {
   const windmillToken = env.VITE_BACKEND_TOKEN;
 
@@ -54,7 +78,13 @@ async function callUpdateProductPrice(
       'Content-Type': 'application/json',
       Authorization: `Bearer ${windmillToken}`,
     },
-    body: JSON.stringify({ kiotviet_id: kiotvietId }),
+    body: JSON.stringify({
+      kiotviet_id: kiotvietId,
+      ...(params?.targetCost != null && { target_cost: params.targetCost }),
+      ...(params?.targetPoPrice != null && {
+        target_po_price: params.targetPoPrice,
+      }),
+    }),
   });
 
   if (!runRes.ok) {
@@ -78,7 +108,7 @@ async function callUpdateProductPrice(
 
     if (data.completed) {
       if (data.result?.error) {
-        throw new Error(data.result.error);
+        throw new Error(extractErrorString(data.result.error));
       }
       return data.result as UpdateProductPriceResult;
     }
@@ -91,7 +121,13 @@ export const useUpdateProductPrice = () => {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: callUpdateProductPrice,
+    mutationFn: ({
+      kiotvietId,
+      params,
+    }: {
+      kiotvietId: number;
+      params?: UpdatePriceParams;
+    }) => callUpdateProductPrice(kiotvietId, params),
     onSuccess: result => {
       if (result.status !== 'ok') {
         toast.error(`Cập nhật giá thất bại: ${result.status}`);

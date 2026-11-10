@@ -1,4 +1,5 @@
 import React from 'react';
+import { Link } from 'react-router-dom';
 import {
   Table,
   TableBody,
@@ -33,7 +34,10 @@ import {
   ArrowUp,
   ArrowDown,
   History,
+  PenLine,
 } from 'lucide-react';
+import { toast } from 'sonner';
+import { useUpdateProduct } from '../hooks/useProductShow';
 import {
   Dialog,
   DialogContent,
@@ -44,7 +48,8 @@ import {
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { ButtonGroup } from '@/components/ui/button-group';
-import { Checkbox } from '@/components/ui/checkbox';
+import { PriceEditDialog } from './PriceEditDialog';
+import type { UpdateProductPriceResult } from '../hooks/useUpdateProductPrice';
 import type { CostAnalysis, PricingInfo, CalculateFromPo } from '@/types';
 import { formatDate, formatDateTime, formatTimeAgo } from '@/utils/date';
 
@@ -60,6 +65,19 @@ interface ProductWithPriceDiff {
   is_active?: boolean;
   glt_labelprint_favorite?: boolean;
   order_template?: string | null;
+  glt_supplier_name?: string | null;
+  glt_baseprice_markup?: number | null;
+  glt_extra_cost?: number | null;
+  glt_baseprice_round_step?: number | null;
+  child_unit_info?: Array<{
+    kiotviet_id: number;
+    code: string;
+    full_name: string;
+    unit: string;
+    base_price: number;
+    conversion_value: number;
+    price_per_master_unit?: number | null;
+  }> | null;
   modified_date?: string | null;
   cost_analysis?: CostAnalysis | null;
   pricing_info?: PricingInfo | null;
@@ -98,7 +116,11 @@ interface ProductListTableProps {
   loading: boolean;
   onShow: (id: string | number) => void;
   isAdmin: boolean;
-  onUpdatePrice?: (kiotvietId: number) => Promise<unknown>;
+  showSupplierName?: boolean;
+  onUpdatePrice?: (
+    kiotvietId: number,
+    params?: { targetCost?: number; targetPoPrice?: number }
+  ) => Promise<UpdateProductPriceResult>;
   updatingPriceId?: number | null;
   sortByPriceDifference?: boolean;
   onTogglePriceDiffSort?: () => void;
@@ -127,6 +149,99 @@ const submitPostForm = (
   document.body.appendChild(form);
   form.submit();
   document.body.removeChild(form);
+};
+
+/**
+ * Cell inline edit cho Tên gọi NCC / nội bộ
+ * Click → input, Enter/blur tự lưu, Esc hủy. Trống = dùng tên gốc.
+ */
+const SupplierNameCell: React.FC<{
+  productId: number;
+  value?: string | null;
+}> = ({ productId, value }) => {
+  const [editing, setEditing] = React.useState(false);
+  const [draft, setDraft] = React.useState('');
+  const cancelEditRef = React.useRef(false);
+  const updateProduct = useUpdateProduct();
+
+  const openEdit = () => {
+    cancelEditRef.current = false;
+    setDraft(value ?? '');
+    setEditing(true);
+  };
+
+  const closeEdit = () => {
+    setEditing(false);
+  };
+
+  const save = () => {
+    // Guard: Esc đã hủy thì blur muộn không lưu
+    if (cancelEditRef.current) {
+      cancelEditRef.current = false;
+      return;
+    }
+    if (updateProduct.isPending) return;
+
+    const next = draft.trim();
+    if (next === (value ?? '').trim()) {
+      closeEdit();
+      return;
+    }
+
+    updateProduct.mutate(
+      { id: productId, fields: { glt_supplier_name: next || null } },
+      {
+        onSuccess: () => {
+          toast.success('Đã lưu tên NCC');
+          closeEdit();
+        },
+        onError: (error: Error) => {
+          toast.error(`Lưu tên NCC thất bại: ${error.message}`);
+        },
+      }
+    );
+  };
+
+  if (editing) {
+    return (
+      <Input
+        autoFocus
+        value={draft}
+        disabled={updateProduct.isPending}
+        placeholder="Trống = dùng tên gốc"
+        className="h-8 text-sm"
+        onChange={e => setDraft(e.target.value)}
+        onBlur={save}
+        onKeyDown={e => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            save();
+          } else if (e.key === 'Escape') {
+            e.preventDefault();
+            cancelEditRef.current = true;
+            closeEdit();
+          }
+        }}
+      />
+    );
+  }
+
+  return (
+    <button
+      type="button"
+      onClick={openEdit}
+      title="Click để sửa tên NCC / nội bộ"
+      className="group flex w-full max-w-[200px] items-center gap-1 text-left text-sm hover:text-foreground cursor-pointer"
+    >
+      <span className="truncate">
+        {value ? value : <span className="text-muted-foreground/50">—</span>}
+      </span>
+      <PenLine className="h-3 w-3 shrink-0 opacity-0 transition-opacity group-hover:opacity-50" />
+      {updateProduct.isPending && (
+        <Loader2 className="h-3 w-3 shrink-0 animate-spin text-muted-foreground" />
+      )}
+    </button>
+  );
 };
 
 const PrintModal: React.FC<{
@@ -254,245 +369,28 @@ const PrintModal: React.FC<{
   );
 };
 
-const SyncPriceConfirmDialog: React.FC<{
-  isOpen: boolean;
-  onClose: () => void;
-  onConfirm: (printPriceboard: boolean) => void;
-  isLoading: boolean;
-  productName: string;
-  productCode?: string;
-  basePrice?: number;
-  calculateFromPo?: CalculateFromPo | null;
-}> = ({
-  isOpen,
-  onClose,
-  onConfirm,
-  isLoading,
-  productName,
-  productCode,
-  basePrice,
-  calculateFromPo,
-}) => {
-  const [printPriceboard, setPrintPriceboard] = React.useState(true);
-
-  if (!calculateFromPo) return null;
-
-  const fmt = (n: number | null | undefined) =>
-    n != null ? Number(n).toLocaleString() : '-';
-  const costDiff =
-    calculateFromPo.current_inventory_cost != null
-      ? calculateFromPo.new_cost - calculateFromPo.current_inventory_cost
-      : null;
-
-  return (
-    <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-md">
-        <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Upload className="h-4 w-4" />
-            Xác nhận cập nhật giá
-          </DialogTitle>
-          <DialogDescription>
-            <span className="font-semibold">{productName}</span>
-            {productCode && (
-              <span className="text-xs text-muted-foreground ml-2 font-mono">
-                {productCode}
-              </span>
-            )}
-          </DialogDescription>
-        </DialogHeader>
-        <div className="space-y-3 py-2">
-          <div className="rounded-lg border p-3 space-y-2">
-            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
-              Giá bán
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Hiện tại</span>
-              <span className="font-mono font-medium">
-                {fmt(basePrice)} VNĐ
-              </span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Mới</span>
-              <span className="font-mono font-semibold text-primary">
-                {fmt(calculateFromPo.new_baseprice)} VNĐ
-              </span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Chênh lệch</span>
-              <span
-                className={`font-mono font-medium ${calculateFromPo.baseprice_diff > 0 ? 'text-destructive' : calculateFromPo.baseprice_diff < 0 ? 'text-green-600 dark:text-green-400' : ''}`}
-              >
-                {calculateFromPo.baseprice_diff > 0
-                  ? '↑ '
-                  : calculateFromPo.baseprice_diff < 0
-                    ? '↓ '
-                    : ''}
-                {calculateFromPo.baseprice_diff > 0 ? '+' : ''}
-                {fmt(calculateFromPo.baseprice_diff)} VNĐ
-              </span>
-            </div>
-          </div>
-
-          <div className="rounded-lg border p-3 space-y-2">
-            <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
-              Cost
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Cost hiện tại</span>
-              <span className="font-mono font-medium">
-                {fmt(calculateFromPo.current_inventory_cost)} VNĐ
-              </span>
-            </div>
-            <div className="flex justify-between text-sm">
-              <span className="text-muted-foreground">Cost mới</span>
-              <span className="font-mono font-semibold text-primary">
-                {fmt(calculateFromPo.new_cost)} VNĐ
-              </span>
-            </div>
-            {costDiff !== null && (
-              <div className="flex justify-between text-sm">
-                <span className="text-muted-foreground">Chênh lệch cost</span>
-                <span
-                  className={`font-mono font-medium ${costDiff > 0 ? 'text-destructive' : costDiff < 0 ? 'text-green-600 dark:text-green-400' : ''}`}
-                >
-                  {costDiff > 0 ? '↑ ' : costDiff < 0 ? '↓ ' : ''}
-                  {costDiff > 0 ? '+' : ''}
-                  {fmt(costDiff)} VNĐ
-                </span>
-              </div>
-            )}
-            <div className="border-t pt-2 space-y-1">
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>
-                  Giá nhập PO ({calculateFromPo.latest_purchase_order_code})
-                </span>
-                <span className="font-mono">
-                  {fmt(calculateFromPo.latest_raw_price)} VNĐ
-                </span>
-              </div>
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Extra cost/đơn vị PO</span>
-                <span className="font-mono">
-                  +{fmt(calculateFromPo.latest_extra_cost_per_unit)} VNĐ
-                </span>
-              </div>
-              <div className="flex justify-between text-xs text-muted-foreground">
-                <span>Extra cost sản phẩm</span>
-                <span className="font-mono">
-                  +{fmt(calculateFromPo.product_extra_cost)} VNĐ
-                </span>
-              </div>
-            </div>
-          </div>
-
-          {calculateFromPo.child_unit_prices.length > 0 && (
-            <div className="rounded-lg border p-3 space-y-2">
-              <div className="text-xs font-semibold text-muted-foreground uppercase tracking-wide mb-1">
-                Đơn vị con
-              </div>
-              {calculateFromPo.child_unit_prices.map(cu => (
-                <div
-                  key={cu.code}
-                  className="space-y-1 pb-2 border-b last:border-b-0 last:pb-0"
-                >
-                  <div className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      {cu.full_name}
-                    </span>
-                    <span className="font-mono font-medium">
-                      {fmt(cu.new_baseprice)} VNĐ
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Hiện tại</span>
-                    <span className="font-mono">
-                      {fmt(cu.current_baseprice)} VNĐ
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">Chênh lệch</span>
-                    <span
-                      className={`font-mono ${(cu.diff || 0) > 0 ? 'text-destructive' : (cu.diff || 0) < 0 ? 'text-green-600 dark:text-green-400' : ''}`}
-                    >
-                      {(cu.diff || 0) > 0
-                        ? '↑ '
-                        : (cu.diff || 0) < 0
-                          ? '↓ '
-                          : ''}
-                      {(cu.diff || 0) > 0 ? '+' : ''}
-                      {fmt(cu.diff)} VNĐ
-                    </span>
-                  </div>
-                  <div className="flex justify-between text-xs">
-                    <span className="text-muted-foreground">
-                      Per đơn vị gốc (÷{cu.conversion_value})
-                    </span>
-                    <span
-                      className={`font-mono ${(cu.diff_per_cv || 0) > 0 ? 'text-destructive' : (cu.diff_per_cv || 0) < 0 ? 'text-green-600 dark:text-green-400' : ''}`}
-                    >
-                      {(cu.diff_per_cv || 0) > 0
-                        ? '↑ '
-                        : (cu.diff_per_cv || 0) < 0
-                          ? '↓ '
-                          : ''}
-                      {(cu.diff_per_cv || 0) > 0 ? '+' : ''}
-                      {fmt(cu.diff_per_cv)} VNĐ
-                    </span>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-        <div className="flex items-center gap-2 py-2 border-t">
-          <Checkbox
-            id="print-priceboard"
-            checked={printPriceboard}
-            onCheckedChange={checked => setPrintPriceboard(checked === true)}
-          />
-          <Label htmlFor="print-priceboard" className="text-sm cursor-pointer">
-            In bảng giá bán lẻ sau khi cập nhật
-          </Label>
-        </div>
-        <div className="flex justify-end gap-2 pt-2">
-          <Button variant="outline" onClick={onClose} disabled={isLoading}>
-            Hủy
-          </Button>
-          <Button
-            onClick={() => onConfirm(printPriceboard)}
-            disabled={isLoading}
-          >
-            {isLoading ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-1" />
-            ) : (
-              <Upload className="h-4 w-4 mr-1" />
-            )}
-            Cập nhật giá
-          </Button>
-        </div>
-      </DialogContent>
-    </Dialog>
-  );
-};
-
 const ProductRow: React.FC<{
   product: ProductWithPriceDiff;
   onShow: (id: string | number) => void;
   isAdmin: boolean;
-  onUpdatePrice?: (kiotvietId: number) => Promise<unknown>;
+  showSupplierName?: boolean;
+  onUpdatePrice?: (
+    kiotvietId: number,
+    params?: { targetCost?: number; targetPoPrice?: number }
+  ) => Promise<UpdateProductPriceResult>;
   isUpdating?: boolean;
   mode?: 'mobile' | 'desktop';
 }> = ({
   product,
   onShow,
   isAdmin,
+  showSupplierName,
   onUpdatePrice,
   isUpdating,
   mode = 'mobile',
 }) => {
   const [isPrintModalOpen, setIsPrintModalOpen] = React.useState(false);
-  const [isSyncDialogOpen, setIsSyncDialogOpen] = React.useState(false);
+  const [isPriceDialogOpen, setIsPriceDialogOpen] = React.useState(false);
   const imageUrl = product.images?.[0] || '/placeholder-product.png';
 
   // Check nếu sản phẩm được KV cập nhật trong 24h gần nhất
@@ -798,7 +696,19 @@ const ProductRow: React.FC<{
                     </span>
                   </span>
                   <span className="shrink-0 text-right text-[10px] text-muted-foreground">
-                    {change.src && <div>{change.src}</div>}
+                    {change.src && (
+                      <div>
+                        {change.src === 'webhook'
+                          ? 'KiotViet'
+                          : change.src === 'po_update'
+                            ? 'Đơn nhập'
+                            : change.src === 'admin_manual'
+                              ? 'Admin'
+                              : change.src === 'sync'
+                                ? 'Sync'
+                                : change.src}
+                      </div>
+                    )}
                     {formatDateTime(change.at)}
                   </span>
                 </div>
@@ -817,6 +727,37 @@ const ProductRow: React.FC<{
     product.cost_analysis?.cost_diff !== null &&
     product.cost_analysis?.cost_diff !== undefined &&
     product.cost_analysis?.cost_diff !== 0;
+  // Dialog chỉnh giá dùng chung cho mobile + desktop
+  const priceDialog = (
+    <PriceEditDialog
+      isOpen={isPriceDialogOpen}
+      onClose={() => setIsPriceDialogOpen(false)}
+      onUpdatePrice={async (kiotvietId, params) => {
+        if (!onUpdatePrice) {
+          throw new Error('Chức năng cập nhật giá chưa sẵn sàng');
+        }
+        return await onUpdatePrice(kiotvietId, params);
+      }}
+      productName={product.name}
+      productCode={product.code}
+      kiotvietId={product.kiotviet_id ?? 0}
+      basePrice={product.base_price}
+      currentCost={product.cost_analysis?.inventory_cost ?? null}
+      markup={product.glt_baseprice_markup ?? 0}
+      roundStep={product.glt_baseprice_round_step ?? 1000}
+      extraCost={product.glt_extra_cost ?? 0}
+      childUnits={(product.child_unit_info ?? []).map(cu => ({
+        kiotviet_id: cu.kiotviet_id,
+        code: cu.code,
+        full_name: cu.full_name,
+        unit: cu.unit,
+        conversion_value: cu.conversion_value,
+        base_price: cu.base_price,
+      }))}
+      calculateFromPo={product.calculate_from_po}
+      orderTemplate={product.order_template ?? null}
+    />
+  );
 
   if (mode === 'mobile') {
     return (
@@ -902,7 +843,7 @@ const ProductRow: React.FC<{
                 variant="secondary"
                 className="h-7 w-7 px-0"
                 disabled={isUpdating}
-                onClick={() => setIsSyncDialogOpen(true)}
+                onClick={() => setIsPriceDialogOpen(true)}
               >
                 {isUpdating ? (
                   <Loader2 className="h-3 w-3 animate-spin" />
@@ -920,52 +861,7 @@ const ProductRow: React.FC<{
           productFullName={product.full_name || ''}
           kiotvietId={product.kiotviet_id}
         />
-        <SyncPriceConfirmDialog
-          isOpen={isSyncDialogOpen}
-          onClose={() => setIsSyncDialogOpen(false)}
-          onConfirm={async printPriceboard => {
-            setIsSyncDialogOpen(false);
-            // Submit form in ĐỒNG BỘ (trước await) để tránh popup blocker
-            // Data in lấy từ calculate_from_po (đã có sẵn, không cần chờ KV)
-            if (printPriceboard && product.kiotviet_id) {
-              const calcFromPo = product.calculate_from_po;
-              if (calcFromPo) {
-                const childUnitInfo = (calcFromPo.child_unit_prices || []).map(
-                  c => ({
-                    kiotviet_id: c.kiotviet_id,
-                    code: c.code,
-                    full_name: c.full_name,
-                    unit: c.unit,
-                    base_price: c.new_baseprice,
-                    conversion_value: c.conversion_value,
-                    price_per_master_unit:
-                      c.conversion_value > 0
-                        ? Math.round(c.new_baseprice / c.conversion_value)
-                        : null,
-                  })
-                );
-                submitPostForm(getPrintUrl(), {
-                  printType: 'priceboard',
-                  kiotviet_id: String(product.kiotviet_id),
-                  base_price: String(calcFromPo.new_baseprice),
-                  ...(calcFromPo.latest_purchase_order_code && {
-                    order_template: calcFromPo.latest_purchase_order_code,
-                  }),
-                  child_unit_info: JSON.stringify(childUnitInfo),
-                });
-              }
-            }
-            // Sau đó mới async sync giá lên KV
-            try {
-              await onUpdatePrice!(product.kiotviet_id!);
-            } catch {}
-          }}
-          isLoading={!!isUpdating}
-          productName={product.name}
-          productCode={product.code}
-          basePrice={product.base_price}
-          calculateFromPo={product.calculate_from_po}
-        />
+        {priceDialog}
       </>
     );
   }
@@ -974,37 +870,98 @@ const ProductRow: React.FC<{
     <>
       <TableRow className="hover:bg-muted/50">
         <TableCell>
-          <img
-            src={imageUrl}
-            alt={product.full_name || product.name}
-            className="w-10 h-10 rounded object-cover"
-            loading="lazy"
-            onError={e => {
-              (e.target as HTMLImageElement).src = '/placeholder-product.png';
-            }}
-          />
+          <Link
+            to={`/products/show/${product.id}`}
+            className="block shrink-0"
+            onClick={e => e.stopPropagation()}
+          >
+            <img
+              src={imageUrl}
+              alt={product.full_name || product.name}
+              className="w-10 h-10 rounded object-cover hover:ring-2 hover:ring-primary/40 transition-shadow"
+              loading="lazy"
+              onError={e => {
+                (e.target as HTMLImageElement).src = '/placeholder-product.png';
+              }}
+            />
+          </Link>
         </TableCell>
-        <TableCell>
-          <div className="font-medium text-sm line-clamp-1 flex items-center gap-1.5">
-            {product.full_name || product.name}
-            {isRecentlyModified && (
-              <Badge variant="outline">
-                <Upload className="h-2.5 w-2.5" />
-                Recently updated
-              </Badge>
+        <TableCell className="group/name max-w-[320px]">
+          <div className="flex items-center gap-1">
+            <div className="flex-1 min-w-0">
+              <div className="font-medium text-sm line-clamp-1 flex items-center gap-1.5">
+                <Link
+                  to={`/products/show/${product.id}`}
+                  className="hover:underline underline-offset-2"
+                  onClick={e => e.stopPropagation()}
+                >
+                  {product.full_name || product.name}
+                </Link>
+                {isRecentlyModified && (
+                  <Badge variant="outline">
+                    <Upload className="h-2.5 w-2.5" />
+                    Recently updated
+                  </Badge>
+                )}
+              </div>
+              {product.order_template ? (
+                <div className="text-xs text-muted-foreground line-clamp-1">
+                  {product.order_template}
+                </div>
+              ) : (
+                product.code && (
+                  <div className="text-xs text-muted-foreground font-mono">
+                    {product.code}
+                  </div>
+                )
+              )}
+            </div>
+            {isAdmin && (
+              <div className="flex items-center gap-0.5 shrink-0 opacity-0 transition-opacity group-hover/name:opacity-100 focus-within:opacity-100">
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 px-0 cursor-pointer"
+                        disabled={!product.kiotviet_id}
+                        onClick={() => {
+                          submitPostForm(getPrintUrl(), {
+                            printType: 'priceboard',
+                            kiotviet_id: String(product.kiotviet_id),
+                          });
+                        }}
+                      >
+                        <Printer className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      <p className="text-xs">In bảng giá bán lẻ</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        className="h-7 w-7 px-0 cursor-pointer"
+                        disabled={!product.kiotviet_id}
+                        onClick={() => setIsPriceDialogOpen(true)}
+                      >
+                        <Upload className="h-4 w-4" />
+                      </Button>
+                    </TooltipTrigger>
+                    <TooltipContent side="top">
+                      <p className="text-xs">Chỉnh sửa giá</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
             )}
           </div>
-          {product.order_template ? (
-            <div className="text-xs text-muted-foreground line-clamp-1">
-              {product.order_template}
-            </div>
-          ) : (
-            product.code && (
-              <div className="text-xs text-muted-foreground font-mono">
-                {product.code}
-              </div>
-            )
-          )}
         </TableCell>
         {isAdmin && (
           <>
@@ -1013,113 +970,18 @@ const ProductRow: React.FC<{
             </TableCell>
             <TableCell>{renderKvStatus()}</TableCell>
             <TableCell>{renderChangelog()}</TableCell>
+            {showSupplierName && (
+              <TableCell>
+                <SupplierNameCell
+                  productId={Number(product.id)}
+                  value={product.glt_supplier_name}
+                />
+              </TableCell>
+            )}
           </>
         )}
-        <TableCell>
-          <div
-            className="flex items-center gap-1"
-            onClick={e => e.stopPropagation()}
-          >
-            <Button
-              size="sm"
-              variant="default"
-              onClick={() => handleQuickPrint(10)}
-            >
-              10Kg
-            </Button>
-            <Button
-              size="sm"
-              variant="outline"
-              onClick={() => handleQuickPrint(5)}
-            >
-              5Kg
-            </Button>
-            <Button
-              size="sm"
-              variant="ghost"
-              onClick={() => setIsPrintModalOpen(true)}
-            >
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-            {isAdmin && (
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => onShow(product.id)}
-              >
-                <Eye className="h-4 w-4" />
-              </Button>
-            )}
-            {showUpdatePrice && (
-              <Button
-                size="sm"
-                variant="secondary"
-                disabled={isUpdating}
-                onClick={() => setIsSyncDialogOpen(true)}
-              >
-                {isUpdating ? (
-                  <Loader2 className="h-3 w-3 animate-spin" />
-                ) : (
-                  <Upload className="h-3 w-3" />
-                )}
-              </Button>
-            )}
-          </div>
-        </TableCell>
       </TableRow>
-      <PrintModal
-        isOpen={isPrintModalOpen}
-        onClose={() => setIsPrintModalOpen(false)}
-        productName={product.name}
-        productFullName={product.full_name || ''}
-        kiotvietId={product.kiotviet_id}
-      />
-      <SyncPriceConfirmDialog
-        isOpen={isSyncDialogOpen}
-        onClose={() => setIsSyncDialogOpen(false)}
-        onConfirm={async printPriceboard => {
-          setIsSyncDialogOpen(false);
-          // Submit form in ĐỒNG BỘ (trước await) để tránh popup blocker
-          // Data in lấy từ calculate_from_po (đã có sẵn, không cần chờ KV)
-          if (printPriceboard && product.kiotviet_id) {
-            const calcFromPo = product.calculate_from_po;
-            if (calcFromPo) {
-              const childUnitInfo = (calcFromPo.child_unit_prices || []).map(
-                c => ({
-                  kiotviet_id: c.kiotviet_id,
-                  code: c.code,
-                  full_name: c.full_name,
-                  unit: c.unit,
-                  base_price: c.new_baseprice,
-                  conversion_value: c.conversion_value,
-                  price_per_master_unit:
-                    c.conversion_value > 0
-                      ? Math.round(c.new_baseprice / c.conversion_value)
-                      : null,
-                })
-              );
-              submitPostForm(getPrintUrl(), {
-                printType: 'priceboard',
-                kiotviet_id: String(product.kiotviet_id),
-                base_price: String(calcFromPo.new_baseprice),
-                ...(calcFromPo.latest_purchase_order_code && {
-                  order_template: calcFromPo.latest_purchase_order_code,
-                }),
-                child_unit_info: JSON.stringify(childUnitInfo),
-              });
-            }
-          }
-          // Sau đó mới async sync giá lên KV
-          try {
-            await onUpdatePrice!(product.kiotviet_id!);
-          } catch {}
-        }}
-        isLoading={!!isUpdating}
-        productName={product.name}
-        productCode={product.code}
-        basePrice={product.base_price}
-        calculateFromPo={product.calculate_from_po}
-      />
+      {isAdmin && priceDialog}
     </>
   );
 };
@@ -1132,6 +994,7 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
   loading,
   onShow,
   isAdmin,
+  showSupplierName,
   onUpdatePrice,
   updatingPriceId,
   sortByPriceDifference,
@@ -1174,9 +1037,9 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
                     </button>
                   </TableHead>
                   <TableHead>Changelog</TableHead>
+                  {showSupplierName && <TableHead>Tên NCC</TableHead>}
                 </>
               )}
-              <TableHead>Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -1199,11 +1062,13 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
                     <TableCell>
                       <Skeleton className="h-4 w-16" />
                     </TableCell>
+                    {showSupplierName && (
+                      <TableCell>
+                        <Skeleton className="h-4 w-24" />
+                      </TableCell>
+                    )}
                   </>
                 )}
-                <TableCell>
-                  <Skeleton className="h-8 w-32" />
-                </TableCell>
               </TableRow>
             ))}
           </TableBody>
@@ -1225,8 +1090,8 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
     );
   }
 
-  // Số cột table: ảnh + tên (+3 cột admin) + thao tác
-  const tableColSpan = isAdmin ? 6 : 3;
+  // Số cột table: ảnh + tên (+3 cột admin, +1 tên NCC khi bật)
+  const tableColSpan = isAdmin ? (showSupplierName ? 6 : 5) : 2;
 
   const renderRow = (
     product: ProductWithPriceDiff,
@@ -1237,6 +1102,7 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
       product={product}
       onShow={onShow}
       isAdmin={isAdmin}
+      showSupplierName={showSupplierName}
       onUpdatePrice={onUpdatePrice}
       isUpdating={updatingPriceId === product.kiotviet_id}
       mode={mode}
@@ -1294,9 +1160,9 @@ export const ProductListTable: React.FC<ProductListTableProps> = ({
                     </button>
                   </TableHead>
                   <TableHead>Changelog</TableHead>
+                  {showSupplierName && <TableHead>Tên NCC</TableHead>}
                 </>
               )}
-              <TableHead>Thao tác</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>

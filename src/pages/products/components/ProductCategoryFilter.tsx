@@ -73,7 +73,7 @@ export const ProductCategoryFilter = ({
       const { data, error: fetchError } = await supabase
         .from('kv_product_categories')
         .select('category_id, category_name, rank')
-        .eq('glt_is_active', true)
+        .or('glt_is_test.eq.true,glt_is_active.eq.true')
         .order('rank', { ascending: true });
 
       if (fetchError) {

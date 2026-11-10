@@ -19,6 +19,8 @@ import {
   type ProductChangelog,
 } from './hooks/useProductShow';
 import { ProductImageUploadDialog } from './components/ProductImageUploadDialog';
+import { ProductPrintActions } from './components/ProductPrintActions';
+import { PriceEditDialog } from './components/PriceEditDialog';
 import {
   Card,
   CardContent,
@@ -93,6 +95,7 @@ export const ProductShow = () => {
   const updateProduct = useUpdateProduct();
 
   const [isUploadDialogOpen, setIsUploadDialogOpen] = useState(false);
+  const [isPriceDialogOpen, setIsPriceDialogOpen] = useState(false);
 
   const form = useForm({
     defaultValues: {
@@ -197,7 +200,7 @@ export const ProductShow = () => {
       {/* Header với badges */}
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-start">
+          <div className="flex justify-between items-start gap-4">
             <div>
               <CardTitle>{record.name}</CardTitle>
               <CardDescription>
@@ -217,6 +220,11 @@ export const ProductShow = () => {
                 </div>
               </CardDescription>
             </div>
+            <ProductPrintActions
+              kiotvietId={record.kiotviet_id}
+              productName={record.name}
+              productFullName={record.full_name}
+            />
           </div>
         </CardHeader>
       </Card>
@@ -396,9 +404,11 @@ export const ProductShow = () => {
                                             ? 'KiotViet'
                                             : entry.src === 'po_update'
                                               ? 'Đơn nhập'
-                                              : entry.src === 'sync'
-                                                ? 'Sync'
-                                                : entry.src}
+                                              : entry.src === 'admin_manual'
+                                                ? 'Admin'
+                                                : entry.src === 'sync'
+                                                  ? 'Sync'
+                                                  : entry.src}
                                         </Badge>
                                       ) : (
                                         <span className="text-xs text-muted-foreground">
@@ -584,16 +594,29 @@ export const ProductShow = () => {
                             disabled={updateProductPrice.isPending}
                             onClick={() => {
                               if (record?.kiotviet_id) {
-                                updateProductPrice.mutate(record.kiotviet_id);
+                                updateProductPrice.mutate({
+                                  kiotvietId: record.kiotviet_id,
+                                });
                               }
                             }}
                           >
                             {updateProductPrice.isPending ? (
                               <Loader2 className="h-3 w-3 animate-spin mr-1" />
                             ) : null}
-                            Cập nhật giá KioViet
+                            Cập nhật giá KiotViet (theo PO)
                           </Button>
                         )}
+                      {record?.kiotviet_id && (
+                        <Button
+                          size="sm"
+                          variant="default"
+                          className="mt-2 w-full"
+                          disabled={updateProductPrice.isPending}
+                          onClick={() => setIsPriceDialogOpen(true)}
+                        >
+                          Chỉnh cost mục tiêu
+                        </Button>
+                      )}
                     </div>
                     <div className="rounded-lg border p-4">
                       <div className="text-sm text-muted-foreground">
@@ -1191,6 +1214,41 @@ export const ProductShow = () => {
           </Card>
         </TabsContent>
       </Tabs>
+
+      {/* Dialog chỉnh giá theo cost mục tiêu */}
+      {record?.kiotviet_id && (
+        <PriceEditDialog
+          isOpen={isPriceDialogOpen}
+          onClose={() => setIsPriceDialogOpen(false)}
+          onUpdatePrice={async (kiotvietId, params) => {
+            return await updateProductPrice.mutateAsync({ kiotvietId, params });
+          }}
+          productName={record.name}
+          productCode={record.code}
+          kiotvietId={record.kiotviet_id}
+          basePrice={record.base_price}
+          currentCost={record.inventory_cost ?? null}
+          markup={record.glt_baseprice_markup ?? 0}
+          roundStep={record.glt_baseprice_round_step ?? 1000}
+          extraCost={record.glt_extra_cost ?? 0}
+          childUnits={((record.child_unit_info ?? []) as ChildUnitInfo[]).map(
+            cu => ({
+              kiotviet_id: cu.kiotviet_id,
+              code: cu.code,
+              full_name: cu.full_name,
+              unit: cu.unit,
+              conversion_value: cu.conversion_value,
+              base_price: cu.base_price,
+            })
+          )}
+          calculateFromPo={
+            (record as Record<string, unknown>).calculate_from_po as
+              | import('@/types').CalculateFromPo
+              | null
+          }
+          orderTemplate={record.order_template ?? null}
+        />
+      )}
 
       {/* Navigation buttons */}
       <div className="flex justify-between">

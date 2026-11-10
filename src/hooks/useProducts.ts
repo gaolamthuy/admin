@@ -75,6 +75,10 @@ export const useProducts = (filters: ProductFilters = {}) => {
             calculate_from_po,
             changelog,
             order_template,
+            glt_baseprice_markup,
+            glt_extra_cost,
+            glt_baseprice_round_step,
+            child_unit_info,
             modified_date
           `
         )
@@ -108,7 +112,7 @@ export const useProducts = (filters: ProductFilters = {}) => {
       const { data: productsData, error: productsError } = await supabase
         .from('kv_products')
         .select(
-          'id, code, glt_labelprint_favorite, master_unit_id, category_name, weight, unit, allows_sale, type, has_variants, description, glt_visible, glt_retail_promotion, glt_created_at, glt_updated_at, created_date, modified_date'
+          'id, code, glt_labelprint_favorite, glt_supplier_name, master_unit_id, category_name, weight, unit, allows_sale, type, has_variants, description, glt_visible, glt_retail_promotion, glt_created_at, glt_updated_at, created_date, modified_date'
         )
         .in('id', productIds);
       // Note: v_products_admin đã filter master_unit_id = null rồi, không cần filter lại
@@ -123,6 +127,7 @@ export const useProducts = (filters: ProductFilters = {}) => {
         number,
         {
           glt_labelprint_favorite: boolean;
+          glt_supplier_name?: string | null;
           category_name?: string | null;
           weight?: number | null;
           unit?: string | null;
@@ -141,6 +146,7 @@ export const useProducts = (filters: ProductFilters = {}) => {
       (productsData || []).forEach(p => {
         productMap.set(p.id, {
           glt_labelprint_favorite: p.glt_labelprint_favorite || false,
+          glt_supplier_name: p.glt_supplier_name ?? null,
           category_name: p.category_name || null,
           weight: p.weight || null,
           unit: p.unit || null,
@@ -212,6 +218,11 @@ export const useProducts = (filters: ProductFilters = {}) => {
             created_date: productDetails?.created_date || '',
             modified_date: productDetails?.modified_date || '',
             order_template: p.order_template || null,
+            glt_supplier_name: productDetails?.glt_supplier_name ?? null,
+            glt_baseprice_markup: p.glt_baseprice_markup ?? null,
+            glt_extra_cost: p.glt_extra_cost ?? null,
+            glt_baseprice_round_step: p.glt_baseprice_round_step ?? null,
+            child_unit_info: p.child_unit_info || null,
             // Extended fields for price difference (not in Product type, but used in ProductCard)
             priceDifference: p.latest_price_difference || null,
             priceDifferencePercent: p.latest_price_difference_percent || null,
@@ -309,8 +320,8 @@ export const useProductCategories = () => {
 
       const { data, error } = await supabase
         .from('kv_product_categories')
-        .select('category_id, category_name, glt_is_active, rank')
-        .eq('glt_is_active', true)
+        .select('category_id, category_name, glt_is_active, glt_is_test, rank')
+        .or('glt_is_test.eq.true,glt_is_active.eq.true')
         .order('rank', { ascending: true, nullsFirst: false })
         .order('category_name');
 

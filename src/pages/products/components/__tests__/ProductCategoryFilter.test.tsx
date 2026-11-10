@@ -14,7 +14,7 @@ vi.mock('@/lib/supabase', () => ({
   supabase: {
     from: vi.fn(() => ({
       select: vi.fn(() => ({
-        eq: vi.fn(() => ({
+        or: vi.fn(() => ({
           order: vi.fn(() =>
             Promise.resolve({
               data: [
