@@ -19,6 +19,7 @@ import { PurchaseOrderList } from '@/pages/purchase-orders/PurchaseOrderList';
 import { PurchaseOrderCreate } from '@/pages/purchase-orders/PurchaseOrderCreate';
 import { PurchaseOrderShow } from '@/pages/purchase-orders/PurchaseOrderShow';
 import { CustomersList } from '@/pages/customers/CustomersList';
+import { CustomerShow } from '@/pages/customers/CustomerShow';
 import { PaymentsList } from '@/pages/payments/PaymentsList';
 import { InvoicesList } from '@/pages/invoices/InvoicesList';
 import { ZaloTemplates } from '@/pages/zalo-templates/ZaloTemplates';
@@ -98,6 +99,16 @@ function App() {
                 <ProtectedRoute>
                   <Layout>
                     <CustomersList />
+                  </Layout>
+                </ProtectedRoute>
+              }
+            />
+            <Route
+              path="/customers/show/:id"
+              element={
+                <ProtectedRoute>
+                  <Layout>
+                    <CustomerShow />
                   </Layout>
                 </ProtectedRoute>
               }

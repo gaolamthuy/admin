@@ -11,9 +11,19 @@ import { useSession } from '@/hooks/useAuth';
 import { compareDates } from '@/utils/date';
 
 /**
+ * Sản phẩm mua gần đây (tổng hợp từ 5 hóa đơn gần nhất)
+ * Định dạng khớp với column recently_purchased_products trong view v_customers_admin
+ */
+export interface RecentlyPurchasedProduct {
+  product_code: string;
+  product_name: string;
+  total_quantity: number;
+}
+
+/**
  * Customer interface
- * ⭐ Không include recent_invoices ở list page để tối ưu performance
- * recent_invoices chỉ load khi vào detail page
+ * ⭐ Không include recently_purchased_products ở list page để tối ưu performance
+ * recently_purchased_products chỉ load khi vào detail page
  */
 export interface Customer {
   id: number;
@@ -37,7 +47,7 @@ export interface Customer {
   created_date: string | null;
   modified_date: string | null;
   synced_at: string | null;
-  // ⭐ NEW: Latest invoice datetime để sort (không load recent_invoices ở list)
+  // ⭐ NEW: Latest invoice datetime để sort (không load recently_purchased_products ở list)
   latest_invoice_datetime: string | null;
 }
 
@@ -60,7 +70,7 @@ export const useCustomers = (searchTerm?: string) => {
       }
 
       // Query từ view v_customers_admin
-      // ⭐ Tối ưu: Không select recent_invoices ở list page (chỉ load khi vào detail)
+      // ⭐ Tối ưu: Không select recently_purchased_products ở list page (chỉ load khi vào detail)
       // Chỉ select các fields cần thiết + latest_invoice_datetime để sort
       // ⭐ Performance: Limit 2000 records để tránh load quá nhiều (frontend sẽ paginate)
       const baseQuery = supabase.from('v_customers_admin').select(
@@ -143,10 +153,10 @@ export const useCustomers = (searchTerm?: string) => {
 
 /**
  * Hook fetch single customer by ID từ view v_customers_admin
- * ⭐ Load đầy đủ data bao gồm recent_invoices (dùng cho detail page)
+ * ⭐ Load đầy đủ data bao gồm recently_purchased_products (dùng cho detail page)
  *
  * @param id - Customer ID
- * @returns Query result với customer data (bao gồm recent_invoices)
+ * @returns Query result với customer data (bao gồm recently_purchased_products)
  */
 export const useCustomer = (id: string | number) => {
   const { data: session } = useSession();
@@ -154,13 +164,16 @@ export const useCustomer = (id: string | number) => {
   return useQuery({
     queryKey: ['customers', id],
     queryFn: async (): Promise<
-      (Customer & { recent_invoices?: any }) | null
+      | (Customer & {
+          recently_purchased_products?: RecentlyPurchasedProduct[] | null;
+        })
+      | null
     > => {
       if (!session) {
         throw new Error('Not authenticated');
       }
 
-      // ⭐ Detail page: Load đầy đủ bao gồm recent_invoices
+      // ⭐ Detail page: Load đầy đủ bao gồm recently_purchased_products
       const { data, error } = await supabase
         .from('v_customers_admin')
         .select('*')
@@ -168,7 +181,9 @@ export const useCustomer = (id: string | number) => {
         .single();
 
       if (error) throw error;
-      return data as Customer & { recent_invoices?: any };
+      return data as Customer & {
+        recently_purchased_products?: RecentlyPurchasedProduct[] | null;
+      };
     },
     enabled: !!session && !!id,
     staleTime: 5 * 60 * 1000,

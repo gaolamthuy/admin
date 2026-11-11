@@ -6,6 +6,7 @@
  */
 
 import { useState, useMemo, useEffect } from 'react';
+import { Link } from 'react-router-dom';
 import { useCustomers } from '@/hooks/useCustomers';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import {
@@ -25,24 +26,9 @@ import {
   PaginationNext,
   PaginationPrevious,
 } from '@/components/ui/pagination';
-import {
-  ArrowDown,
-  ChevronDown,
-  Loader2,
-  Printer,
-  Search,
-  X,
-} from 'lucide-react';
+import { ArrowDown, Loader2, Search, X } from 'lucide-react';
 import { formatTimeAgo } from '@/utils/date';
 import { Button } from '@/components/ui/button';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
-import { usePrintPriceTable } from './hooks/usePrintPriceTable';
-import { toast } from 'sonner';
 import { Input } from '@/components/ui/input';
 
 /**
@@ -52,7 +38,6 @@ export const CustomersList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [debouncedSearch, setDebouncedSearch] = useState('');
   const { data: customers = [], isLoading } = useCustomers(debouncedSearch);
-  const { printPriceTable, isLoading: isPrinting } = usePrintPriceTable();
 
   // Pagination state
   const [currentPage, setCurrentPage] = useState(1);
@@ -86,47 +71,6 @@ export const CustomersList = () => {
       window.clearTimeout(timer);
     };
   }, [searchTerm]);
-
-  /**
-   * Xử lý in bảng giá cho customer
-   * @param customer - Customer object
-   */
-  const handlePrintPriceTable = async (
-    customer: {
-      kiotviet_id: number;
-      name: string | null;
-    },
-    simplified?: boolean,
-    withChangelog?: boolean
-  ) => {
-    if (!customer.kiotviet_id) {
-      toast.error('Không tìm thấy thông tin khách hàng');
-      return;
-    }
-
-    try {
-      await printPriceTable(customer.kiotviet_id, {
-        simplified,
-        withChangelog,
-      });
-      const label = withChangelog
-        ? ' giản lược (có cập nhật)'
-        : simplified
-          ? ' giản lược'
-          : '';
-      toast.success('Đang mở bảng giá để in', {
-        description: `Bảng giá${label} cho ${customer.name || 'khách hàng'}`,
-      });
-    } catch (error) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : 'Có lỗi xảy ra khi in bảng giá';
-      toast.error('In bảng giá thất bại', {
-        description: message,
-      });
-    }
-  };
 
   return (
     <div className="container mx-auto py-6 space-y-6">
@@ -190,7 +134,6 @@ export const CustomersList = () => {
                         <ArrowDown className="h-3 w-3 text-muted-foreground" />
                       </div>
                     </TableHead>
-                    <TableHead className="text-right">Thao tác</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -199,7 +142,14 @@ export const CustomersList = () => {
                       <TableCell className="font-medium">
                         {customer.code || `#${customer.id}`}
                       </TableCell>
-                      <TableCell>{customer.name || '-'}</TableCell>
+                      <TableCell>
+                        <Link
+                          to={`/customers/show/${customer.id}`}
+                          className="font-medium hover:underline"
+                        >
+                          {customer.name || '-'}
+                        </Link>
+                      </TableCell>
                       <TableCell>{customer.contact_number || '-'}</TableCell>
                       <TableCell>
                         <div className="max-w-xs">
@@ -215,52 +165,6 @@ export const CustomersList = () => {
                         {customer.latest_invoice_datetime
                           ? formatTimeAgo(customer.latest_invoice_datetime)
                           : '-'}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        <div className="flex items-center justify-end gap-2">
-                          {/* Chỉ hiển thị nút "In bảng giá" khi customer có groups (không null) */}
-                          {customer.groups !== null && (
-                            <DropdownMenu>
-                              <DropdownMenuTrigger asChild>
-                                <Button
-                                  variant="ghost"
-                                  size="sm"
-                                  disabled={isPrinting || !customer.kiotviet_id}
-                                >
-                                  <Printer className="mr-1 h-4 w-4" />
-                                  {isPrinting ? 'Đang xử lý...' : 'In bảng giá'}
-                                  <ChevronDown className="ml-1 h-3 w-3" />
-                                </Button>
-                              </DropdownMenuTrigger>
-                              <DropdownMenuContent align="end">
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    handlePrintPriceTable(customer, false)
-                                  }
-                                >
-                                  <Printer className="mr-2 h-4 w-4" />
-                                  Đầy đủ
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    handlePrintPriceTable(customer, true)
-                                  }
-                                >
-                                  <Printer className="mr-2 h-4 w-4" />
-                                  Giản lược
-                                </DropdownMenuItem>
-                                <DropdownMenuItem
-                                  onClick={() =>
-                                    handlePrintPriceTable(customer, false, true)
-                                  }
-                                >
-                                  <Printer className="mr-2 h-4 w-4" />
-                                  Giản lược (có cập nhật)
-                                </DropdownMenuItem>
-                              </DropdownMenuContent>
-                            </DropdownMenu>
-                          )}
-                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
