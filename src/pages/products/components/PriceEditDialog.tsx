@@ -140,11 +140,13 @@ export const PriceEditDialog: React.FC<PriceEditDialogProps> = ({
   }, [isOpen]);
 
   const targetPo = parseInt(poRawStr, 10) || 0;
-  const hasChange = poRawStr !== defaultPoRawStr && targetPo > 0;
-  const canSubmit = hasChange;
-
-  // Cost tự derive từ giá nhập PO
   const derivedCost = targetPo > 0 ? targetPo + extraPerUnit + extraCost : null;
+  // Có thay đổi để cập nhật khi: giá nhập PO khác lần trước HOẶC cost derive ra
+  // khác cost hiện tại trên KV (extra PO/extra SP có thể đổi kể cả khi giá nhập nguyên)
+  const poChanged = poRawStr !== defaultPoRawStr && targetPo > 0;
+  const costDiffers =
+    derivedCost != null && currentCost != null && derivedCost !== currentCost;
+  const canSubmit = poChanged || costDiffers;
 
   const newBasePrice =
     derivedCost != null
@@ -355,7 +357,7 @@ export const PriceEditDialog: React.FC<PriceEditDialogProps> = ({
                   className="h-8 w-36 font-mono text-right"
                   autoFocus
                 />
-                {hasChange && calculateFromPo?.latest_raw_price != null && (
+                {poChanged && calculateFromPo?.latest_raw_price != null && (
                   <span className="text-xs text-muted-foreground line-through whitespace-nowrap">
                     {fmt(calculateFromPo.latest_raw_price)}
                   </span>
@@ -551,8 +553,10 @@ export const PriceEditDialog: React.FC<PriceEditDialogProps> = ({
               onClick={() => void handleUpdate()}
               disabled={!canSubmit || phase === 'updating'}
               title={
-                !hasChange
-                  ? 'Chưa có thay đổi — nhập Giá nhập PO mới để cập nhật'
+                !canSubmit
+                  ? targetPo <= 0
+                    ? 'Nhập giá nhập PO để cập nhật'
+                    : 'Giá nhập và cost không có thay đổi — không có gì để cập nhật'
                   : undefined
               }
             >
